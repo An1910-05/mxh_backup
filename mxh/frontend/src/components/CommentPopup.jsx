@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { getComments, createComment } from '../services/graphql';
 import { useAuth } from '../hooks/useAuth';
 import { timeAgoShort } from '../utils/time';
-import VideoPlayer from './VideoPlayer';
 import { uploadFile } from '../services/api';
 import { API_ORIGIN } from '../config';
+import CommentMediaAttachment from './CommentMediaAttachment';
+import CommentMediaViewer from './CommentMediaViewer';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
@@ -20,6 +21,7 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
   const [mediaPreview, setMediaPreview] = useState(null);
   const [mediaType, setMediaType] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [activeMediaComment, setActiveMediaComment] = useState(null);
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
@@ -37,6 +39,12 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
+  useEffect(() => {
+    return () => {
+      if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+    };
+  }, [mediaPreview]);
+
   const loadComments = async () => {
     try {
       const data = await getComments(post.id);
@@ -51,11 +59,13 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
     const isImg = file.type.startsWith('image/');
     const isVid = file.type.startsWith('video/');
     if (!isImg && !isVid) { setError('Chỉ ảnh hoặc video'); return; }
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
     setMediaFile(file); setMediaType(isVid?'video':'image');
     setMediaPreview(URL.createObjectURL(file));
   };
 
   const clearMedia = () => {
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
     setMediaFile(null); setMediaPreview(null); setMediaType(null);
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -87,8 +97,9 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
   const canSend = (input.trim() || mediaFile) && !sending;
 
   return (
-    <div className="popup-overlay" onClick={handleOverlayClick}>
-      <div className="popup-container popup-comments">
+    <>
+      <div className="popup-overlay" onClick={handleOverlayClick}>
+        <div className="popup-container popup-comments">
         <div className="popup-header">
           <h3>Bình luận ({loading?'...':comments.length})</h3>
           <button className="popup-close" onClick={onClose}>✕</button>
@@ -108,12 +119,10 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
                   <div className="comment-bubble">
                     <Link to={`/profile_id=${c.user_id}`} className="comment-username">{c.username}</Link>
                     {c.content ? <div className="comment-text">{c.content}</div> : null}
-                    {c.media_url && c.media_type === 'image' && (
-                      <img src={`${API_ORIGIN}${c.media_url}`} alt="" className="comment-media-thumb" />
-                    )}
-                    {c.media_url && c.media_type === 'video' && (
-                      <div className="comment-media-video"><VideoPlayer src={`${API_ORIGIN}${c.media_url}`} /></div>
-                    )}
+                    <CommentMediaAttachment
+                      comment={c}
+                      onOpen={() => setActiveMediaComment(c)}
+                    />
                   </div>
                   <div className="comment-time">{timeAgoShort(c.created_at)}</div>
                 </div>
@@ -139,7 +148,15 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
             <button type="submit" disabled={!canSend} className="popup-comment-send">{uploading||sending?'...':'➤'}</button>
           </form>
         )}
+        </div>
       </div>
-    </div>
+
+      {activeMediaComment && (
+        <CommentMediaViewer
+          comment={activeMediaComment}
+          onClose={() => setActiveMediaComment(null)}
+        />
+      )}
+    </>
   );
 }

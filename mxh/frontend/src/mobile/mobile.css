@@ -362,6 +362,35 @@ body.is-mobile .popup-container {
   border-radius: 0;
 }
 
+body.is-mobile .popup-comment-form {
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+body.is-mobile .popup-comment-media-preview {
+  max-width: calc(100% - 24px);
+  margin: 0 12px 12px;
+  padding: 8px;
+  border-radius: 18px;
+}
+
+body.is-mobile .popup-comment-media-preview img,
+body.is-mobile .popup-comment-media-preview video,
+body.is-mobile .comment-media-thumb,
+body.is-mobile .comment-media-video {
+  width: min(100%, 260px);
+  max-height: 240px;
+}
+
+body.is-mobile .comment-media-open-chip {
+  right: 10px;
+  bottom: 10px;
+}
+
+body.is-mobile .comment-media-play {
+  width: 52px;
+  height: 52px;
+}
+
 /* Video player mobile fixes */
 body.is-mobile .vp-container {
   -webkit-tap-highlight-color: transparent;
@@ -436,6 +465,42 @@ body.is-mobile .post-lightbox-sidebar {
   border-left: none;
   border-top: 1px solid #e4e6eb;
   max-height: 45vh;
+}
+
+body.is-mobile .comment-media-viewer {
+  padding: 0;
+}
+
+body.is-mobile .comment-media-viewer-shell {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+}
+
+body.is-mobile .comment-media-viewer-stage {
+  min-height: 0;
+}
+
+body.is-mobile .comment-media-viewer-frame {
+  padding: 12px;
+}
+
+body.is-mobile .comment-media-viewer-image {
+  max-height: min(62vh, 100%);
+  border-radius: 18px;
+}
+
+body.is-mobile .comment-media-viewer-player {
+  border-radius: 18px;
+}
+
+body.is-mobile .comment-media-viewer-sidebar {
+  max-height: 38vh;
+}
+
+body.is-mobile .comment-media-viewer-sidebar-inner {
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Loading spinner */

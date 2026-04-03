@@ -3,6 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useChat } from '../contexts/ChatContext';
 import useNotificationUnread from '../hooks/useNotificationUnread';
+import { API_ORIGIN } from '../config';
+
+const DEFAULT_AVATAR = '/default-avatar.png';
 
 function profileLink(user) {
   if (user.custom_url) return `/${user.custom_url}`;
@@ -29,9 +32,14 @@ export default function Navbar() {
     if (p.startsWith('/search')) return 2;
     if (p.startsWith('/friends')) return 3;
     if (p.startsWith('/chat')) return 4;
-    if (user.custom_url && p === `/${user.custom_url}`) return 5;
-    if (p.startsWith('/profile_id=')) return 5;
     return -1;
+  }, [user, location.pathname]);
+
+  const profileActive = useMemo(() => {
+    if (!user) return false;
+    const p = location.pathname;
+    if (user.custom_url && p === `/${user.custom_url}`) return true;
+    return p.startsWith('/profile_id=');
   }, [user, location.pathname]);
 
   const [pill, setPill] = useState({left:0,width:0,visible:false});
@@ -79,8 +87,20 @@ export default function Navbar() {
                   Tin nhắn
                   {totalUnread > 0 && <span className="nav-badge">{totalUnread>99?'99+':totalUnread}</span>}
                 </Link>
-                <Link ref={setLinkRef(5)} to={profileLink(user)} className={linkClass(5)}>{user.username}</Link>
               </div>
+              <Link
+                to={profileLink(user)}
+                className={`nav-profile-link${profileActive ? ' nav-profile-link--active' : ''}`}
+                aria-label={`Trang cá nhân của ${user.username}`}
+                title={user.username}
+              >
+                <span className="nav-profile-avatar">
+                  <img
+                    src={user.avatar ? `${API_ORIGIN}${user.avatar}` : DEFAULT_AVATAR}
+                    alt={user.username}
+                  />
+                </span>
+              </Link>
               <button type="button" onClick={handleLogout} className="apple-nav-brand nav-logout">Đăng xuất</button>
             </>
           ) : (

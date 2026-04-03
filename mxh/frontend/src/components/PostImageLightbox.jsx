@@ -4,6 +4,8 @@ import { getComments, createComment } from '../services/graphql';
 import { useAuth } from '../hooks/useAuth';
 import { timeAgo, timeAgoShort } from '../utils/time';
 import { API_ORIGIN } from '../config';
+import CommentMediaAttachment from './CommentMediaAttachment';
+import CommentMediaViewer from './CommentMediaViewer';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 const ZOOM_MIN = 0.5;
@@ -27,6 +29,7 @@ export default function PostImageLightbox({
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [activeMediaComment, setActiveMediaComment] = useState(null);
   const stageRef = useRef(null);
   const listRef = useRef(null);
   const composeInputRef = useRef(null);
@@ -184,7 +187,11 @@ export default function PostImageLightbox({
                     <div className="post-lightbox-comment-body">
                       <div className="post-lightbox-comment-bubble">
                         <Link to={`/profile_id=${c.user_id}`} className="post-lightbox-comment-user">{c.username}</Link>
-                        <div className="post-lightbox-comment-text">{c.content}</div>
+                        {c.content ? <div className="post-lightbox-comment-text">{c.content}</div> : null}
+                        <CommentMediaAttachment
+                          comment={c}
+                          onOpen={() => setActiveMediaComment(c)}
+                        />
                       </div>
                       <div className="post-lightbox-comment-time">{timeAgoShort(c.created_at)}</div>
                     </div>
@@ -217,6 +224,13 @@ export default function PostImageLightbox({
             )}
           </div>
         </aside>
+
+        {activeMediaComment && (
+          <CommentMediaViewer
+            comment={activeMediaComment}
+            onClose={() => setActiveMediaComment(null)}
+          />
+        )}
       </div>
     </div>
   );
