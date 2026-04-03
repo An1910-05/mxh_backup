@@ -1,0 +1,218 @@
+import { graphqlFetch } from './api';
+
+const POST_FIELDS = `id user_id username user_avatar content media_url media_type media_width media_height location_label latitude longitude like_count comment_count is_liked created_at`;
+const COMMENT_FIELDS = `id post_id user_id username user_avatar content created_at media_url media_type media_width media_height`;
+
+export async function getFeed(limit = 20, page = 1) {
+  const data = await graphqlFetch(`query Feed(`+`$limit: Int, $page: Int) { feed(limit: $limit, page: $page) { ${POST_FIELDS} } }`, { limit, page });
+  return data.feed;
+}
+
+export async function getPosts(limit = 20, page = 1) {
+  const data = await graphqlFetch(`query Posts(`+`$limit: Int, $page: Int) { posts(limit: $limit, page: $page) { ${POST_FIELDS} } }`, { limit, page });
+  return data.posts;
+}
+
+export async function getPost(id) {
+  const data = await graphqlFetch(`query Post(`+`$id: Int!) { post(id: $id) { ${POST_FIELDS} } }`, { id: parseInt(id) });
+  return data.post;
+}
+
+export async function getUserPosts(userId, limit = 20, page = 1) {
+  const data = await graphqlFetch(`query UserPosts(`+`$userId: Int!, $limit: Int, $page: Int) { userPosts(userId: $userId, limit: $limit, page: $page) { ${POST_FIELDS} } }`, { userId: parseInt(userId), limit, page });
+  return data.userPosts;
+}
+
+export async function getProfile(userId) {
+  const data = await graphqlFetch(`query Profile(`+`$userId: Int!) { profile(userId: $userId) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender created_at } }`, { userId: parseInt(userId) });
+  return data.profile;
+}
+
+export async function getProfileByCustomUrl(url) {
+  const data = await graphqlFetch(`query ProfileByCustomUrl(`+`$url: String!) { profileByCustomUrl(url: $url) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender created_at } }`, { url });
+  return data.profileByCustomUrl;
+}
+
+export async function getComments(postId) {
+  const data = await graphqlFetch(`query Comments(`+`$postId: Int!) { comments(postId: $postId) { ${COMMENT_FIELDS} } }`, { postId: parseInt(postId) });
+  return data.comments;
+}
+
+export async function createPost(payload = {}) {
+  const { content='', mediaUrl=null, mediaType=null, mediaWidth=null, mediaHeight=null, locationLabel=null, latitude=null, longitude=null } = payload;
+  const data = await graphqlFetch(`mutation CreatePost(`+`$content: String!, $media_url: String, $media_type: String, $media_width: Int, $media_height: Int, $location_label: String, $latitude: Float, $longitude: Float) { createPost(content: $content, media_url: $media_url, media_type: $media_type, media_width: $media_width, media_height: $media_height, location_label: $location_label, latitude: $latitude, longitude: $longitude) { ${POST_FIELDS} } }`, {
+    content, media_url: mediaUrl, media_type: mediaType, media_width: mediaWidth, media_height: mediaHeight,
+    location_label: locationLabel, latitude, longitude
+  });
+  return data.createPost;
+}
+
+export async function editPost(postId, content) {
+  const data = await graphqlFetch(`mutation EditPost(`+`$postId: Int!, $content: String!) { editPost(postId: $postId, content: $content) { id content } }`, { postId: parseInt(postId), content });
+  return data.editPost;
+}
+
+export async function deletePost(postId) {
+  const data = await graphqlFetch(`mutation DeletePost(`+`$postId: Int!) { deletePost(postId: $postId) }`, { postId: parseInt(postId) });
+  return data.deletePost;
+}
+
+export async function likePost(postId) {
+  const data = await graphqlFetch(`mutation LikePost(`+`$postId: Int!) { likePost(postId: $postId) }`, { postId: parseInt(postId) });
+  return data.likePost;
+}
+
+export async function unlikePost(postId) {
+  const data = await graphqlFetch(`mutation UnlikePost(`+`$postId: Int!) { unlikePost(postId: $postId) }`, { postId: parseInt(postId) });
+  return data.unlikePost;
+}
+
+export async function createComment(postId, content, media = {}) {
+  const { mediaUrl=null, mediaType=null, mediaWidth=null, mediaHeight=null } = media;
+  const data = await graphqlFetch(`mutation CreateComment(`+`$postId: Int!, $content: String!, $media_url: String, $media_type: String, $media_width: Int, $media_height: Int) { createComment(postId: $postId, content: $content, media_url: $media_url, media_type: $media_type, media_width: $media_width, media_height: $media_height) { ${COMMENT_FIELDS} } }`, {
+    postId: parseInt(postId), content, media_url: mediaUrl, media_type: mediaType, media_width: mediaWidth, media_height: mediaHeight
+  });
+  return data.createComment;
+}
+
+export async function updateProfile(bio) {
+  const data = await graphqlFetch(`mutation UpdateProfile(`+`$bio: String) { updateProfile(bio: $bio) { user_id username bio avatar post_count follower_count following_count } }`, { bio });
+  return data.updateProfile;
+}
+
+export async function clearAvatar() {
+  const data = await graphqlFetch(`mutation ClearAvatar(`+`$avatar: String) { updateProfile(avatar: $avatar) { user_id username bio avatar cover_photo post_count follower_count following_count friend_count } }`, { avatar: null });
+  return data.updateProfile;
+}
+
+export async function updateCustomUrl(url) {
+  const data = await graphqlFetch(`mutation UpdateCustomUrl(`+`$url: String!) { updateCustomUrl(url: $url) }`, { url });
+  return data.updateCustomUrl;
+}
+
+export async function followUser(userId) {
+  const data = await graphqlFetch(`mutation FollowUser(`+`$userId: Int!) { followUser(userId: $userId) }`, { userId: parseInt(userId) });
+  return data.followUser;
+}
+
+export async function unfollowUser(userId) {
+  const data = await graphqlFetch(`mutation UnfollowUser(`+`$userId: Int!) { unfollowUser(userId: $userId) }`, { userId: parseInt(userId) });
+  return data.unfollowUser;
+}
+
+export async function searchUsers(query, limit = 20) {
+  const data = await graphqlFetch(`query SearchUsers(`+`$query: String!, $limit: Int) { searchUsers(query: $query, limit: $limit) { id username email custom_url avatar created_at } }`, { query, limit });
+  return data.searchUsers;
+}
+
+export async function sendFriendRequest(userId) {
+  const data = await graphqlFetch(`mutation SendFriendRequest(`+`$userId: Int!) { sendFriendRequest(userId: $userId) { message status friendship_id } }`, { userId: parseInt(userId) });
+  return data.sendFriendRequest;
+}
+
+export async function acceptFriendRequest(friendshipId) {
+  const data = await graphqlFetch(`mutation AcceptFriendRequest(`+`$friendshipId: Int!) { acceptFriendRequest(friendshipId: $friendshipId) }`, { friendshipId: parseInt(friendshipId) });
+  return data.acceptFriendRequest;
+}
+
+export async function rejectFriendRequest(friendshipId) {
+  const data = await graphqlFetch(`mutation RejectFriendRequest(`+`$friendshipId: Int!) { rejectFriendRequest(friendshipId: $friendshipId) }`, { friendshipId: parseInt(friendshipId) });
+  return data.rejectFriendRequest;
+}
+
+export async function cancelFriendRequest(friendshipId) {
+  const data = await graphqlFetch(`mutation CancelFriendRequest(`+`$friendshipId: Int!) { cancelFriendRequest(friendshipId: $friendshipId) }`, { friendshipId: parseInt(friendshipId) });
+  return data.cancelFriendRequest;
+}
+
+export async function cancelFriendRequestByUser(userId) {
+  const data = await graphqlFetch(`mutation CancelFriendRequestByUser(`+`$userId: Int!) { cancelFriendRequestByUser(userId: $userId) }`, { userId: parseInt(userId) });
+  return data.cancelFriendRequestByUser;
+}
+
+export async function unfriend(userId) {
+  const data = await graphqlFetch(`mutation Unfriend(`+`$userId: Int!) { unfriend(userId: $userId) }`, { userId: parseInt(userId) });
+  return data.unfriend;
+}
+
+export async function getMyFriends() {
+  const data = await graphqlFetch(`query { myFriends { id username email custom_url avatar created_at } }`);
+  return data.myFriends;
+}
+
+export async function getPendingFriendRequests() {
+  const data = await graphqlFetch(`query { pendingFriendRequests { friendship_id id username custom_url avatar request_date } }`);
+  return data.pendingFriendRequests;
+}
+
+export async function getSentFriendRequests() {
+  const data = await graphqlFetch(`query { sentFriendRequests { friendship_id id username custom_url avatar request_date } }`);
+  return data.sentFriendRequests;
+}
+
+export async function getUserFriends(userId) {
+  const data = await graphqlFetch(`query UserFriends(`+`$userId: Int!) { userFriends(userId: $userId) { id username custom_url } }`, { userId: parseInt(userId) });
+  return data.userFriends;
+}
+
+export async function getUserFollowers(userId) {
+  const data = await graphqlFetch(`query UserFollowers(`+`$userId: Int!) { userFollowers(userId: $userId) { id username custom_url } }`, { userId: parseInt(userId) });
+  return data.userFollowers;
+}
+
+export async function getUserFollowing(userId) {
+  const data = await graphqlFetch(`query UserFollowing(`+`$userId: Int!) { userFollowing(userId: $userId) { id username custom_url } }`, { userId: parseInt(userId) });
+  return data.userFollowing;
+}
+
+export async function getFeedStories() {
+  const data = await graphqlFetch(`query { feedStories { user_id username user_avatar stories { id user_id username user_avatar media_url media_type media_width media_height created_at expires_at } } }`);
+  return data.feedStories;
+}
+
+export async function getUserStories(userId) {
+  const data = await graphqlFetch(`query UserStories(`+`$userId: Int!) { userStories(userId: $userId) { id user_id username user_avatar media_url media_type media_width media_height created_at expires_at } }`, { userId: parseInt(userId) });
+  return data.userStories;
+}
+
+export async function createStory(mediaUrl, mediaType, mediaWidth=null, mediaHeight=null) {
+  const data = await graphqlFetch(`mutation CreateStory(`+`$media_url: String!, $media_type: String!, $media_width: Int, $media_height: Int) { createStory(media_url: $media_url, media_type: $media_type, media_width: $media_width, media_height: $media_height) { id user_id username user_avatar media_url media_type media_width media_height created_at expires_at } }`, { media_url: mediaUrl, media_type: mediaType, media_width: mediaWidth, media_height: mediaHeight });
+  return data.createStory;
+}
+
+export async function deleteStory(storyId) {
+  const data = await graphqlFetch(`mutation DeleteStory(`+`$storyId: Int!) { deleteStory(storyId: $storyId) }`, { storyId: parseInt(storyId) });
+  return data.deleteStory;
+}
+
+// === Notifications ===
+
+export async function getNotifications(limit=40, page=1) {
+  const data = await graphqlFetch(`query Notifications(`+`$limit: Int, $page: Int) { notifications(limit: $limit, page: $page) { id type actor_id actor_username actor_avatar post_id comment_id read_at created_at } }`, { limit, page });
+  return data.notifications;
+}
+
+export async function getNotificationUnreadCount() {
+  const data = await graphqlFetch(`query { notificationUnreadCount }`);
+  return data.notificationUnreadCount;
+}
+
+export async function markNotificationRead(notificationId) {
+  const data = await graphqlFetch(`mutation MarkNotificationRead(`+`$notificationId: Int!) { markNotificationRead(notificationId: $notificationId) }`, { notificationId: parseInt(notificationId) });
+  return data.markNotificationRead;
+}
+
+export async function markAllNotificationsRead() {
+  const data = await graphqlFetch(`mutation { markAllNotificationsRead }`);
+  return data.markAllNotificationsRead;
+}
+
+export async function deleteNotification(notificationId) {
+  const data = await graphqlFetch(`mutation DeleteNotification($notificationId: Int!) { deleteNotification(notificationId: $notificationId) }`, { notificationId: parseInt(notificationId) });
+  return data.deleteNotification;
+}
+
+export async function deleteAllNotifications() {
+  const data = await graphqlFetch(`mutation { deleteAllNotifications }`);
+  return data.deleteAllNotifications;
+}

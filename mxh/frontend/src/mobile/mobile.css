@@ -1,0 +1,487 @@
+/* ============================================
+   MOBILE LAYOUT — Facebook-style for iOS Safari & Chrome
+   ============================================ */
+
+/* === MOBILE LAYOUT === */
+.m-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh; /* dynamic viewport — shrinks when keyboard opens on iOS */
+  overflow: hidden;
+  background: #f0f2f5;
+}
+
+.m-content {
+  flex: 1;
+  min-height: 0; /* critical: allows flex child to be scrollable */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* === MOBILE HEADER (Facebook-style top bar) === */
+.m-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  padding-top: calc(8px + env(safe-area-inset-top, 0));
+  background: #fff;
+  border-bottom: 1px solid #e4e6eb;
+  min-height: 52px;
+}
+
+.m-header-brand {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1877f2;
+  text-decoration: none;
+  letter-spacing: -0.03em;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+}
+
+.m-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.m-header-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e4e6eb;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m-header-btn:active {
+  background: #d8dadf;
+}
+
+.m-header-link {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #1877f2;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m-header-link--primary {
+  background: #1877f2;
+  color: #fff;
+}
+
+.m-header-link--primary:active {
+  background: #166fe5;
+}
+
+/* === BOTTOM TAB BAR (Facebook-style) === */
+/* Flex item (NOT fixed) — content never hidden underneath */
+.m-tab-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  background: #fff;
+  border-top: 1px solid #e4e6eb;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  min-height: 56px;
+  z-index: 100;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m-tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-decoration: none;
+  color: #65676b;
+  font-size: 0.6rem;
+  font-weight: 500;
+  padding: 6px 0;
+  position: relative;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m-tab-item--active {
+  color: #1877f2;
+}
+
+.m-tab-item--active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16%;
+  right: 16%;
+  height: 2px;
+  background: #1877f2;
+  border-radius: 0 0 2px 2px;
+}
+
+.m-tab-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.m-tab-label {
+  line-height: 1;
+}
+
+.m-tab-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #e41e3f;
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* === MOBILE OVERRIDES === */
+
+/* Hide desktop navbar on mobile */
+body.is-mobile .apple-nav {
+  display: none !important;
+}
+
+/* Main content adjustments */
+body.is-mobile .apple-main {
+  padding: 12px 0 24px;
+  max-width: 100%;
+}
+
+/* Post cards — full-width like Facebook mobile */
+body.is-mobile .post-card {
+  border-radius: 0;
+  margin-bottom: 8px;
+  box-shadow: none;
+  border: none;
+  border-top: 1px solid #e4e6eb;
+  border-bottom: 1px solid #e4e6eb;
+}
+
+body.is-mobile .post-card + .post-card {
+  margin-top: 0;
+}
+
+/* Post header */
+body.is-mobile .post-header {
+  padding: 12px 16px 0;
+}
+
+body.is-mobile .post-content {
+  padding: 8px 16px;
+  font-size: 0.95rem;
+}
+
+/* Post media — edge-to-edge */
+body.is-mobile .post-media {
+  margin: 0;
+  border-radius: 0;
+}
+
+body.is-mobile .post-media--video .vp-container {
+  border-radius: 0;
+}
+
+/* Post actions */
+body.is-mobile .post-fb-actions {
+  padding: 0 4px;
+}
+
+body.is-mobile .post-fb-summary {
+  padding: 8px 16px 0;
+}
+
+/* Stories row — horizontal scroll like Facebook */
+body.is-mobile .fb-stories {
+  padding: 12px 8px;
+  gap: 8px;
+  background: #fff;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #e4e6eb;
+}
+
+body.is-mobile .fb-story {
+  min-width: 100px;
+  width: 100px;
+  height: 160px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+/* Form cards on mobile */
+body.is-mobile .apple-form-card {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 24px 16px;
+  max-width: 100%;
+}
+
+/* Search page */
+body.is-mobile .search-page {
+  padding: 12px 0;
+}
+
+body.is-mobile .apple-input {
+  font-size: 16px; /* prevent iOS zoom on focus */
+}
+
+/* Friends page grid */
+body.is-mobile .friend-card-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 0 8px;
+}
+
+/* Chat layout on mobile — fill available space, no side gutters */
+body.is-mobile .apple-main.chat-page,
+body.is-mobile .apple-main.apple-main--wide.chat-page {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}
+
+body.is-mobile .chat-layout {
+  height: 100%;
+  min-height: 0;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100%;
+  max-width: 100%;
+}
+
+body.is-mobile .chat-sidebar {
+  width: 100%;
+  min-width: 100%;
+}
+
+body.is-mobile .chat-page {
+  padding: 0 !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Wider outgoing column (matches desktop width:100% + max-width cap) */
+body.is-mobile .msg-own-stack {
+  width: 100%;
+  max-width: 85%;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  body.is-mobile .chat-messages {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+/* .m-content becomes flex column when chat is active */
+body.is-mobile .m-content:has(.chat-page) {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Profile page on mobile — breathing room; cover still full-bleed vs padded column */
+body.is-mobile .apple-main:has(.profile-header--x) {
+  padding: 12px 16px 24px;
+}
+
+body.is-mobile .profile-header--x {
+  margin-left: -16px;
+  margin-right: -16px;
+  width: calc(100% + 32px);
+  border-radius: 0;
+}
+
+body.is-mobile .profile-cover {
+  border-radius: 0;
+}
+
+body.is-mobile .profile-header {
+  border-radius: 0;
+}
+
+body.is-mobile .apple-page-title {
+  font-size: 1.5rem;
+  padding: 0 16px;
+}
+
+body.is-mobile .apple-page-subtitle {
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  padding: 0 16px;
+}
+
+/* Pagination */
+body.is-mobile .apple-pagination {
+  padding: 16px;
+}
+
+/* Popup/Modal full-screen on mobile */
+body.is-mobile .popup-overlay {
+  z-index: 10000; /* above everything including any stacking context */
+}
+
+body.is-mobile .popup-container {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+}
+
+/* Video player mobile fixes */
+body.is-mobile .vp-container {
+  -webkit-tap-highlight-color: transparent;
+  /* manipulation can block iOS video gestures; auto keeps taps + scroll */
+  touch-action: auto;
+}
+
+body.is-mobile .vp-progress {
+  height: 6px;
+  touch-action: none;
+}
+
+body.is-mobile .vp-progress-thumb {
+  width: 16px;
+  height: 16px;
+  top: -5px;
+}
+
+body.is-mobile .vp-volume-slider {
+  display: none;
+}
+
+body.is-mobile .vp-big-play {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Create post form */
+body.is-mobile .create-post-card {
+  border-radius: 0;
+  margin-bottom: 8px;
+}
+
+/* Feed section */
+body.is-mobile .fb-feed-section {
+  background: #fff;
+  padding: 0 16px;
+  margin-bottom: 0;
+}
+
+/* Story viewer — full screen */
+body.is-mobile .sv-popup {
+  height: 100vh;
+  height: -webkit-fill-available;
+  width: 100vw;
+  border-radius: 0;
+}
+
+/* Post detail page */
+body.is-mobile .post-detail-page {
+  padding: 0;
+}
+
+/* Comment popup — slide up from bottom */
+body.is-mobile .comment-popup-overlay {
+  align-items: flex-end;
+}
+
+body.is-mobile .comment-popup {
+  border-radius: 16px 16px 0 0;
+  max-height: 85vh;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Lightbox on mobile */
+body.is-mobile .post-lightbox-inner {
+  flex-direction: column;
+}
+
+body.is-mobile .post-lightbox-sidebar {
+  width: 100%;
+  border-left: none;
+  border-top: 1px solid #e4e6eb;
+  max-height: 45vh;
+}
+
+/* Loading spinner */
+body.is-mobile .apple-loading {
+  padding: 32px 16px;
+}
+
+/* Feed sort buttons */
+body.is-mobile .fb-feed-sort-btn {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+}
+
+/* Create story modal */
+body.is-mobile .create-story-modal {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+/* Share popup */
+body.is-mobile .share-overlay {
+  align-items: flex-end;
+}
+
+body.is-mobile .share-popup {
+  border-radius: 16px 16px 0 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Confirm dialog */
+body.is-mobile .confirm-overlay {
+  padding: 16px;
+}
+
+/* === SAFE AREA INSETS (iPhone X+ notch) === */
+@supports (padding: env(safe-area-inset-bottom)) {
+  /* Tab bar padding for home indicator area */
+  .m-tab-bar {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Header padding for status bar / notch */
+  .m-header {
+    padding-top: calc(8px + env(safe-area-inset-top));
+  }
+}

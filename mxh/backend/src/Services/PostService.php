@@ -1,0 +1,98 @@
+<?php
+
+namespace App\Services;
+
+use App\Helpers\MentionHelper;
+use App\Repositories\PostRepository;
+use App\Repositories\LikeRepository;
+use App\Repositories\CommentRepository;
+use App\Repositories\FollowRepository;
+use App\Repositories\MentionRepository;
+use App\Repositories\NotificationRepository;
+
+class PostService
+{
+    private PostRepository $postRepo;
+    private LikeRepository $likeRepo;
+    private CommentRepository $commentRepo;
+    private FollowRepository $followRepo;
+
+    public function __construct()
+    {
+        $this->postRepo = new PostRepository();
+        $this->likeRepo = new LikeRepository();
+        $this->commentRepo = new CommentRepository();
+        $this->followRepo = new FollowRepository();
+    }
+
+    public function createPost(int $userId, string $content, ?string $mediaUrl = null, ?string $mediaType = null, ?int $mediaWidth = null, ?int $mediaHeight = null, ?string $locationLabel = null, ?float $latitude = null, ?float $longitude = null): array
+    {
+        $postId = $this->postRepo->create($userId, $content, $mediaUrl, $mediaType, $mediaWidth, $mediaHeight, $locationLabel, $latitude, $longitude);
+
+        $mentionIds = MentionHelper::resolveUserIdsFromText($content);
+        (new MentionRepository())->syncPostMentions($postId, $mentionIds);
+
+        $notifRepo = new NotificationRepository();
+        foreach ($mentionIds as $uid) {
+            if ((int)$uid === $userId) continue;
+            $notifRepo->insert((int)$uid, 'mention_post', $userId, $postId, null);
+        }
+
+        return $this->getPost($postId, $userId);
+    }
+
+    public function getPost(int $postId, ?int $currentUserId = null): array
+    {
+        $post = $this->postRepo->findById($postId);
+        if (!$post) throw new \RuntimeException('Post not found', 404);
+        return $this->enrichPost($post, $currentUserId);
+    }
+
+    public function getPosts(int $limit = 20, int $page = 1, ?int $currentUserId = null): array
+    {
+        $offset = ($page - 1) * $limit;
+        $posts = $this->postRepo->findAll($limit, $offset);
+        return array_map(fn($p) => $this->enrichPost($p, $currentUserId), $posts);
+    }
+
+    public function getUserPosts(int $userId, int $limit = 20, int $page = 1, ?int $currentUserId = null): array
+    {
+        $offset = ($page - 1) * $limit;
+        $posts = $this->postRepo->findByUserId($userId, $limit, $offset);
+        return array_map(fn($p) => $this->enrichPost($p, $currentUserId), $posts);
+    }
+
+    public function getFeed(int $userId, int $limit = 20, int $page = 1): array
+    {
+        $followingIds = $this->followRepo->getFollowingIds($userId);
+        $feedUserIds = array_merge([$userId], $followingIds);
+        $offset = ($page - 1) * $limit;
+        $posts = $this->postRepo->findByUserIds($feedUserIds, $limit, $offset);
+        return array_map(fn($p) => $this->enrichPost($p, $userId), $posts);
+    }
+
+    public function editPost(int $postId, int $userId, string $content): array
+    {
+        $post = $this->postRepo->findById($postId);
+        if (!$post) throw new \RuntimeException('Post not found', 404);
+        if ((int)$post['user_id'] !== $userId) throw new \RuntimeException('Forbidden', 403);
+        $this->postRepo->update($postId, $content);
+        return $this->getPost($postId, $userId);
+    }
+
+    public function deletePost(int $postId, int $userId): bool
+    {
+        $post = $this->postRepo->findById($postId);
+        if (!$post) throw new \RuntimeException('Post not found', 404);
+        if ((int)$post['user_id'] !== $userId) throw new \RuntimeException('Forbidden', 403);
+        return $this->postRepo->delete($postId);
+    }
+
+    private function enrichPost(array $post, ?int $currentUserId = null): array
+    {
+        $post['like_count'] = $this->likeRepo->countByPostId($post['id']);
+        $post['comment_count'] = $this->commentRepo->countByPostId($post['id']);
+        $post['is_liked'] = $currentUserId ? $this->likeRepo->isLikedByUser($post['id'], $currentUserId) : false;
+        return $post;
+    }
+}

@@ -1,0 +1,109 @@
+networks:
+  mxh_net:
+    name: mxh_net
+    driver: bridge
+
+services:
+  # MySQL chỉ chạy khi bật profile local-db (máy dev / VPS muốn DB trên cùng host).
+  # Triển khai VPS + DB tại máy nhà: KHÔNG bật profile này; đặt DB_HOST/... trong .env (xem deploy/VPS.md).
+  mysql:
+    image: mysql:8.0
+    container_name: mxh_mysql
+    profiles:
+      - local-db
+    networks:
+      - mxh_net
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-mxh_social}
+    ports:
+      - "${MYSQL_PUBLISH_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database/migrations/001_create_tables.sql:/docker-entrypoint-initdb.d/001_create_tables.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        INSTALL_FFMPEG: ${INSTALL_FFMPEG:-false}
+    container_name: mxh_backend
+    networks:
+      - mxh_net
+    ports:
+      - "${BACKEND_PUBLISH_PORT:-8000}:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    environment:
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-mxh_social}
+      DB_USER: ${DB_USER:-root}
+      DB_PASS: ${DB_PASS:-root}
+      DB_WAIT_TIMEOUT: ${DB_WAIT_TIMEOUT:-120}
+      DB_SSL_CA: ${DB_SSL_CA:-}
+      DB_SSL_VERIFY: ${DB_SSL_VERIFY:-1}
+      JWT_SECRET: ${JWT_SECRET:-mxh-dev-secret-key-2024}
+      JWT_EXPIRY: ${JWT_EXPIRY:-86400}
+      APP_URL: ${APP_URL:-http://${MXH_PUBLIC_HOST:-localhost}:8000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://${MXH_PUBLIC_HOST:-localhost}:5173}
+    restart: unless-stopped
+
+  websocket:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        INSTALL_FFMPEG: ${INSTALL_FFMPEG:-false}
+    container_name: mxh_websocket
+    networks:
+      - mxh_net
+    ports:
+      - "${WEBSOCKET_PUBLISH_PORT:-8080}:8080"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    environment:
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-mxh_social}
+      DB_USER: ${DB_USER:-root}
+      DB_PASS: ${DB_PASS:-root}
+      DB_WAIT_TIMEOUT: ${DB_WAIT_TIMEOUT:-120}
+      DB_SSL_CA: ${DB_SSL_CA:-}
+      DB_SSL_VERIFY: ${DB_SSL_VERIFY:-1}
+      JWT_SECRET: ${JWT_SECRET:-mxh-dev-secret-key-2024}
+      WS_PORT: 8080
+    command: ["php", "bin/websocket-server.php"]
+    restart: on-failure
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mxh_frontend
+    networks:
+      - mxh_net
+    ports:
+      - "${FRONTEND_PUBLISH_PORT:-5173}:5173"
+    volumes:
+      - ./frontend/uploads:/app/uploads:ro
+      - ./frontend/dist:/app/dist:ro
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://${MXH_PUBLIC_HOST:-localhost}:8000}
+      VITE_GRAPHQL_URL: ${VITE_GRAPHQL_URL:-http://${MXH_PUBLIC_HOST:-localhost}:8000/graphql}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://${MXH_PUBLIC_HOST:-localhost}:8080}
+    depends_on:
+      - backend
+      - websocket
+
+volumes:
+  mysql_data:
+  backend_vendor:
