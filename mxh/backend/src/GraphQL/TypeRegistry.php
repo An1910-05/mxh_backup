@@ -12,6 +12,7 @@ use App\GraphQL\Types\SearchUserType;
 use App\GraphQL\Types\StoryType;
 use App\GraphQL\Types\StoryGroupType;
 use App\GraphQL\Types\NotificationType;
+use App\GraphQL\Types\LikerType;
 
 class TypeRegistry
 {
@@ -25,6 +26,7 @@ class TypeRegistry
     private static ?StoryType $story = null;
     private static ?StoryGroupType $storyGroup = null;
     private static ?NotificationType $notification = null;
+    private static ?LikerType $liker = null;
 
     public static function user(): UserType { return self::$user ??= new UserType(); }
     public static function profile(): ProfileType { return self::$profile ??= new ProfileType(); }
@@ -36,4 +38,5 @@ class TypeRegistry
     public static function story(): StoryType { return self::$story ??= new StoryType(); }
     public static function storyGroup(): StoryGroupType { return self::$storyGroup ??= new StoryGroupType(); }
     public static function notification(): NotificationType { return self::$notification ??= new NotificationType(); }
+    public static function liker(): LikerType { return self::$liker ??= new LikerType(); }
 }

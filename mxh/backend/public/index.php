@@ -47,6 +47,30 @@ try {
             (new AuthController())->me();
             break;
 
+        case $uri === '/auth/google' && $method === 'POST':
+            (new AuthController())->googleLogin();
+            break;
+
+        case $uri === '/auth/forgot-password' && $method === 'POST':
+            (new AuthController())->forgotPassword();
+            break;
+
+        case $uri === '/auth/reset-password' && $method === 'POST':
+            (new AuthController())->resetPassword();
+            break;
+
+        case $uri === '/auth/settings' && $method === 'GET':
+            (new AuthController())->getSettings();
+            break;
+
+        case $uri === '/auth/settings/password' && $method === 'POST':
+            (new AuthController())->changePassword();
+            break;
+
+        case $uri === '/auth/settings/profile' && $method === 'POST':
+            (new AuthController())->updateProfile();
+            break;
+
         // Upload
         case $uri === '/upload' && $method === 'POST':
             (new UploadController())->uploadAvatar();

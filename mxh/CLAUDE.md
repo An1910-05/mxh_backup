@@ -322,7 +322,47 @@ Cấu trúc hiện tại là **cố ý phẳng** — đừng "tổ chức lại"
 
 ---
 
-## 8. Checklist nhanh trước khi hoàn thành task
+## 8. Quy tắc cập nhật README.md — BẮT BUỘC
+
+> **Mọi thay đổi đáng kể về dự án ĐỀU PHẢI được ghi vào `README.md`.**
+> Không cần chờ "tính năng lớn" — bất kỳ thứ gì thêm/sửa/xóa có thể ảnh hưởng đến người đọc/dev tiếp theo đều phải ghi.
+
+### 8.1 Những thay đổi cần ghi vào README.md
+
+| Loại thay đổi | Bắt buộc ghi? |
+|---|---|
+| Thêm tính năng mới (dù nhỏ) | ✅ Bắt buộc |
+| Thêm migration DB | ✅ Bắt buộc |
+| Thêm/sửa GraphQL query/mutation | ✅ Bắt buộc |
+| Thêm component/page mới | ✅ Bắt buộc |
+| Sửa luồng xử lý hiện có (logic, UI) | ✅ Bắt buộc |
+| Cập nhật dependency/cấu hình | ✅ Bắt buộc |
+| Sửa bug nhỏ, refactor nội bộ | ⚠️ Nên ghi nếu ảnh hưởng hành vi |
+| Sửa typo, comment trong code | ❌ Không cần |
+
+### 8.2 Format ghi vào README.md
+
+Luôn ghi vào mục **"Cập nhật gần đây"** ở đầu README.md. Mỗi entry theo format:
+
+```markdown
+## Cập nhật gần đây
+
+- **[Tên tính năng/thay đổi]:** Mô tả ngắn gọn điều đã thay đổi và lý do.
+  - File liên quan: `path/to/file.php`, `path/to/component.jsx`
+  - Migration (nếu có): `backend/database/migrations/NNN_ten.sql`
+```
+
+### 8.3 Quy tắc cụ thể
+
+- Ghi **trước khi kết thúc task** — không để sau
+- Dùng **tiếng Việt** trong README
+- Giữ mỗi entry **ngắn gọn** (2–4 dòng), không cần giải thích chi tiết implementation
+- **Không xóa** các entry cũ trừ khi tính năng đó đã bị loại bỏ hoàn toàn
+- Nếu entry cũ bị thay thế bởi thay đổi mới, **cập nhật** entry cũ thay vì thêm mới
+
+---
+
+## 9. Checklist nhanh trước khi hoàn thành task
 
 - [ ] Code mới tuân thủ phân tầng (Controller/Resolver → Service → Repository)?
 - [ ] Mọi query DB dùng prepared statements?
@@ -335,4 +375,4 @@ Cấu trúc hiện tại là **cố ý phẳng** — đừng "tổ chức lại"
 - [ ] UI label bằng tiếng Việt?
 - [ ] Không nuốt lỗi bằng `catch {}` trống?
 - [ ] Không tạo file/thư mục mới khi có thể thêm vào file hiện có?
-- [ ] README.md đã cập nhật nếu thêm tính năng lớn?
+- [ ] **README.md đã cập nhật theo quy tắc mục 8?** ← KHÔNG ĐƯỢC BỎ QUA

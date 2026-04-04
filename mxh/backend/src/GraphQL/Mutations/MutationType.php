@@ -95,11 +95,14 @@ class MutationType extends ObjectType
 
                 'likePost' => [
                     'type' => Type::boolean(),
-                    'args' => ['postId' => Type::nonNull(Type::int())],
+                    'args' => [
+                        'postId'       => Type::nonNull(Type::int()),
+                        'reactionType' => ['type' => Type::string(), 'defaultValue' => 'like'],
+                    ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
                         $service = new LikeService();
-                        return $service->likePost($args['postId'], $context['user']['id']);
+                        return $service->likePost($args['postId'], $context['user']['id'], $args['reactionType']);
                     },
                 ],
 

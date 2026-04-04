@@ -53,6 +53,7 @@ services:
       JWT_EXPIRY: ${JWT_EXPIRY:-86400}
       APP_URL: ${APP_URL:-http://${MXH_PUBLIC_HOST:-localhost}:8000}
       FRONTEND_URL: ${FRONTEND_URL:-http://${MXH_PUBLIC_HOST:-localhost}:5173}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
 
   websocket:
@@ -100,6 +101,7 @@ services:
       VITE_API_URL: ${VITE_API_URL:-http://${MXH_PUBLIC_HOST:-localhost}:8000}
       VITE_GRAPHQL_URL: ${VITE_GRAPHQL_URL:-http://${MXH_PUBLIC_HOST:-localhost}:8000/graphql}
       VITE_WS_URL: ${VITE_WS_URL:-ws://${MXH_PUBLIC_HOST:-localhost}:8080}
+      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     depends_on:
       - backend
       - websocket

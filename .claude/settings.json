@@ -6,5 +6,11 @@
       "Bash(ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@203.145.47.2 \"echo 'Connected OK' && uname -a && df -h / && free -h\")",
       "Bash(sshpass -p 'tuanphong2005@' ssh -o StrictHostKeyChecking=no root@203.145.47.2 \"echo 'Connected OK' && uname -a\")"
     ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true
   }
 }

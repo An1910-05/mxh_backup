@@ -11,14 +11,66 @@ export async function login(email, password) {
   return result.data;
 }
 
-export async function register(username, email, password) {
+export async function register(username, email, password, birthday = null, gender = null) {
   const result = await restFetch('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ username, email, password }),
+    body: JSON.stringify({ username, email, password, birthday, gender }),
   });
   if (result.data?.token) {
     localStorage.setItem('token', result.data.token);
   }
+  return result.data;
+}
+
+export async function googleLogin(credential, birthday = null, gender = null) {
+  const body = { credential };
+  if (birthday) body.birthday = birthday;
+  if (gender) body.gender = gender;
+
+  const result = await restFetch('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  if (result.data?.token) {
+    localStorage.setItem('token', result.data.token);
+  }
+  return result.data;
+}
+
+export async function getSettings() {
+  const result = await restFetch('/auth/settings');
+  return result.data;
+}
+
+export async function changePassword(currentPassword, newPassword) {
+  const result = await restFetch('/auth/settings/password', {
+    method: 'POST',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  return result.data;
+}
+
+export async function updateSettingsProfile(data) {
+  const result = await restFetch('/auth/settings/profile', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return result.data;
+}
+
+export async function forgotPassword(email) {
+  const result = await restFetch('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+  return result.data;
+}
+
+export async function resetPassword(token, password) {
+  const result = await restFetch('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  });
   return result.data;
 }
 

@@ -10,6 +10,7 @@ use App\Services\ProfileService;
 use App\Services\FriendshipService;
 use App\Services\StoryService;
 use App\Services\NotificationService;
+use App\Services\LikeService;
 use App\Repositories\UserRepository;
 
 class QueryType extends ObjectType
@@ -234,6 +235,18 @@ class QueryType extends ObjectType
                     'resolve' => function ($root, $args) {
                         $service = new StoryService();
                         return $service->getUserStories($args['userId']);
+                    },
+                ],
+
+                'postLikers' => [
+                    'type' => Type::listOf(TypeRegistry::liker()),
+                    'args' => [
+                        'postId' => Type::nonNull(Type::int()),
+                        'limit'  => ['type' => Type::int(), 'defaultValue' => 50],
+                    ],
+                    'resolve' => function ($root, $args) {
+                        $service = new LikeService();
+                        return $service->getPostLikers($args['postId'], $args['limit']);
                     },
                 ],
 

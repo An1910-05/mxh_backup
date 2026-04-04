@@ -8,7 +8,9 @@ import PostImageLightbox from './PostImageLightbox';
 import VideoPlayer from './VideoPlayer';
 import ConfirmDialog from './ConfirmDialog';
 import SharePopup from './SharePopup';
-// react-facebook-emoji aliased to local component via vite.config.js
+import FacebookEmoji from './FacebookEmoji';
+import ReactionDetailsPopup from './ReactionDetailsPopup';
+import { getPostLikers } from '../services/graphql';
 import { API_ORIGIN } from '../config';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
@@ -33,7 +35,9 @@ function ReactionPicker({ onReact }) {
           onClick={(e) => { e.stopPropagation(); onReact(r); }}
           type="button"
         >
-          <span className="reaction-picker-emoji">{r.emoji}</span>
+          <span className="reaction-picker-emoji">
+            <FacebookEmoji type={r.key} size="sm" />
+          </span>
           <span className="reaction-picker-label">{r.label}</span>
         </button>
       ))}
@@ -63,6 +67,14 @@ export default function PostCard({ post, onDelete }) {
   const [saving, setSaving] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const menuRef = useRef(null);
+
+  // Likers (who reacted) — lazy loaded
+  const [likers, setLikers] = useState(null);
+  const [loadingLikers, setLoadingLikers] = useState(false);
+  const [showLikersPopup, setShowLikersPopup] = useState(false);
+  const [showLikersTooltip, setShowLikersTooltip] = useState(false);
+  const likersTooltipTimerRef = useRef(null);
+  const likersSummaryRef = useRef(null);
 
   useEffect(() => {
     const cls = 'post-lightbox-open';
@@ -109,6 +121,39 @@ export default function PostCard({ post, onDelete }) {
     clearTimeout(pickerTimerRef.current);
   }, []);
 
+  const loadLikers = useCallback(async () => {
+    if (likers !== null || loadingLikers) return;
+    setLoadingLikers(true);
+    try {
+      const data = await getPostLikers(post.id, 50);
+      setLikers(data);
+    } catch (err) {
+      console.error('Load likers error:', err.message);
+      setLikers([]);
+    } finally {
+      setLoadingLikers(false);
+    }
+  }, [likers, loadingLikers, post.id]);
+
+  const handleLikersSummaryEnter = useCallback(() => {
+    likersTooltipTimerRef.current = setTimeout(() => {
+      setShowLikersTooltip(true);
+      loadLikers();
+    }, 350);
+  }, [loadLikers]);
+
+  const handleLikersSummaryLeave = useCallback(() => {
+    clearTimeout(likersTooltipTimerRef.current);
+    setShowLikersTooltip(false);
+  }, []);
+
+  const handleLikersSummaryClick = useCallback(() => {
+    clearTimeout(likersTooltipTimerRef.current);
+    setShowLikersTooltip(false);
+    loadLikers();
+    setShowLikersPopup(true);
+  }, [loadLikers]);
+
   const handleReact = useCallback(async (r) => {
     setShowPicker(false);
     try {
@@ -119,13 +164,13 @@ export default function PostCard({ post, onDelete }) {
         setReaction(null);
         setLikeCount((c) => c - 1);
       } else {
-        if (!liked) {
-          await likePost(post.id);
-          setLikeCount((c) => c + 1);
-        }
+        // new like or reaction change — always call likePost (upsert)
+        await likePost(post.id, r.key);
+        if (!liked) setLikeCount((c) => c + 1);
         setLiked(true);
         setReaction(r);
       }
+      setLikers(null); // invalidate cache
     } catch (err) {
       console.error('Like error:', err.message);
     }
@@ -140,11 +185,12 @@ export default function PostCard({ post, onDelete }) {
         setReaction(null);
         setLikeCount((c) => c - 1);
       } else {
-        await likePost(post.id);
+        await likePost(post.id, 'like');
         setLiked(true);
         setReaction(REACTIONS[0]);
         setLikeCount((c) => c + 1);
       }
+      setLikers(null); // invalidate cache
     } catch (err) {
       console.error('Like error:', err.message);
     }
@@ -307,10 +353,22 @@ export default function PostCard({ post, onDelete }) {
         {(likeCount > 0 || commentCount > 0) && (
           <div className="post-fb-summary">
             {likeCount > 0 && (
-              <div className="post-fb-likes">
+              <div
+                className="post-fb-likes post-fb-likes--hoverable"
+                ref={likersSummaryRef}
+                onMouseEnter={handleLikersSummaryEnter}
+                onMouseLeave={handleLikersSummaryLeave}
+                onClick={handleLikersSummaryClick}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLikersSummaryClick(); }}
+                aria-label="Xem ai đã bày tỏ cảm xúc"
+              >
                 <span className="post-fb-like-icon">
                   {liked && reaction && reaction.key !== 'like' ? (
-                    <span className="post-fb-summary-emoji">{reaction.emoji}</span>
+                    <span className="post-fb-summary-emoji">
+                      <FacebookEmoji type={reaction.key} size="xxs" />
+                    </span>
                   ) : (
                     <svg viewBox="0 0 16 16" width="18" height="18" fill="none">
                       <defs>
@@ -324,6 +382,25 @@ export default function PostCard({ post, onDelete }) {
                   )}
                 </span>
                 <span className="post-fb-like-count">{likeCount}</span>
+
+                {showLikersTooltip && likers && likers.length > 0 && (
+                  <div className="likers-tooltip">
+                    <div className="likers-tooltip-avatars">
+                      {likers.slice(0, 5).map((l) => (
+                        <img
+                          key={l.id}
+                          className="likers-tooltip-avatar"
+                          src={l.user_avatar ? `${API_ORIGIN}${l.user_avatar}` : '/default-avatar.png'}
+                          alt={l.username}
+                        />
+                      ))}
+                    </div>
+                    <p className="likers-tooltip-names">
+                      {likers.slice(0, 2).map((l) => l.username).join(', ')}
+                      {likers.length > 2 && ` và ${likers.length - 2} người khác`}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             {commentCount > 0 && (
@@ -354,7 +431,9 @@ export default function PostCard({ post, onDelete }) {
               type="button"
             >
               {liked && reaction ? (
-                <span className="post-fb-action-reaction-emoji">{reaction.emoji}</span>
+                <span className="post-fb-action-reaction-emoji">
+                  <FacebookEmoji type={reaction.key} size="xs" />
+                </span>
               ) : (
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M7 22V11m-5 2v7a2 2 0 002 2h12.4a2 2 0 001.94-1.52l1.72-7A2 2 0 0018.12 10H14V5a3 3 0 00-3-3l-4 9" />
@@ -377,6 +456,13 @@ export default function PostCard({ post, onDelete }) {
           </button>
         </div>
       </div>
+
+      {showLikersPopup && (
+        <ReactionDetailsPopup
+          likers={likers ?? []}
+          onClose={() => setShowLikersPopup(false)}
+        />
+      )}
 
       {showComments && (
         <CommentPopup

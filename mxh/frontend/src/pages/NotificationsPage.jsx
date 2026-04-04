@@ -53,6 +53,11 @@ const TYPE_BADGE = {
   friend_accept:   { symbol: 'person.fill.checkmark', bg: '#30d158' },
 };
 
+const FILTER_OPTIONS = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'unread', label: 'Chưa đọc' },
+];
+
 function SFBadge({ type }) {
   const cfg = TYPE_BADGE[type] || { symbol: 'bell.fill', bg: '#8e8e93' };
   return (
@@ -70,6 +75,7 @@ export default function NotificationsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
 
   useEffect(() => {
     if (!user) return;
@@ -122,27 +128,53 @@ export default function NotificationsPage() {
   };
 
   const unreadCount = items.filter(n => !n.read_at).length;
+  const filteredItems = activeFilter === 'unread'
+    ? items.filter(n => !n.read_at)
+    : items;
+  const emptyTitle = activeFilter === 'unread'
+    ? 'Không còn thông báo chưa đọc'
+    : 'Chưa có thông báo';
+  const emptySub = activeFilter === 'unread'
+    ? 'Bạn đã xem hết các cập nhật mới. Khi có thông báo mới, chúng sẽ hiện ở đây.'
+    : 'Khi có người thích hoặc bình luận bài viết của bạn, bạn sẽ thấy ở đây';
 
   return (
     <div className="apple-main notifications-page">
       <div className="notifications-page-header">
-        <div className="notifications-page-title-wrap">
-          <h1 className="notifications-lg-title">Thông báo</h1>
-          {unreadCount > 0 && (
-            <span className="notifications-unread-badge">{unreadCount}</span>
-          )}
+        <div className="notifications-page-top">
+          <div className="notifications-page-title-wrap">
+            <h1 className="notifications-lg-title">Thông báo</h1>
+            {unreadCount > 0 && (
+              <span className="notifications-unread-badge">{unreadCount}</span>
+            )}
+          </div>
+          <div className="notifications-header-actions">
+            {unreadCount > 0 && (
+              <button type="button" className="notifications-mark-all" onClick={handleMarkAll} disabled={marking}>
+                {marking ? '…' : 'Đánh dấu đã đọc'}
+              </button>
+            )}
+            {items.length > 0 && (
+              <button type="button" className="notifications-delete-all" onClick={handleDeleteAll}>
+                Xóa tất cả
+              </button>
+            )}
+          </div>
         </div>
-        <div className="notifications-header-actions">
-          {unreadCount > 0 && (
-            <button type="button" className="notifications-mark-all" onClick={handleMarkAll} disabled={marking}>
-              {marking ? '…' : 'Đánh dấu đã đọc'}
+
+        <div className="notifications-filter-bar" role="tablist" aria-label="Lọc thông báo">
+          {FILTER_OPTIONS.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              role="tab"
+              aria-selected={activeFilter === filter.id}
+              className={`notifications-filter-tab${activeFilter === filter.id ? ' notifications-filter-tab--active' : ''}`}
+              onClick={() => setActiveFilter(filter.id)}
+            >
+              {filter.label}
             </button>
-          )}
-          {items.length > 0 && (
-            <button type="button" className="notifications-delete-all" onClick={handleDeleteAll}>
-              Xóa tất cả
-            </button>
-          )}
+          ))}
         </div>
       </div>
 
@@ -154,16 +186,16 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {!loading && items.length === 0 && (
+      {!loading && filteredItems.length === 0 && (
         <div className="notif-lg-empty">
           <div className="notif-lg-empty-icon">🔔</div>
-          <div className="notif-lg-empty-title">Chưa có thông báo</div>
-          <div className="notif-lg-empty-sub">Khi có người thích hoặc bình luận bài viết của bạn, bạn sẽ thấy ở đây</div>
+          <div className="notif-lg-empty-title">{emptyTitle}</div>
+          <div className="notif-lg-empty-sub">{emptySub}</div>
         </div>
       )}
 
       <div className="notif-lg-list">
-        {!loading && items.map((item, idx) => (
+        {!loading && filteredItems.map((item, idx) => (
           <div
             key={item.id}
             className={`notif-lg-item${!item.read_at ? ' notif-lg-item--unread' : ''}`}

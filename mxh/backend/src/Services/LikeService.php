@@ -19,22 +19,21 @@ class LikeService
         $this->notifRepo = new NotificationRepository();
     }
 
-    public function likePost(int $postId, int $userId): bool
+    public function likePost(int $postId, int $userId, string $reactionType = 'like'): bool
     {
         $post = $this->postRepo->findById($postId);
         if (!$post) {
             throw new \RuntimeException('Post not found', 404);
         }
 
-        if ($this->likeRepo->isLikedByUser($postId, $userId)) {
-            throw new \RuntimeException('Already liked this post', 409);
-        }
+        $isNew = !$this->likeRepo->isLikedByUser($postId, $userId);
+        $this->likeRepo->createOrUpdate($postId, $userId, $reactionType);
 
-        $this->likeRepo->create($postId, $userId);
-
-        $postOwnerId = (int)$post['user_id'];
-        if ($postOwnerId !== $userId) {
-            $this->notifRepo->insert($postOwnerId, 'like', $userId, $postId, null);
+        if ($isNew) {
+            $postOwnerId = (int)$post['user_id'];
+            if ($postOwnerId !== $userId) {
+                $this->notifRepo->insert($postOwnerId, 'like', $userId, $postId, null);
+            }
         }
 
         return true;
@@ -52,5 +51,10 @@ class LikeService
         }
 
         return $this->likeRepo->delete($postId, $userId);
+    }
+
+    public function getPostLikers(int $postId, int $limit = 50): array
+    {
+        return $this->likeRepo->getLikersByPostId($postId, $limit);
     }
 }

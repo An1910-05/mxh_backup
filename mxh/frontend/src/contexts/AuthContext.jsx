@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useCallback } from 'react';
-import { getMe, login as loginApi, register as registerApi, logout as logoutApi } from '../services/auth';
+import { getMe, login as loginApi, register as registerApi, logout as logoutApi, googleLogin as googleLoginApi } from '../services/auth';
 
 export const AuthContext = createContext(null);
 
@@ -35,8 +35,17 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  const register = async (username, email, password) => {
-    const data = await registerApi(username, email, password);
+  const register = async (username, email, password, birthday = null, gender = null) => {
+    const data = await registerApi(username, email, password, birthday, gender);
+    setUser(data.user);
+    return data;
+  };
+
+  const loginWithGoogle = async (credential, birthday = null, gender = null) => {
+    const data = await googleLoginApi(credential, birthday, gender);
+    if (data.needs_profile) {
+      return data; // caller handles the profile form
+    }
     setUser(data.user);
     return data;
   };
@@ -47,7 +56,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, token: localStorage.getItem('token') }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, logout, token: localStorage.getItem('token') }}>
       {children}
     </AuthContext.Provider>
   );

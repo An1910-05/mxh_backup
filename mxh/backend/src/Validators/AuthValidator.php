@@ -28,6 +28,21 @@ class AuthValidator
             $errors[] = 'Password must be at least 6 characters';
         }
 
+        if (!empty($data['birthday'])) {
+            $d = \DateTime::createFromFormat('Y-m-d', $data['birthday']);
+            if (!$d || $d->format('Y-m-d') !== $data['birthday']) {
+                $errors[] = 'Ngày sinh không hợp lệ (YYYY-MM-DD)';
+            } elseif ($d > new \DateTime()) {
+                $errors[] = 'Ngày sinh không thể ở tương lai';
+            }
+        }
+
+        if (!empty($data['gender'])) {
+            if (!in_array($data['gender'], ['male', 'female', 'other'], true)) {
+                $errors[] = 'Giới tính không hợp lệ';
+            }
+        }
+
         return $errors;
     }
 

@@ -57,9 +57,20 @@ export async function deletePost(postId) {
   return data.deletePost;
 }
 
-export async function likePost(postId) {
-  const data = await graphqlFetch(`mutation LikePost(`+`$postId: Int!) { likePost(postId: $postId) }`, { postId: parseInt(postId) });
+export async function likePost(postId, reactionType = 'like') {
+  const data = await graphqlFetch(
+    `mutation LikePost(`+`$postId: Int!, $reactionType: String!) { likePost(postId: $postId, reactionType: $reactionType) }`,
+    { postId: parseInt(postId), reactionType }
+  );
   return data.likePost;
+}
+
+export async function getPostLikers(postId, limit = 50) {
+  const data = await graphqlFetch(
+    `query PostLikers(`+`$postId: Int!, $limit: Int) { postLikers(postId: $postId, limit: $limit) { id username user_avatar reaction_type } }`,
+    { postId: parseInt(postId), limit }
+  );
+  return data.postLikers ?? [];
 }
 
 export async function unlikePost(postId) {
