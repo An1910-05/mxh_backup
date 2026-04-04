@@ -74,6 +74,29 @@ export async function resetPassword(token, password) {
   return result.data;
 }
 
+export async function createPayment(amount) {
+  const result = await restFetch('/payment/create', {
+    method: 'POST',
+    body: JSON.stringify({ amount }),
+  });
+  return result.data;
+}
+
+export async function verifyPayment(queryString) {
+  const result = await restFetch('/payment/verify?' + queryString);
+  return result.data;
+}
+
+export async function getBalance() {
+  const result = await restFetch('/payment/balance');
+  return result.data;
+}
+
+export async function getTransactions() {
+  const result = await restFetch('/payment/transactions');
+  return result.data;
+}
+
 export async function logout() {
   await restFetch('/auth/logout', { method: 'POST' });
   localStorage.removeItem('token');

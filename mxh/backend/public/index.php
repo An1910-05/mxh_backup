@@ -9,6 +9,7 @@ use App\Controllers\AuthController;
 use App\Controllers\UploadController;
 use App\Controllers\ChatController;
 use App\Controllers\LinkPreviewController;
+use App\Controllers\PaymentController;
 use App\Helpers\Response;
 use GraphQL\GraphQL;
 use GraphQL\Error\DebugFlag;
@@ -139,6 +140,27 @@ try {
 
         case $uri === '/chat/conversation/hide-all-for-me' && $method === 'POST':
             (new ChatController())->hideAllMessagesForMe();
+            break;
+
+        // Payment
+        case $uri === '/payment/create' && $method === 'POST':
+            (new PaymentController())->createPayment();
+            break;
+
+        case $uri === '/payment/ipn' && $method === 'GET':
+            (new PaymentController())->ipn();
+            break;
+
+        case $uri === '/payment/verify' && $method === 'GET':
+            (new PaymentController())->verifyReturn();
+            break;
+
+        case $uri === '/payment/balance' && $method === 'GET':
+            (new PaymentController())->getBalance();
+            break;
+
+        case $uri === '/payment/transactions' && $method === 'GET':
+            (new PaymentController())->getTransactions();
             break;
 
         // Link preview

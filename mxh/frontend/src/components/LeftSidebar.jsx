@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { API_ORIGIN } from '../config';
+import { getBalance } from '../services/auth';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
@@ -67,9 +69,26 @@ const EXPLORE_ITEMS = [
   },
 ];
 
+function formatVND(amount) {
+  return new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
+}
+
 export default function LeftSidebar() {
   const { user } = useAuth();
   const location = useLocation();
+  const [balance, setBalance] = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const data = await getBalance();
+        setBalance(data.balance || 0);
+      } catch (err) {
+        console.error('Failed to load balance:', err);
+      }
+    })();
+  }, [user, location.pathname]);
 
   if (!user) return null;
 
@@ -110,6 +129,22 @@ export default function LeftSidebar() {
           <span className="lsb-label">{item.label}</span>
         </Link>
       ))}
+
+      <div className="lsb-divider" />
+
+      {/* Wallet */}
+      <Link to="/settings" className="lsb-wallet" onClick={() => {}}>
+        <span className="lsb-wallet-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+        </span>
+        <span className="lsb-wallet-info">
+          <span className="lsb-wallet-label">Ví tiền</span>
+          {balance !== null && <span className="lsb-wallet-balance">{formatVND(balance)}</span>}
+        </span>
+      </Link>
     </aside>
   );
 }

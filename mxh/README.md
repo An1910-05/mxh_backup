@@ -10,6 +10,14 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **Nạp tiền qua VNPay:** Tích hợp cổng thanh toán VNPay (sandbox) cho phép user nạp tiền vào ví. Flow: chọn mệnh giá → redirect VNPay → thanh toán → callback IPN cập nhật số dư. Giao diện "Ví tiền" trong Settings hiển thị số dư, preset mệnh giá, lịch sử giao dịch. Sidebar trái hiện số dư realtime.
+  - Migration: `backend/database/migrations/015_add_balance_and_transactions.sql`
+  - File backend mới: `PaymentController.php`, `PaymentService.php`, `TransactionRepository.php`
+  - REST endpoints: `POST /payment/create`, `GET /payment/ipn`, `GET /payment/verify`, `GET /payment/balance`, `GET /payment/transactions`
+  - File frontend mới: `PaymentResultPage.jsx`
+  - File sửa: `SettingsPage.jsx` (tab Ví tiền), `LeftSidebar.jsx` (hiện số dư), `App.jsx` (route), `auth.js` (API), `.env`, `docker-compose.yml`
+  - Cấu hình: `VNP_TMN_CODE`, `VNP_HASH_SECRET`, `VNP_URL` trong `.env`
+
 - **Sidebar trái + danh mục Trò chơi:** Thêm sidebar trái cố định (giống Facebook) hiện trên mọi trang desktop. Chứa shortcut: avatar user, Trang chủ, Bạn bè, Tin nhắn, và mục "Khám phá" với Trò chơi. Sidebar tự thu gọn (chỉ icon) ở màn hình nhỏ, ẩn hoàn toàn dưới 860px. Dark mode đầy đủ.
   - File mới: `LeftSidebar.jsx`, `GamesPage.jsx` (placeholder)
   - File sửa: `App.jsx` (layout `desktop-layout` + route `/games`), `styles.css`

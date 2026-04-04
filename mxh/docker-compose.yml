@@ -54,6 +54,9 @@ services:
       APP_URL: ${APP_URL:-http://${MXH_PUBLIC_HOST:-localhost}:8000}
       FRONTEND_URL: ${FRONTEND_URL:-http://${MXH_PUBLIC_HOST:-localhost}:5173}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      VNP_TMN_CODE: ${VNP_TMN_CODE:-5UQ9JN3J}
+      VNP_HASH_SECRET: ${VNP_HASH_SECRET:-4ADPX1KAMS0N2GKFA834HHVT0A6DELTO}
+      VNP_URL: ${VNP_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
     restart: unless-stopped
 
   websocket:

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getSettings, changePassword, updateSettingsProfile } from '../services/auth';
+import { getSettings, changePassword, updateSettingsProfile, createPayment, getBalance, getTransactions } from '../services/auth';
 
 const MONTHS = [
   'Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
@@ -13,7 +13,11 @@ function daysInMonth(month, year) {
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
 
-const GENDER_LABELS = { male: 'Nam', female: 'Nữ', other: 'Khác' };
+const TOPUP_PRESETS = [10000, 20000, 50000, 100000, 200000, 500000];
+
+function formatVND(amount) {
+  return new Intl.NumberFormat('vi-VN').format(amount) + ' VND';
+}
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -39,6 +43,14 @@ export default function SettingsPage() {
   const [pwErr, setPwErr] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
 
+  // Wallet state
+  const [balance, setBalance] = useState(0);
+  const [topupAmount, setTopupAmount] = useState('');
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [topupErr, setTopupErr] = useState('');
+  const [transactions, setTransactions] = useState([]);
+  const [txnLoading, setTxnLoading] = useState(false);
+
   const maxDay = daysInMonth(parseInt(birthMonth), parseInt(birthYear));
   const days = Array.from({ length: maxDay }, (_, i) => i + 1);
 
@@ -62,6 +74,30 @@ export default function SettingsPage() {
       }
     })();
   }, []);
+
+  // Load balance and transactions when wallet tab is selected
+  useEffect(() => {
+    if (activeSection !== 'wallet') return;
+    (async () => {
+      try {
+        const balData = await getBalance();
+        setBalance(balData.balance || 0);
+      } catch (err) {
+        console.error('Failed to load balance:', err);
+      }
+    })();
+    (async () => {
+      setTxnLoading(true);
+      try {
+        const txnData = await getTransactions();
+        setTransactions(txnData.transactions || []);
+      } catch (err) {
+        console.error('Failed to load transactions:', err);
+      } finally {
+        setTxnLoading(false);
+      }
+    })();
+  }, [activeSection]);
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
@@ -120,6 +156,26 @@ export default function SettingsPage() {
     }
   };
 
+  const handleTopup = async () => {
+    const amount = parseInt(topupAmount);
+    if (!amount || amount < 10000) {
+      setTopupErr('Số tiền nạp tối thiểu là 10,000 VND');
+      return;
+    }
+    setTopupLoading(true);
+    setTopupErr('');
+    try {
+      const result = await createPayment(amount);
+      if (result.payment_url) {
+        window.location.href = result.payment_url;
+      }
+    } catch (err) {
+      setTopupErr(err.message);
+    } finally {
+      setTopupLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="settings-page">
@@ -131,6 +187,7 @@ export default function SettingsPage() {
   const sections = [
     { key: 'general', label: 'Chung', icon: '⚙' },
     { key: 'password', label: 'Mật khẩu & Bảo mật', icon: '🔒' },
+    { key: 'wallet', label: 'Ví tiền', icon: '💰' },
   ];
 
   return (
@@ -297,6 +354,93 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {activeSection === 'wallet' && (
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <h3 className="settings-section-title">Ví tiền</h3>
+                <p className="settings-section-desc">Nạp tiền vào tài khoản để sử dụng các dịch vụ trên iPock.</p>
+              </div>
+
+              {/* Balance card */}
+              <div className="wallet-balance-card">
+                <div className="wallet-balance-label">Số dư hiện tại</div>
+                <div className="wallet-balance-amount">{formatVND(balance)}</div>
+              </div>
+
+              {/* Top-up */}
+              <div className="wallet-topup">
+                <h4 className="wallet-topup-title">Nạp tiền qua VNPay</h4>
+
+                {topupErr && <div className="apple-alert apple-alert-danger settings-alert">{topupErr}</div>}
+
+                <div className="wallet-preset-grid">
+                  {TOPUP_PRESETS.map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      className={`wallet-preset-btn${parseInt(topupAmount) === amt ? ' wallet-preset-btn--active' : ''}`}
+                      onClick={() => setTopupAmount(String(amt))}
+                    >
+                      {formatVND(amt)}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="wallet-custom-row">
+                  <input
+                    type="number"
+                    className="settings-input"
+                    placeholder="Hoặc nhập số tiền khác (VND)"
+                    value={topupAmount}
+                    onChange={(e) => setTopupAmount(e.target.value)}
+                    min="10000"
+                    step="1000"
+                  />
+                  <button
+                    type="button"
+                    className="settings-btn settings-btn--primary"
+                    disabled={topupLoading || !topupAmount}
+                    onClick={handleTopup}
+                  >
+                    {topupLoading ? <span className="apple-spinner" aria-hidden="true" /> : null}
+                    Nạp tiền
+                  </button>
+                </div>
+
+                <p className="wallet-hint">Thanh toán an toàn qua cổng VNPay. Số tiền tối thiểu 10,000 VND.</p>
+              </div>
+
+              {/* Transaction history */}
+              <div className="wallet-history">
+                <h4 className="wallet-history-title">Lịch sử giao dịch</h4>
+                {txnLoading ? (
+                  <div className="settings-loading"><span className="apple-spinner" /></div>
+                ) : transactions.length === 0 ? (
+                  <p className="wallet-empty">Chưa có giao dịch nào.</p>
+                ) : (
+                  <div className="wallet-txn-list">
+                    {transactions.map((txn) => (
+                      <div key={txn.id} className="wallet-txn-row">
+                        <div className="wallet-txn-info">
+                          <span className={`wallet-txn-status wallet-txn-status--${txn.status}`}>
+                            {txn.status === 'success' ? '✓' : txn.status === 'failed' ? '✗' : '⏳'}
+                          </span>
+                          <div>
+                            <div className="wallet-txn-desc">{txn.description || 'Nạp tiền'}</div>
+                            <div className="wallet-txn-date">{new Date(txn.created_at).toLocaleString('vi-VN')}</div>
+                          </div>
+                        </div>
+                        <div className={`wallet-txn-amount wallet-txn-amount--${txn.status}`}>
+                          {txn.status === 'success' ? '+' : ''}{formatVND(txn.amount)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>

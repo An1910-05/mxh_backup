@@ -16,7 +16,7 @@ class UserRepository
 
     public function findById(int $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT u.id, u.username, u.email, u.custom_url, u.birthday, u.gender, u.created_at, u.updated_at, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = ?');
+        $stmt = $this->db->prepare('SELECT u.id, u.username, u.email, u.custom_url, u.birthday, u.gender, u.balance, u.created_at, u.updated_at, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = ?');
         $stmt->execute([$id]);
         return $stmt->fetch() ?: null;
     }

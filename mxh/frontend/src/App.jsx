@@ -18,6 +18,7 @@ import ChatPage from './pages/ChatPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import GamesPage from './pages/GamesPage';
+import PaymentResultPage from './pages/PaymentResultPage';
 import LeftSidebar from './components/LeftSidebar';
 import useIsMobile from './mobile/hooks/useIsMobile';
 import MobileLayout from './mobile/MobileLayout';
@@ -88,6 +89,7 @@ export default function App() {
               <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               <Route path="/games" element={<ProtectedRoute><GamesPage /></ProtectedRoute>} />
+              <Route path="/payment/result" element={<ProtectedRoute><PaymentResultPage /></ProtectedRoute>} />
               <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />
               <Route path="/:customUrl" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             </Routes>
