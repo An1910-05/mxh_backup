@@ -6,9 +6,17 @@ class CorsMiddleware
 {
     public static function handle(): void
     {
-        $frontendUrl = $_ENV['FRONTEND_URL'] ?? '*';
+        $allowedOrigins = array_map('trim', explode(',', $_ENV['FRONTEND_URL'] ?? '*'));
+        $requestOrigin  = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-        header("Access-Control-Allow-Origin: {$frontendUrl}");
+        if (in_array('*', $allowedOrigins, true)) {
+            header('Access-Control-Allow-Origin: *');
+        } elseif ($requestOrigin && in_array($requestOrigin, $allowedOrigins, true)) {
+            header("Access-Control-Allow-Origin: {$requestOrigin}");
+        } else {
+            header("Access-Control-Allow-Origin: {$allowedOrigins[0]}");
+        }
+
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization');
         header('Access-Control-Allow-Credentials: true');

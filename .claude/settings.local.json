@@ -4,7 +4,9 @@
       "Bash(xargs grep:*)",
       "Bash(xargs wc:*)",
       "Bash(docker info:*)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(ssh -i 'C:/Users/nguye/.ssh/id_ed25519' -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@203.145.47.2 \"echo OK && whoami\")",
+      "Bash(ssh-keygen -y -f 'C:/Users/nguye/.ssh/id_ed25519')"
     ]
   }
 }

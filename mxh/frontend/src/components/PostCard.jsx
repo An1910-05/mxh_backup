@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { likePost, unlikePost, deletePost, editPost } from '../services/graphql';
 import { useAuth } from '../hooks/useAuth';
@@ -8,14 +8,48 @@ import PostImageLightbox from './PostImageLightbox';
 import VideoPlayer from './VideoPlayer';
 import ConfirmDialog from './ConfirmDialog';
 import SharePopup from './SharePopup';
+// react-facebook-emoji aliased to local component via vite.config.js
 import { API_ORIGIN } from '../config';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
+
+const REACTIONS = [
+  { key: 'like',  emoji: '👍', label: 'Thích',     color: '#0866ff', bg: '#548dff' },
+  { key: 'love',  emoji: '❤️', label: 'Yêu thích', color: '#f55064', bg: '#f55064' },
+  { key: 'haha',  emoji: '😂', label: 'Haha',      color: '#f7b125', bg: '#f7b125' },
+  { key: 'wow',   emoji: '😮', label: 'Wow',       color: '#f7b125', bg: '#f7b125' },
+  { key: 'sad',   emoji: '😢', label: 'Buồn',      color: '#f7b125', bg: '#f7b125' },
+  { key: 'angry', emoji: '😡', label: 'Phẫn nộ',  color: '#e9710f', bg: '#e9710f' },
+];
+
+function ReactionPicker({ onReact }) {
+  return (
+    <div className="reaction-picker">
+      {REACTIONS.map((r) => (
+        <button
+          key={r.key}
+          className="reaction-picker-btn"
+          title={r.label}
+          onClick={(e) => { e.stopPropagation(); onReact(r); }}
+          type="button"
+        >
+          <span className="reaction-picker-emoji">{r.emoji}</span>
+          <span className="reaction-picker-label">{r.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function PostCard({ post, onDelete }) {
   const { user } = useAuth();
   const [liked, setLiked] = useState(post.is_liked);
   const [likeCount, setLikeCount] = useState(post.like_count || 0);
+  const [reaction, setReaction] = useState(post.is_liked ? REACTIONS[0] : null);
+  const [showPicker, setShowPicker] = useState(false);
+  const pickerTimerRef = useRef(null);
+  const pickerRef = useRef(null);
+  const likeWrapRef = useRef(null);
   const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -54,21 +88,67 @@ export default function PostCard({ post, onDelete }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [lightboxOpen]);
 
-  const handleLike = async () => {
+  // Close picker when clicking outside
+  useEffect(() => {
+    if (!showPicker) return;
+    const handleClick = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target) &&
+          likeWrapRef.current && !likeWrapRef.current.contains(e.target)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showPicker]);
+
+  const handleLikeMouseEnter = useCallback(() => {
+    pickerTimerRef.current = setTimeout(() => setShowPicker(true), 500);
+  }, []);
+
+  const handleLikeMouseLeave = useCallback(() => {
+    clearTimeout(pickerTimerRef.current);
+  }, []);
+
+  const handleReact = useCallback(async (r) => {
+    setShowPicker(false);
+    try {
+      if (liked && reaction?.key === r.key) {
+        // same reaction → unlike
+        await unlikePost(post.id);
+        setLiked(false);
+        setReaction(null);
+        setLikeCount((c) => c - 1);
+      } else {
+        if (!liked) {
+          await likePost(post.id);
+          setLikeCount((c) => c + 1);
+        }
+        setLiked(true);
+        setReaction(r);
+      }
+    } catch (err) {
+      console.error('Like error:', err.message);
+    }
+  }, [liked, reaction, post.id]);
+
+  const handleLike = useCallback(async () => {
+    setShowPicker(false);
     try {
       if (liked) {
         await unlikePost(post.id);
         setLiked(false);
+        setReaction(null);
         setLikeCount((c) => c - 1);
       } else {
         await likePost(post.id);
         setLiked(true);
+        setReaction(REACTIONS[0]);
         setLikeCount((c) => c + 1);
       }
     } catch (err) {
       console.error('Like error:', err.message);
     }
-  };
+  }, [liked, post.id]);
 
   useEffect(() => {
     if (!showMenu) return;
@@ -229,15 +309,19 @@ export default function PostCard({ post, onDelete }) {
             {likeCount > 0 && (
               <div className="post-fb-likes">
                 <span className="post-fb-like-icon">
-                  <svg viewBox="0 0 16 16" width="18" height="18" fill="none">
-                    <defs>
-                      <linearGradient id="likeGrad" x1="2.4" y1="2.4" x2="13.6" y2="13.6" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#02ADFC" /><stop offset=".5" stopColor="#0866FF" /><stop offset="1" stopColor="#2B7EFF" />
-                      </linearGradient>
-                    </defs>
-                    <circle cx="8" cy="8" r="8" fill="url(#likeGrad)" />
-                    <path d="M7.3 3.87a.7.7 0 01.7-.7c.67 0 1.22.55 1.22 1.22v1.75a.1.1 0 00.1.1h1.8c.99 0 1.72.93 1.49 1.89l-.46 1.9a2.3 2.3 0 01-2.24 1.77H6.92a.58.58 0 01-.58-.58V7.74c0-.42.1-.83.28-1.2l.29-.57a3.69 3.69 0 00.39-1.65v-.45zM4.37 7a.77.77 0 00-.77.77v3.26c0 .42.34.77.77.77h.77a.38.38 0 00.38-.38V7.38A.38.38 0 005.13 7h-.77z" fill="#fff" />
-                  </svg>
+                  {liked && reaction && reaction.key !== 'like' ? (
+                    <span className="post-fb-summary-emoji">{reaction.emoji}</span>
+                  ) : (
+                    <svg viewBox="0 0 16 16" width="18" height="18" fill="none">
+                      <defs>
+                        <linearGradient id="likeGrad" x1="2.4" y1="2.4" x2="13.6" y2="13.6" gradientUnits="userSpaceOnUse">
+                          <stop stopColor="#02ADFC" /><stop offset=".5" stopColor="#0866FF" /><stop offset="1" stopColor="#2B7EFF" />
+                        </linearGradient>
+                      </defs>
+                      <circle cx="8" cy="8" r="8" fill="url(#likeGrad)" />
+                      <path d="M7.3 3.87a.7.7 0 01.7-.7c.67 0 1.22.55 1.22 1.22v1.75a.1.1 0 00.1.1h1.8c.99 0 1.72.93 1.49 1.89l-.46 1.9a2.3 2.3 0 01-2.24 1.77H6.92a.58.58 0 01-.58-.58V7.74c0-.42.1-.83.28-1.2l.29-.57a3.69 3.69 0 00.39-1.65v-.45zM4.37 7a.77.77 0 00-.77.77v3.26c0 .42.34.77.77.77h.77a.38.38 0 00.38-.38V7.38A.38.38 0 005.13 7h-.77z" fill="#fff" />
+                    </svg>
+                  )}
                 </span>
                 <span className="post-fb-like-count">{likeCount}</span>
               </div>
@@ -252,12 +336,33 @@ export default function PostCard({ post, onDelete }) {
 
         {/* Action buttons */}
         <div className="post-fb-actions">
-          <button className={`post-fb-action${liked ? ' post-fb-action--liked' : ''}`} onClick={handleLike}>
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 22V11m-5 2v7a2 2 0 002 2h12.4a2 2 0 001.94-1.52l1.72-7A2 2 0 0018.12 10H14V5a3 3 0 00-3-3l-4 9" />
-            </svg>
-            <span>Thích</span>
-          </button>
+          <div
+            className="post-fb-action-wrap"
+            ref={likeWrapRef}
+            onMouseEnter={handleLikeMouseEnter}
+            onMouseLeave={handleLikeMouseLeave}
+          >
+            {showPicker && (
+              <div ref={pickerRef}>
+                <ReactionPicker onReact={handleReact} />
+              </div>
+            )}
+            <button
+              className={`post-fb-action${liked ? ' post-fb-action--liked' : ''}`}
+              style={liked && reaction ? { color: reaction.color } : {}}
+              onClick={handleLike}
+              type="button"
+            >
+              {liked && reaction ? (
+                <span className="post-fb-action-reaction-emoji">{reaction.emoji}</span>
+              ) : (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 22V11m-5 2v7a2 2 0 002 2h12.4a2 2 0 001.94-1.52l1.72-7A2 2 0 0018.12 10H14V5a3 3 0 00-3-3l-4 9" />
+                </svg>
+              )}
+              <span>{liked && reaction ? reaction.label : 'Thích'}</span>
+            </button>
+          </div>
           <button className="post-fb-action" onClick={() => setShowComments(true)}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />

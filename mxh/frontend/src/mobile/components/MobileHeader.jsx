@@ -14,7 +14,7 @@ export default function MobileHeader() {
       <div className="m-header-actions">
         {user && (
           <Link to="/search" className="m-header-btn" aria-label="Tìm kiếm">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#65676b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/>
               <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
@@ -22,7 +22,7 @@ export default function MobileHeader() {
         )}
         {user ? (
           <button type="button" onClick={handleLogout} className="m-header-btn" aria-label="Đăng xuất">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#65676b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>

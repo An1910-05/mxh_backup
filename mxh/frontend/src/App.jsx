@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
@@ -17,18 +17,43 @@ import NotificationsPage from './pages/NotificationsPage';
 import useIsMobile from './mobile/hooks/useIsMobile';
 import MobileLayout from './mobile/MobileLayout';
 
+const THEME_STORAGE_KEY = 'mxh-theme-mode';
+
+function getInitialTheme() {
+  if (typeof window === 'undefined') return 'light';
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return stored === 'dark' ? 'dark' : 'light';
+}
+
 function AppShell({ children }) {
   const isMobile = useIsMobile();
   const location = useLocation();
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/register';
+  const [themeMode, setThemeMode] = useState(getInitialTheme);
+
   useEffect(() => {
     document.body.classList.toggle('is-mobile', isMobile);
     return () => document.body.classList.remove('is-mobile');
   }, [isMobile]);
 
+  useEffect(() => {
+    const isDark = themeMode === 'dark';
+    document.body.classList.toggle('theme-dark', isDark);
+    document.body.classList.toggle('theme-light', !isDark);
+    document.body.dataset.theme = themeMode;
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+
+    return () => {
+      document.body.classList.remove('theme-dark', 'theme-light');
+      delete document.body.dataset.theme;
+      document.documentElement.style.colorScheme = '';
+    };
+  }, [themeMode]);
+
   if (isAuthRoute) return <>{children}</>;
   if (isMobile) return <MobileLayout>{children}</MobileLayout>;
-  return <><Navbar /><div>{children}</div></>;
+  return <><Navbar themeMode={themeMode} onThemeChange={setThemeMode} /><div>{children}</div></>;
 }
 
 export default function App() {

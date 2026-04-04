@@ -103,6 +103,24 @@ export default function NotificationsPage() {
     } catch (err) { console.error(err); } finally { setMarking(false); }
   };
 
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    try {
+      await deleteNotification(id);
+      setItems(prev => prev.filter(n => n.id !== id));
+      bumpNotifBadge();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm('Xóa tất cả thông báo?')) return;
+    try {
+      await deleteAllNotifications();
+      setItems([]);
+      bumpNotifBadge();
+    } catch (err) { console.error(err); }
+  };
+
   const unreadCount = items.filter(n => !n.read_at).length;
 
   return (
@@ -114,11 +132,18 @@ export default function NotificationsPage() {
             <span className="notifications-unread-badge">{unreadCount}</span>
           )}
         </div>
-        {unreadCount > 0 && (
-          <button type="button" className="notifications-mark-all" onClick={handleMarkAll} disabled={marking}>
-            {marking ? '…' : 'Đánh dấu đã đọc'}
-          </button>
-        )}
+        <div className="notifications-header-actions">
+          {unreadCount > 0 && (
+            <button type="button" className="notifications-mark-all" onClick={handleMarkAll} disabled={marking}>
+              {marking ? '…' : 'Đánh dấu đã đọc'}
+            </button>
+          )}
+          {items.length > 0 && (
+            <button type="button" className="notifications-delete-all" onClick={handleDeleteAll}>
+              Xóa tất cả
+            </button>
+          )}
+        </div>
       </div>
 
       {loading && (
@@ -177,6 +202,16 @@ export default function NotificationsPage() {
             </div>
 
             {!item.read_at && <span className="notif-lg-dot" />}
+            <button
+              type="button"
+              className="notif-lg-delete"
+              onClick={e => handleDelete(e, item.id)}
+              title="Xóa thông báo"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </button>
           </div>
         ))}
       </div>

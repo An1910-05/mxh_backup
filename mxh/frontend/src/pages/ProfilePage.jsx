@@ -40,6 +40,22 @@ export default function ProfilePage() {
     fetchData();
   }, [customUrl, location.pathname]);
 
+  useEffect(() => {
+    if (loading || !profile || !location.hash) return undefined;
+
+    const targetId = location.hash.slice(1);
+    if (!targetId) return undefined;
+
+    const timer = window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loading, profile, location.hash]);
+
   const handleDelete = (postId) => {
     setPosts((prev) => prev.filter((p) => p.id !== postId));
   };

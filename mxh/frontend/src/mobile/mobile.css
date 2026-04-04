@@ -55,6 +55,7 @@
   border-radius: 50%;
   background: #e4e6eb;
   border: none;
+  color: #65676b;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -161,6 +162,39 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
+}
+
+body[data-theme='dark'] .m-layout {
+  background: #18191a;
+}
+
+body[data-theme='dark'] .m-header,
+body[data-theme='dark'] .m-tab-bar {
+  background: #242526;
+  border-color: #3e4042;
+}
+
+body[data-theme='dark'] .m-header-brand,
+body[data-theme='dark'] .m-header-link,
+body[data-theme='dark'] .m-tab-item--active {
+  color: #2d88ff;
+}
+
+body[data-theme='dark'] .m-header-btn {
+  background: #3a3b3c;
+  color: #e4e6eb;
+}
+
+body[data-theme='dark'] .m-header-btn:active {
+  background: #4e4f50;
+}
+
+body[data-theme='dark'] .m-tab-item {
+  color: #b0b3b8;
+}
+
+body[data-theme='dark'] .m-tab-item--active::before {
+  background: #2d88ff;
 }
 
 /* === MOBILE OVERRIDES === */
