@@ -125,7 +125,6 @@ class MutationType extends ObjectType
                         'media_type' => Type::string(),
                         'media_width' => Type::int(),
                         'media_height' => Type::int(),
-                        'parent_id' => Type::int(),
                     ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
@@ -142,8 +141,7 @@ class MutationType extends ObjectType
                             $args['media_url'] ?? null,
                             $args['media_type'] ?? null,
                             $args['media_width'] ?? null,
-                            $args['media_height'] ?? null,
-                            $args['parent_id'] ?? null
+                            $args['media_height'] ?? null
                         );
                     },
                 ],

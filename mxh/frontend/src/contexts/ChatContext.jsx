@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { connectWebSocket, disconnectWebSocket, on, sendReadHistory } from '../services/websocket';
-import { getConversations, getOrCreateConversation } from '../services/chat';
+import { getConversations } from '../services/chat';
 
 const ChatContext = createContext(null);
 
@@ -12,7 +12,6 @@ export function ChatProvider({ children }) {
   const [wsConnected, setWsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [typingUsers, setTypingUsers] = useState({});
-  const [openChats, setOpenChats] = useState([]);
   const typingTimers = useRef({});
 
   useEffect(() => {
@@ -99,39 +98,6 @@ export function ChatProvider({ children }) {
     }
   }, []);
 
-  const openChat = useCallback(async (userIdOrConv) => {
-    // Accepts a conversation object or a userId
-    let conv;
-    if (typeof userIdOrConv === 'object' && userIdOrConv.id) {
-      conv = userIdOrConv;
-    } else {
-      try {
-        conv = await getOrCreateConversation(userIdOrConv);
-      } catch (e) {
-        console.error('Failed to open chat:', e);
-        return;
-      }
-    }
-    setOpenChats(prev => {
-      if (prev.some(c => c.id === conv.id)) {
-        // restore if minimized
-        return prev.map(c => c.id === conv.id ? { ...c, minimized: false } : c);
-      }
-      const next = [...prev, { ...conv, minimized: false }];
-      return next.slice(-3); // max 3 windows
-    });
-  }, []);
-
-  const closeChat = useCallback((conversationId) => {
-    setOpenChats(prev => prev.filter(c => c.id !== conversationId));
-  }, []);
-
-  const toggleMinimizeChat = useCallback((conversationId) => {
-    setOpenChats(prev => prev.map(c =>
-      c.id === conversationId ? { ...c, minimized: !c.minimized } : c
-    ));
-  }, []);
-
   const markConversationRead = useCallback((conversationId, messageId) => {
     sendReadHistory(conversationId, messageId);
     setConversations(prev => prev.map(c => {
@@ -151,10 +117,6 @@ export function ChatProvider({ children }) {
       wsConnected,
       onlineUsers,
       typingUsers,
-      openChats,
-      openChat,
-      closeChat,
-      toggleMinimizeChat,
       loadConversations,
       markConversationRead,
       totalUnread,

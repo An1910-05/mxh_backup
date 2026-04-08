@@ -10,32 +10,7 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
-- **Bình luận lồng nhau kiểu Facebook (Threaded Comments) + Tag bạn bè (Mention):** Hệ thống bình luận hỗ trợ trả lời (reply) giống Facebook — tối đa 2 cấp. Replies hiển thị dạng nhánh cây (branch line) thụt vào bên phải, có đường kẻ dọc + ngang nối từ parent. Mỗi reply hiện tên người được trả lời (`@username`, in đậm màu xanh) ở đầu nội dung. Nút "Trả lời" ở mỗi comment (cả parent và reply). Expand/collapse phản hồi. Reply tự flatten nếu reply vào reply (gắn về parent gốc). Notification type `reply` khi ai đó trả lời bình luận.
-  - **Tag bạn bè trong bài viết:** Gõ `@` trong textarea tạo bài viết → hiện dropdown tìm kiếm user → chọn user chèn `@username`. Mention được highlight xanh dương cả trong bài viết (`PostCard`) và bình luận. Hook `useMentionInput` tái sử dụng cho `CreatePostForm`, `CommentForm`, `CommentList` (inline reply), và `CommentPopup`.
-  - Migration: `backend/database/migrations/017_add_comment_parent_id.sql`
-  - Backend sửa: `CommentRepository.php`, `CommentService.php`, `CommentType.php`, `MutationType.php`
-  - Frontend sửa: `graphql.js`, `CommentList.jsx` (thread UI + branch CSS + InlineReplyForm), `CommentPopup.jsx` (thread + reply-to name), `CommentForm.jsx`, `PostDetailPage.jsx`, `PostCard.jsx` (render @mention), `CreatePostForm.jsx` (mention dropdown trong textarea)
-  - Frontend mới: `hooks/useMentionInput.js`
-  - CSS: `.comment-thread`, `.comment-replies` (branch lines `::before`/`::after`), `.comment-reply-to`, `.post-mention`, `.mention-dropdown--post` + dark mode đầy đủ
-
-- **Right Sidebar — Người liên hệ + Floating Chat:** Thêm sidebar phải hiển thị danh sách liên hệ (từ conversations), sort người online lên đầu. Click vào liên hệ mở khung chat nổi góc dưới phải kiểu Facebook Messenger (header xanh, minimize/close, real-time WS). Tối đa 3 cửa sổ mở cùng lúc. Sidebar tự ẩn ở màn hình < 1300px, floating chat ẩn ở mobile. Nút kính lúp mở thanh tìm kiếm lọc liên hệ theo tên (nhấn Escape để đóng), hiện thông báo khi không tìm thấy.
-  - File mới: `frontend/src/components/RightSidebar.jsx`, `frontend/src/components/chat/FloatingChatWindow.jsx`
-  - File sửa: `ChatContext.jsx` (thêm `openChats`, `openChat`, `closeChat`, `toggleMinimizeChat`), `App.jsx` (tích hợp), `styles.css` (thêm CSS)
-
-- **Game Tỉu Xài — Popup draggable:** Trò chơi xúc xắc 3 viên thời gian thực. TỈU = 3–10 điểm, XÀI = 11–18 điểm. Jackpot nổ khi ra 3 (1+1+1) hoặc 18 (6+6+6). Mỗi phiên 44 giây (30s cược → 2s khóa → 4s lắc → 5s kết quả → 3s thưởng). State machine time-based, lazy eval mỗi request — không cần background worker. Hệ số thắng 1.95x, 1% mỗi cược vào quỹ Jackpot. Tất cả người dùng thấy chung tổng cược mỗi cửa (shared session).
-  - **Thay đổi UI:** Game hiển thị dạng **popup draggable** (kéo được bằng chuột), không phải trang riêng. Mở bằng nút "🎲 Tỉu Xài" trong sidebar trái. Render qua `createPortal` → overlay toàn trang, `z-index: 9000`. Design oval nâu vàng, dots lịch sử phiên ở đáy.
-  - **Fix animation xúc xắc:** Thư viện `roll-a-die` append `.dice-outer` trực tiếp vào container (không có wrapper div). Fix JS đổi từ `firstElementChild.children` sang `querySelectorAll('.dice-outer')`. Thêm retry polling 100ms × 20 lần để đợi library render. Fix CSS class `.die-face` → `.dice-face`. Xúc xắc xếp hình tam giác: 1 trên cùng + 2 dưới, dùng `zoom: 0.85` để không xung đột với animation 3D.
-  - **Fix tên:** "TỈUU" → "TỈU" (đúng chính tả) xuyên suốt toàn bộ UI.
-  - Migration: `backend/database/migrations/016_tiu_xai_game.sql` (4 bảng: config, sessions, bets, jackpot)
-  - Backend: `TiuXaiRepository.php`, `TiuXaiService.php`, `TiuXaiController.php`
-  - REST endpoints: `GET /game/tiu-xai/session`, `POST /game/tiu-xai/bet`, `GET /game/tiu-xai/history`, `GET /game/tiu-xai/my-bets`, admin endpoints tại `/admin/game/tiu-xai/*`
-  - Frontend mới: `TiuXaiModal.jsx` (popup chính), `TiuXaiAdminPage.jsx`, `GamesPage.jsx`
-  - Trigger: `window.dispatchEvent(new CustomEvent('open-tiu-xai'))` → `TiuXaiGlobalModal` trong `App.jsx` bắt và mở popup
-  - Admin: user ID trong `ADMIN_USER_IDS` env (mặc định: 1) có thể cấu hình thời gian phiên, mức cược, hệ số thắng, jackpot
-
-- **Nạp tiền qua VNPay (đã hoạt động):** Tích hợp cổng thanh toán VNPay (sandbox) cho phép user nạp tiền vào ví. Flow: chọn mệnh giá → redirect VNPay → thanh toán → tự động cập nhật số dư. Giao diện "Ví tiền" trong Settings hiển thị số dư, preset mệnh giá (10k–500k), lịch sử giao dịch (thành công/thất bại). Sidebar trái hiện số dư.
-  - **Fix timezone:** `vnp_CreateDate`/`vnp_ExpireDate` giờ dùng GMT+7 (`Asia/Ho_Chi_Minh`) thay vì UTC — tránh lỗi "Giao dịch hết hạn" (code 15).
-  - **Fix balance không cập nhật khi chạy local:** VNPay không gọi được IPN vào localhost, nên endpoint `GET /payment/verify` (frontend gọi sau redirect) giờ tự xử lý luôn: cộng tiền + đổi trạng thái `pending → success`. Logic idempotent — an toàn khi IPN cũng gọi sau.
+- **Nạp tiền qua VNPay:** Tích hợp cổng thanh toán VNPay (sandbox) cho phép user nạp tiền vào ví. Flow: chọn mệnh giá → redirect VNPay → thanh toán → callback IPN cập nhật số dư. Giao diện "Ví tiền" trong Settings hiển thị số dư, preset mệnh giá, lịch sử giao dịch. Sidebar trái hiện số dư realtime.
   - Migration: `backend/database/migrations/015_add_balance_and_transactions.sql`
   - File backend mới: `PaymentController.php`, `PaymentService.php`, `TransactionRepository.php`
   - REST endpoints: `POST /payment/create`, `GET /payment/ipn`, `GET /payment/verify`, `GET /payment/balance`, `GET /payment/transactions`
@@ -389,91 +364,109 @@ mxh/
 
 ---
 
-## Cài đặt và chạy project (từ đầu trên máy mới)
+## Cài đặt và chạy project
 
-### Bước 0 — Điều kiện cần
+### Điều kiện cần
 
-| Phần mềm | Phiên bản tối thiểu | Ghi chú |
-|-----------|---------------------|---------|
-| **Docker Desktop** | Mới nhất | Bật sẵn trước khi chạy lệnh. Windows: cài từ docker.com |
-| **Git** | Bất kỳ | Để clone repo |
-| **Node.js** (tùy chọn) | 20+ | Chỉ cần nếu muốn build frontend local |
+- **Docker Desktop** (hoặc Docker Engine + Compose plugin) đang chạy.
 
-### Bước 1 — Clone repo
+### Cách 1 — Script tạo `.env` rồi Compose (khuyến nghị)
 
-```bash
-git clone <repo-url> mxh
-cd mxh
-```
+Script hỏi **MySQL trong Docker** (profile `local-db`) hay **MySQL bên ngoài** (máy nhà / máy khác), ghi `.env` rồi `docker compose up -d --build`.
 
-### Bước 2 — Tạo file `.env`
+- Chọn **MySQL trong Docker**: script đặt `COMPOSE_PROFILES=local-db` và `DB_HOST=mysql` (giống môi trường dev cũ).
+- Chọn **MySQL bên ngoài**: không đặt profile — container MySQL **không** chạy; bạn phải đặt `DB_HOST` (và user/mật khẩu) trỏ tới máy chủ MySQL thật (xem `deploy/VPS.md`).
 
-**Cách nhanh — dùng script (khuyến nghị):**
-
-Script sẽ hỏi bạn muốn MySQL trong Docker hay bên ngoài, rồi tự tạo `.env`.
+- **Windows (PowerShell):** từ thư mục gốc project:
 
 ```powershell
-# Windows (PowerShell)
 .\start-docker.ps1
-
-# Linux / macOS
-chmod +x start-docker.sh && ./start-docker.sh
 ```
 
-**Cách thủ công:**
+- **Linux / macOS:**
 
 ```bash
-cp .env.example .env
+chmod +x start-docker.sh
+./start-docker.sh
 ```
 
-Mở `.env` và chỉnh các biến quan trọng:
+**Gợi ý xử lý lỗi thường gặp (Linux):**
 
-| Biến | Ý nghĩa | Giá trị mặc định |
-|------|----------|-------------------|
-| `MXH_PUBLIC_HOST` | IP/domain truy cập | `localhost` |
-| `COMPOSE_PROFILES` | Đặt `local-db` nếu muốn MySQL trong Docker | *(trống)* |
-| `DB_HOST` | Host MySQL | `mysql` (nếu dùng Docker) |
-| `DB_USER` / `DB_PASS` | Tài khoản MySQL | `root` / `root` |
-| `DB_NAME` | Tên database | `mxh_social` |
-| `JWT_SECRET` | Secret cho JWT | *(bắt buộc đặt)* |
-| `VITE_GOOGLE_CLIENT_ID` | Google Sign-In (tùy chọn) | *(trống)* |
-| `VNP_TMN_CODE` / `VNP_HASH_SECRET` | VNPay sandbox (tùy chọn) | *(trống)* |
+- `Permission denied`: `chmod +x start-docker.sh` hoặc `bash start-docker.sh`
+- `/bin/bash^M: bad interpreter` (CRLF): `sed -i 's/\r$//' start-docker.sh` rồi chạy lại
 
-### Bước 3 — Build và chạy Docker
+### Cách 2 — Chỉ dùng Docker Compose
+
+1. Sao chép `.env.example` thành `.env` và chỉnh các biến (đặc biệt `MXH_PUBLIC_HOST`, `DB_*`, và `COMPOSE_PROFILES=local-db` nếu cần MySQL trong Docker).
+2. Từ thư mục gốc `mxh`:
 
 ```bash
-# Build tất cả image và khởi động
 docker compose up -d --build
 ```
 
-> Nếu cần MySQL trong Docker, thêm `COMPOSE_PROFILES=local-db` vào `.env` **hoặc** chạy:
-> ```bash
-> docker compose --profile local-db up -d --build
-> ```
+**Ghi chú:** Để chạy thêm container MySQL cục bộ: đặt `COMPOSE_PROFILES=local-db` trong `.env` **hoặc** `docker compose --profile local-db up -d --build`.
 
-Chờ khoảng 30s cho MySQL healthy. Kiểm tra:
+**Nâng cấp từ phiên bản cũ (chỉ có `MXH_PUBLIC_HOST` trong `.env`):** thêm dòng `COMPOSE_PROFILES=local-db` nếu bạn vẫn muốn dùng container MySQL như trước. Nếu không thêm, Compose sẽ **không** khởi động MySQL — phù hợp khi DB đã chuyển ra máy khác (xem `deploy/VPS.md`).
 
-```bash
-docker compose ps
-```
-
-Phải thấy **4 container** đều `Up`: `mxh_backend`, `mxh_frontend`, `mxh_websocket`, `mxh_mysql`.
-
-### Bước 4 — Chạy migration (tạo bảng DB)
+3. **Lần đầu** sau khi container lên, chạy migration và seed:
 
 ```bash
 docker compose exec backend php database/migrate.php
-```
-
-Kết quả mong đợi: tất cả migration từ `001_` đến `017_` chạy thành công.
-
-### Bước 5 — Seed dữ liệu thử (tùy chọn)
-
-```bash
 docker compose exec backend php database/seed.php
 ```
 
-Tạo 5 tài khoản thử:
+### Truy cập dịch vụ
+
+| Dịch vụ | URL |
+|---------|-----|
+| Frontend (Vite) | http://localhost:5173 |
+| Backend API | http://localhost:8000 |
+| GraphQL | http://localhost:8000/graphql |
+| Health | http://localhost:8000/health |
+| WebSocket (chat) | ws://localhost:8080 |
+
+Nếu dùng IP/domain khác (VPS), thay `localhost` bằng giá trị `MXH_PUBLIC_HOST` trong `.env`.
+
+### Triển khai VPS và MySQL tại máy nhà
+
+- **Mục tiêu:** chạy Docker (frontend + backend + WebSocket) trên **VPS**, còn **MySQL chỉ trên máy nhà** để tiết kiệm RAM/chi phí.
+- **Cách làm:** không bật profile `local-db` (không đặt `COMPOSE_PROFILES=local-db` trong `.env`); đặt `DB_HOST` / `DB_USER` / `DB_PASS` trỏ tới MySQL tại nhà (hoặc **Tailscale** / **SSH tunnel** — khuyến nghị thay vì mở port 3306 ra Internet).
+- **HTTPS & domain:** sau khi có Nginx/Caddy + chứng chỉ, ghi đè `APP_URL`, `FRONTEND_URL`, `VITE_API_URL`, `VITE_GRAPHQL_URL`, `VITE_WS_URL` (xem `.env.example`). **CORS** cần `FRONTEND_URL` đúng origin người dùng truy cập.
+- **Tài liệu đầy đủ:** [`deploy/VPS.md`](deploy/VPS.md) — mẫu Nginx: [`deploy/nginx-mxh.example.conf`](deploy/nginx-mxh.example.conf).
+
+### Dọn dữ liệu media cũ định kỳ
+
+Project có script dọn media:
+
+- Xóa bản ghi **story hết hạn** trong DB.
+- Quét `backend/uploads/*` và xóa file không còn được DB tham chiếu (avatar, cover, media post/comment/story/chat, avatar nhóm chat).
+
+Lệnh chạy thủ công:
+
+```bash
+docker compose exec backend php bin/cleanup-media.php
+```
+
+Chạy thử không xóa thật:
+
+```bash
+docker compose exec backend php bin/cleanup-media.php --dry-run
+```
+
+Cài cron chạy mỗi đêm (mặc định 03:15):
+
+```bash
+chmod +x deploy/install-media-cleanup-cron.sh
+./deploy/install-media-cleanup-cron.sh
+```
+
+Xem cron hiện tại:
+
+```bash
+crontab -l
+```
+
+### Tài khoản thử (sau khi seed)
 
 | Username | Email | Password |
 |----------|-------|----------|
@@ -483,137 +476,7 @@ Tạo 5 tài khoản thử:
 | diana | diana@example.com | password123 |
 | eve | eve@example.com | password123 |
 
-### Bước 6 — Build frontend (nếu dist chưa có hoặc cần cập nhật)
-
-Frontend Docker container mount `./frontend/dist` từ host. Nếu thư mục `frontend/dist/` trống hoặc chưa có file mới, cần build:
-
-**Cách 1 — Build trong Docker:**
-```bash
-docker exec mxh_frontend sh -c "cd /app && npm run build"
-```
-
-**Cách 2 — Build trên máy local (cần Node.js):**
-```bash
-cd frontend && npm ci && npm run build && cd ..
-```
-
-Sau khi build xong, restart frontend container:
-```bash
-docker compose restart frontend
-```
-
-### Bước 7 — Truy cập
-
-| Dịch vụ | URL |
-|---------|-----|
-| **Frontend** | http://localhost:5173 |
-| **Backend API** | http://localhost:8000 |
-| **GraphQL** | http://localhost:8000/graphql |
-| **Health check** | http://localhost:8000/health |
-| **WebSocket (chat)** | ws://localhost:8080 |
-
-Nếu dùng IP/domain khác (VPS), thay `localhost` bằng `MXH_PUBLIC_HOST`.
-
----
-
-## Quy trình cập nhật code vào Docker (QUAN TRỌNG)
-
-> **Mỗi lần thêm/sửa tính năng, code thay đổi ở máy local nhưng Docker container vẫn chạy code cũ.** Phải làm các bước sau để cập nhật.
-
-### Thay đổi Backend (PHP)
-
-Backend code được build vào Docker image, **không** mount volume source. Có 2 cách:
-
-**Cách nhanh — Copy file trực tiếp (không cần rebuild image):**
-```bash
-# Copy từng file đã thay đổi vào container
-docker cp backend/src/Services/XyzService.php mxh_backend:/app/src/Services/XyzService.php
-docker cp backend/src/Repositories/XyzRepository.php mxh_backend:/app/src/Repositories/XyzRepository.php
-docker cp backend/public/index.php mxh_backend:/app/public/index.php
-# ... (copy tất cả file đã sửa)
-```
-
-> PHP không cần restart — thay đổi có hiệu lực ngay request tiếp theo.
-
-**Cách chắc chắn — Rebuild image:**
-```bash
-docker compose up -d --build backend websocket
-```
-
-### Thay đổi Frontend (React)
-
-Frontend mount `./frontend/dist` vào container. Cần **build lại** và **restart**:
-
-```bash
-# Build (chọn 1 trong 2 cách)
-cd frontend && npm run build && cd ..
-# hoặc: docker exec mxh_frontend sh -c "cd /app && npm run build"
-
-# Restart để nhận dist mới
-docker compose restart frontend
-```
-
-**Hoặc** copy source files vào container để Vite HMR cập nhật tự động (dev mode):
-```bash
-docker cp frontend/src/components/MyComponent.jsx mxh_frontend:/app/src/components/MyComponent.jsx
-docker cp frontend/src/styles.css mxh_frontend:/app/src/styles.css
-# Vite sẽ tự HMR — không cần restart
-```
-
-### Thay đổi Migration (DB schema)
-
-```bash
-# 1. Copy file migration mới vào container
-docker cp backend/database/migrations/NNN_xyz.sql mxh_backend:/app/database/migrations/NNN_xyz.sql
-
-# 2. Chạy migration
-docker compose exec backend php database/migrate.php
-```
-
-### Checklist sau mỗi lần thay đổi tính năng
-
-```
-□ Copy file backend mới vào container (hoặc rebuild image)
-□ Copy migration mới + chạy migrate.php
-□ Build frontend: npm run build
-□ Restart frontend container: docker compose restart frontend
-□ Test trên trình duyệt (hard refresh Ctrl+Shift+R)
-□ Cập nhật README.md (mục "Cập nhật gần đây")
-```
-
----
-
-## Triển khai VPS và MySQL tại máy nhà
-
-- **Mục tiêu:** chạy Docker (frontend + backend + WebSocket) trên **VPS**, còn **MySQL chỉ trên máy nhà** để tiết kiệm RAM/chi phí.
-- **Cách làm:** không bật profile `local-db` (không đặt `COMPOSE_PROFILES=local-db` trong `.env`); đặt `DB_HOST` / `DB_USER` / `DB_PASS` trỏ tới MySQL tại nhà (hoặc **Tailscale** / **SSH tunnel** — khuyến nghị thay vì mở port 3306 ra Internet).
-- **HTTPS & domain:** sau khi có Nginx/Caddy + chứng chỉ, ghi đè `APP_URL`, `FRONTEND_URL`, `VITE_API_URL`, `VITE_GRAPHQL_URL`, `VITE_WS_URL` (xem `.env.example`). **CORS** cần `FRONTEND_URL` đúng origin người dùng truy cập.
-- **Tài liệu đầy đủ:** [`deploy/VPS.md`](deploy/VPS.md) — mẫu Nginx: [`deploy/nginx-mxh.example.conf`](deploy/nginx-mxh.example.conf).
-
----
-
-## Dọn dữ liệu media cũ định kỳ
-
-Project có script dọn media:
-
-- Xóa bản ghi **story hết hạn** trong DB.
-- Quét `backend/uploads/*` và xóa file không còn được DB tham chiếu (avatar, cover, media post/comment/story/chat, avatar nhóm chat).
-
-```bash
-# Chạy thủ công
-docker compose exec backend php bin/cleanup-media.php
-
-# Chạy thử không xóa thật
-docker compose exec backend php bin/cleanup-media.php --dry-run
-
-# Cài cron chạy mỗi đêm (03:15)
-chmod +x deploy/install-media-cleanup-cron.sh
-./deploy/install-media-cleanup-cron.sh
-```
-
----
-
-## Dừng project
+### Dừng project
 
 ```bash
 docker compose down
@@ -625,29 +488,13 @@ Xóa luôn volume database (mất dữ liệu local):
 docker compose down -v
 ```
 
----
+### Phát triển không Docker (tùy chọn)
 
-## Phát triển không Docker (tùy chọn)
-
-- **Backend:** cài PHP ≥ 8.1, Composer, MySQL; copy biến môi trường; `composer install` trong `backend/`; chạy `php -S localhost:8000 -t public public/router.php`.
+- **Backend:** cài PHP ≥ 8.1, Composer, MySQL; copy biến môi trường; `composer install` trong `backend/`; chạy `php -S localhost:8000 -t public public/router.php` (hoặc script `composer serve` nếu chỉnh cho đúng router).
 - **Frontend:** Node 20+; `cd frontend && npm ci && npm run dev`.
 - **WebSocket:** `php bin/websocket-server.php` với biến `WS_PORT` và DB trùng backend.
 
 Chi tiết biến môi trường tham chiếu `docker-compose.yml` (`DB_*`, `JWT_*`, `APP_URL`, `FRONTEND_URL`, `VITE_*`).
-
----
-
-## Xử lý lỗi thường gặp
-
-| Lỗi | Nguyên nhân | Cách sửa |
-|-----|-------------|----------|
-| Container không lên | Docker Desktop chưa mở | Mở Docker Desktop, chờ ready, chạy lại `docker compose up -d` |
-| `Migration failed: Duplicate entry` | Migration đã chạy 1 phần trước đó | Kiểm tra DB, nếu cột đã tồn tại thì bỏ qua (record trong `_migrations` đã có) |
-| Frontend trắng / code cũ | Dist chưa build hoặc cache | `npm run build` + `docker compose restart frontend` + Ctrl+Shift+R |
-| Backend trả lỗi 500 | File PHP mới chưa copy vào container | `docker cp` file mới hoặc `docker compose up -d --build backend` |
-| Avatar không load sau login | Backend login trả user thiếu avatar | Đã fix — `AuthService::login()` giờ dùng `findById()` có JOIN profiles |
-| `Permission denied` (Linux) | Script chưa có quyền execute | `chmod +x start-docker.sh` |
-| `/bin/bash^M: bad interpreter` | File có CRLF (Windows) | `sed -i 's/\r$//' start-docker.sh` |
 
 ---
 

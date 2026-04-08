@@ -81,7 +81,7 @@ export default function PostDetailPage() {
 
           {user && <CommentForm postId={post.id} onCommentCreated={handleCommentCreated} />}
 
-          <CommentList comments={comments} postId={post.id} onReplyCreated={handleCommentCreated} />
+          <CommentList comments={comments} />
         </div>
       </div>
     </div>

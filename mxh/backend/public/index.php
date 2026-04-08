@@ -10,7 +10,6 @@ use App\Controllers\UploadController;
 use App\Controllers\ChatController;
 use App\Controllers\LinkPreviewController;
 use App\Controllers\PaymentController;
-use App\Controllers\TiuXaiController;
 use App\Helpers\Response;
 use GraphQL\GraphQL;
 use GraphQL\Error\DebugFlag;
@@ -162,43 +161,6 @@ try {
 
         case $uri === '/payment/transactions' && $method === 'GET':
             (new PaymentController())->getTransactions();
-            break;
-
-        // Game: Tỉu Xài
-        case $uri === '/game/tiu-xai/session' && $method === 'GET':
-            (new TiuXaiController())->getSession();
-            break;
-
-        case $uri === '/game/tiu-xai/bet' && $method === 'POST':
-            (new TiuXaiController())->placeBet();
-            break;
-
-        case $uri === '/game/tiu-xai/history' && $method === 'GET':
-            (new TiuXaiController())->getHistory();
-            break;
-
-        case $uri === '/game/tiu-xai/my-bets' && $method === 'GET':
-            (new TiuXaiController())->getMyBets();
-            break;
-
-        case $uri === '/game/tiu-xai/config' && $method === 'GET':
-            (new TiuXaiController())->getConfig();
-            break;
-
-        case $uri === '/admin/game/tiu-xai/config' && $method === 'GET':
-            (new TiuXaiController())->adminGetConfig();
-            break;
-
-        case $uri === '/admin/game/tiu-xai/config' && $method === 'POST':
-            (new TiuXaiController())->adminUpdateConfig();
-            break;
-
-        case $uri === '/admin/game/tiu-xai/sessions' && $method === 'GET':
-            (new TiuXaiController())->adminGetSessions();
-            break;
-
-        case $uri === '/admin/game/tiu-xai/bets' && $method === 'GET':
-            (new TiuXaiController())->adminGetBets();
             break;
 
         // Link preview

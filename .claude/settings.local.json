@@ -7,14 +7,7 @@
       "Bash(docker compose:*)",
       "Bash(ssh -i 'C:/Users/nguye/.ssh/id_ed25519' -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@203.145.47.2 \"echo OK && whoami\")",
       "Bash(ssh-keygen -y -f 'C:/Users/nguye/.ssh/id_ed25519')",
-      "Bash(curl -s https://raw.githubusercontent.com/asfand-dev/react-facebook-emoji/master/README.md)",
-      "Bash(php -v)",
-      "Bash(curl -s http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"alice@example.com\",\"password\":\"password123\"}')",
-      "Bash(python -m json.tool)",
-      "Bash(curl -s http://localhost:8000/graphql -H 'Content-Type: application/json' -H 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NzU0NTA4MTgsImV4cCI6MTc3NTUzNzIxOH0.I69b7SKk_of-SI05_dCFSWXKc6UEni1YAcZLHASRzGw' -d '{\"query\":\"mutation { createComment\\(postId: 1, content: \\\\\"@bob test reply\\\\\", parent_id: 1\\) { id parent_id content username user_avatar } }\"}')",
-      "Bash(curl -s http://localhost:8000/graphql -H 'Content-Type: application/json' -H 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NzU0NTA4MTgsImV4cCI6MTc3NTUzNzIxOH0.I69b7SKk_of-SI05_dCFSWXKc6UEni1YAcZLHASRzGw' -d '{\"query\":\"query { comments\\(postId: 1\\) { id parent_id content username } }\"}')",
-      "Bash(curl -s http://localhost:8000/graphql -H 'Content-Type: application/json' -H 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJpYXQiOjE3NzU0NTA4MTgsImV4cCI6MTc3NTUzNzIxOH0.I69b7SKk_of-SI05_dCFSWXKc6UEni1YAcZLHASRzGw' -d '{\"query\":\"query { searchUsers\\(query: \\\\\"bob\\\\\", limit: 5\\) { id username avatar } }\"}')",
-      "Bash(curl -s http://localhost:5173/)"
+      "Bash(curl -s https://raw.githubusercontent.com/asfand-dev/react-facebook-emoji/master/README.md)"
     ]
   }
 }

@@ -23,10 +23,10 @@ class CommentRepository
         return $stmt->fetchAll();
     }
 
-    public function create(int $postId, int $userId, string $content, ?string $mediaUrl = null, ?string $mediaType = null, ?int $mediaWidth = null, ?int $mediaHeight = null, ?int $parentId = null): int
+    public function create(int $postId, int $userId, string $content, ?string $mediaUrl = null, ?string $mediaType = null, ?int $mediaWidth = null, ?int $mediaHeight = null): int
     {
-        $stmt = $this->db->prepare('INSERT INTO comments (post_id, user_id, content, media_url, media_type, media_width, media_height, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$postId, $userId, $content, $mediaUrl, $mediaType, $mediaWidth, $mediaHeight, $parentId]);
+        $stmt = $this->db->prepare('INSERT INTO comments (post_id, user_id, content, media_url, media_type, media_width, media_height) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$postId, $userId, $content, $mediaUrl, $mediaType, $mediaWidth, $mediaHeight]);
         return (int) $this->db->lastInsertId();
     }
 

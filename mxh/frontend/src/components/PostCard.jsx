@@ -13,17 +13,6 @@ import ReactionDetailsPopup from './ReactionDetailsPopup';
 import { getPostLikers } from '../services/graphql';
 import { API_ORIGIN } from '../config';
 
-function renderTextWithMentions(text) {
-  if (!text) return null;
-  const parts = text.split(/(@[a-zA-Z0-9._]+)/g);
-  return parts.map((part, i) => {
-    if (/^@[a-zA-Z0-9._]+$/.test(part)) {
-      return <span key={i} className="post-mention">{part}</span>;
-    }
-    return part;
-  });
-}
-
 const DEFAULT_AVATAR = '/default-avatar.png';
 
 const REACTIONS = [
@@ -318,7 +307,7 @@ export default function PostCard({ post, onDelete }) {
               <div className="post-location">📍 {post.location_label || `${post.latitude}, ${post.longitude}`}</div>
             )}
             {content && content !== '📷' && content !== '🎬' && (
-              <p className="post-content">{renderTextWithMentions(content)}</p>
+              <p className="post-content">{content}</p>
             )}
           </>
         )}
