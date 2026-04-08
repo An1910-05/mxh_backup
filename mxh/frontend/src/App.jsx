@@ -18,8 +18,13 @@ import ChatPage from './pages/ChatPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import GamesPage from './pages/GamesPage';
+import TiuXaiAdminPage from './pages/TiuXaiAdminPage';
+import TiuXaiModal from './components/TiuXaiModal';
 import PaymentResultPage from './pages/PaymentResultPage';
 import LeftSidebar from './components/LeftSidebar';
+import RightSidebar from './components/RightSidebar';
+import FloatingChatWindow from './components/chat/FloatingChatWindow';
+import { useChat } from './contexts/ChatContext';
 import useIsMobile from './mobile/hooks/useIsMobile';
 import MobileLayout from './mobile/MobileLayout';
 
@@ -29,6 +34,24 @@ function getInitialTheme() {
   if (typeof window === 'undefined') return 'light';
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
   return stored === 'dark' ? 'dark' : 'light';
+}
+
+function FloatingChats() {
+  const { openChats, closeChat, toggleMinimizeChat } = useChat();
+  return (
+    <>
+      {openChats.map((conv, i) => (
+        <FloatingChatWindow
+          key={conv.id}
+          conversation={conv}
+          index={i}
+          minimized={conv.minimized}
+          onClose={() => closeChat(conv.id)}
+          onMinimize={() => toggleMinimizeChat(conv.id)}
+        />
+      ))}
+    </>
+  );
 }
 
 function AppShell({ children }) {
@@ -65,9 +88,21 @@ function AppShell({ children }) {
       <div className="desktop-layout">
         <LeftSidebar />
         <div className="desktop-content">{children}</div>
+        <RightSidebar />
       </div>
+      <FloatingChats />
     </>
   );
+}
+
+function TiuXaiGlobalModal() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const h = () => setOpen(true);
+    window.addEventListener('open-tiu-xai', h);
+    return () => window.removeEventListener('open-tiu-xai', h);
+  }, []);
+  return <TiuXaiModal open={open} onClose={() => setOpen(false)} />;
 }
 
 export default function App() {
@@ -76,6 +111,7 @@ export default function App() {
       <AuthProvider>
         <ChatProvider>
           <BlobSvgFilter />
+          <TiuXaiGlobalModal />
           <AppShell>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
@@ -88,7 +124,8 @@ export default function App() {
               <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-              <Route path="/games" element={<ProtectedRoute><GamesPage /></ProtectedRoute>} />
+              <Route path="/games" element={<GamesPage />} />
+              <Route path="/admin/tiu-xai" element={<ProtectedRoute><TiuXaiAdminPage /></ProtectedRoute>} />
               <Route path="/payment/result" element={<ProtectedRoute><PaymentResultPage /></ProtectedRoute>} />
               <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />
               <Route path="/:customUrl" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

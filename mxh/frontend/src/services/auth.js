@@ -97,6 +97,54 @@ export async function getTransactions() {
   return result.data;
 }
 
+// ---- Game: Tỉu Xài ----
+
+export async function getTiuXaiSession() {
+  const result = await restFetch('/game/tiu-xai/session');
+  return result.data;
+}
+
+export async function placeTiuXaiBet(side, amount) {
+  const result = await restFetch('/game/tiu-xai/bet', {
+    method: 'POST',
+    body: JSON.stringify({ side, amount }),
+  });
+  return result.data;
+}
+
+export async function getTiuXaiHistory(page = 1) {
+  const result = await restFetch(`/game/tiu-xai/history?page=${page}`);
+  return result.data;
+}
+
+export async function getMyTiuXaiBets(page = 1) {
+  const result = await restFetch(`/game/tiu-xai/my-bets?page=${page}`);
+  return result.data;
+}
+
+export async function getTiuXaiAdminConfig() {
+  const result = await restFetch('/admin/game/tiu-xai/config');
+  return result.data;
+}
+
+export async function updateTiuXaiAdminConfig(data) {
+  const result = await restFetch('/admin/game/tiu-xai/config', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return result.data;
+}
+
+export async function getTiuXaiAdminSessions(page = 1) {
+  const result = await restFetch(`/admin/game/tiu-xai/sessions?page=${page}`);
+  return result.data;
+}
+
+export async function getTiuXaiAdminBets(page = 1) {
+  const result = await restFetch(`/admin/game/tiu-xai/bets?page=${page}`);
+  return result.data;
+}
+
 export async function logout() {
   await restFetch('/auth/logout', { method: 'POST' });
   localStorage.removeItem('token');

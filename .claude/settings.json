@@ -4,13 +4,21 @@
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H 'Content-Type: application/json' -H 'Origin: http://localhost:5006' -d '{\"email\":\"alice@example.com\",\"password\":\"password123\"}' -v)",
       "Read(//c/Users/nguye/.ssh/**)",
       "Bash(ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@203.145.47.2 \"echo 'Connected OK' && uname -a && df -h / && free -h\")",
-      "Bash(sshpass -p 'tuanphong2005@' ssh -o StrictHostKeyChecking=no root@203.145.47.2 \"echo 'Connected OK' && uname -a\")"
+      "Bash(sshpass -p 'tuanphong2005@' ssh -o StrictHostKeyChecking=no root@203.145.47.2 \"echo 'Connected OK' && uname -a\")",
+      "Bash(where php:*)",
+      "Bash(php.exe -v)"
     ]
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "plugin-dev@claude-plugins-official": true
+    "plugin-dev@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "figma@claude-plugins-official": true
   }
 }

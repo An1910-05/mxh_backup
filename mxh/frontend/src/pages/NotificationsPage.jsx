@@ -22,6 +22,7 @@ function formatTime(ts) {
 const TYPE_LABEL = {
   like: 'đã thích bài viết của bạn',
   comment: 'đã bình luận vào bài viết của bạn',
+  reply: 'đã trả lời bình luận của bạn',
   mention_post: 'đã tag bạn trong một bài viết',
   mention_comment: 'đã tag bạn trong bình luận',
   friend_request: 'đã gửi lời mời kết bạn',
@@ -47,6 +48,7 @@ const SF_PATHS = {
 const TYPE_BADGE = {
   like:            { symbol: 'heart.fill',            bg: '#ff3b30' },
   comment:         { symbol: 'bubble.left.fill',       bg: '#007aff' },
+  reply:           { symbol: 'bubble.left.fill',       bg: '#5856d6' },
   mention_post:    { symbol: 'at',                    bg: '#ff9500' },
   mention_comment: { symbol: 'at',                    bg: '#ff9500' },
   friend_request:  { symbol: 'person.badge.plus',     bg: '#34c759' },

@@ -58,11 +58,14 @@ class PaymentController
     }
 
     /**
-     * Verify payment result for frontend
+     * Verify payment result for frontend — also processes payment (IPN may not fire on localhost)
      */
     public function verifyReturn(): void
     {
         try {
+            // Process payment: update DB + balance (idempotent — safe to call multiple times)
+            $this->paymentService->verifyPayment($_GET);
+            // Return frontend-friendly result
             $result = $this->paymentService->getPaymentResult($_GET);
             Response::success($result);
         } catch (\Throwable $e) {

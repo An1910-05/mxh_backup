@@ -55,10 +55,11 @@ class AuthService
 
         $token = JWTHelper::encode(['user_id' => $user['id']]);
 
-        unset($user['password_hash']);
+        // Use findById to get user with avatar from profiles join
+        $fullUser = $this->userRepo->findById($user['id']);
 
         return [
-            'user' => $user,
+            'user' => $fullUser,
             'token' => $token,
         ];
     }
@@ -82,8 +83,8 @@ class AuthService
         $user = $this->userRepo->findByGoogleId($googleId);
         if ($user) {
             $token = JWTHelper::encode(['user_id' => $user['id']]);
-            unset($user['password_hash']);
-            return ['user' => $user, 'token' => $token];
+            $fullUser = $this->userRepo->findById($user['id']);
+            return ['user' => $fullUser, 'token' => $token];
         }
 
         // Check if user with same email exists → link google_id
@@ -91,8 +92,8 @@ class AuthService
         if ($user) {
             $this->userRepo->linkGoogleId($user['id'], $googleId);
             $token = JWTHelper::encode(['user_id' => $user['id']]);
-            unset($user['password_hash']);
-            return ['user' => $user, 'token' => $token];
+            $fullUser = $this->userRepo->findById($user['id']);
+            return ['user' => $fullUser, 'token' => $token];
         }
 
         // New user — require birthday and gender

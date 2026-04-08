@@ -15,6 +15,7 @@ class CommentType extends ObjectType
                 'id' => Type::nonNull(Type::int()),
                 'post_id' => Type::nonNull(Type::int()),
                 'user_id' => Type::nonNull(Type::int()),
+                'parent_id' => Type::int(),
                 'username' => Type::string(),
                 'user_avatar' => Type::string(),
                 'content' => Type::nonNull(Type::string()),

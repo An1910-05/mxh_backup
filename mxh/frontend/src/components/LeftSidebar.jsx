@@ -119,16 +119,34 @@ export default function LeftSidebar() {
       {/* Explore section */}
       <div className="lsb-section-title">Khám phá</div>
 
-      {EXPLORE_ITEMS.map((item) => (
-        <Link
-          key={item.key}
-          to={item.path}
-          className={`lsb-item${item.match(location.pathname) ? ' lsb-item--active' : ''}`}
-        >
-          <span className="lsb-icon">{item.icon}</span>
-          <span className="lsb-label">{item.label}</span>
-        </Link>
-      ))}
+      {EXPLORE_ITEMS.map((item) => {
+        const className = `lsb-item${item.match(location.pathname) ? ' lsb-item--active' : ''}`;
+
+        if (item.onClick) {
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className={className}
+              onClick={item.onClick}
+            >
+              <span className="lsb-icon">{item.icon}</span>
+              <span className="lsb-label">{item.label}</span>
+            </button>
+          );
+        }
+
+        return (
+          <Link
+            key={item.key}
+            to={item.path}
+            className={className}
+          >
+            <span className="lsb-icon">{item.icon}</span>
+            <span className="lsb-label">{item.label}</span>
+          </Link>
+        );
+      })}
 
       <div className="lsb-divider" />
 

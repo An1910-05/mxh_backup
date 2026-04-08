@@ -1,7 +1,7 @@
 import { graphqlFetch } from './api';
 
 const POST_FIELDS = `id user_id username user_avatar content media_url media_type media_width media_height location_label latitude longitude like_count comment_count is_liked created_at`;
-const COMMENT_FIELDS = `id post_id user_id username user_avatar content created_at media_url media_type media_width media_height`;
+const COMMENT_FIELDS = `id post_id user_id parent_id username user_avatar content created_at media_url media_type media_width media_height`;
 
 export async function getFeed(limit = 20, page = 1) {
   const data = await graphqlFetch(`query Feed(`+`$limit: Int, $page: Int) { feed(limit: $limit, page: $page) { ${POST_FIELDS} } }`, { limit, page });
@@ -78,10 +78,10 @@ export async function unlikePost(postId) {
   return data.unlikePost;
 }
 
-export async function createComment(postId, content, media = {}) {
+export async function createComment(postId, content, media = {}, parentId = null) {
   const { mediaUrl=null, mediaType=null, mediaWidth=null, mediaHeight=null } = media;
-  const data = await graphqlFetch(`mutation CreateComment(`+`$postId: Int!, $content: String!, $media_url: String, $media_type: String, $media_width: Int, $media_height: Int) { createComment(postId: $postId, content: $content, media_url: $media_url, media_type: $media_type, media_width: $media_width, media_height: $media_height) { ${COMMENT_FIELDS} } }`, {
-    postId: parseInt(postId), content, media_url: mediaUrl, media_type: mediaType, media_width: mediaWidth, media_height: mediaHeight
+  const data = await graphqlFetch(`mutation CreateComment(`+`$postId: Int!, $content: String!, $media_url: String, $media_type: String, $media_width: Int, $media_height: Int, $parent_id: Int) { createComment(postId: $postId, content: $content, media_url: $media_url, media_type: $media_type, media_width: $media_width, media_height: $media_height, parent_id: $parent_id) { ${COMMENT_FIELDS} } }`, {
+    postId: parseInt(postId), content, media_url: mediaUrl, media_type: mediaType, media_width: mediaWidth, media_height: mediaHeight, parent_id: parentId
   });
   return data.createComment;
 }
