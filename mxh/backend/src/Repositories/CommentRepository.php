@@ -23,10 +23,10 @@ class CommentRepository
         return $stmt->fetchAll();
     }
 
-    public function create(int $postId, int $userId, string $content, ?string $mediaUrl = null, ?string $mediaType = null, ?int $mediaWidth = null, ?int $mediaHeight = null): int
+    public function create(int $postId, int $userId, string $content, ?string $mediaUrl = null, ?string $mediaType = null, ?int $mediaWidth = null, ?int $mediaHeight = null, ?int $parentId = null): int
     {
-        $stmt = $this->db->prepare('INSERT INTO comments (post_id, user_id, content, media_url, media_type, media_width, media_height) VALUES (?, ?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$postId, $userId, $content, $mediaUrl, $mediaType, $mediaWidth, $mediaHeight]);
+        $stmt = $this->db->prepare('INSERT INTO comments (post_id, parent_id, user_id, content, media_url, media_type, media_width, media_height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$postId, $parentId, $userId, $content, $mediaUrl, $mediaType, $mediaWidth, $mediaHeight]);
         return (int) $this->db->lastInsertId();
     }
 
@@ -44,5 +44,12 @@ class CommentRepository
         $stmt = $this->db->prepare('SELECT COUNT(*) FROM comments WHERE post_id = ?');
         $stmt->execute([$postId]);
         return (int) $stmt->fetchColumn();
+    }
+
+    public function delete(int $id): bool
+    {
+        // Also delete replies whose parent_id references this comment
+        $stmt = $this->db->prepare('DELETE FROM comments WHERE id = ? OR parent_id = ?');
+        return $stmt->execute([$id, $id]);
     }
 }

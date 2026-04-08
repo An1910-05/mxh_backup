@@ -187,8 +187,8 @@ export default function NotificationsPage() {
       )}
 
       {!loading && filteredItems.length === 0 && (
-        <div className="notif-lg-empty">
-          <div className="notif-lg-empty-icon">🔔</div>
+        <div className={`notif-lg-empty notif-lg-empty--${activeFilter}`}>
+          <div className="notif-lg-empty-icon" aria-hidden="true" />
           <div className="notif-lg-empty-title">{emptyTitle}</div>
           <div className="notif-lg-empty-sub">{emptySub}</div>
         </div>

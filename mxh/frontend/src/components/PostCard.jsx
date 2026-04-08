@@ -15,6 +15,17 @@ import { API_ORIGIN } from '../config';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
+export function renderTextWithMentions(text) {
+  if (!text) return null;
+  const parts = text.split(/(@[a-zA-Z0-9._]+)/g);
+  return parts.map((part, i) => {
+    if (/^@[a-zA-Z0-9._]+$/.test(part)) {
+      return <span key={i} className="post-mention">{part}</span>;
+    }
+    return part;
+  });
+}
+
 const REACTIONS = [
   { key: 'like',  emoji: '👍', label: 'Thích',     color: '#0866ff', bg: '#548dff' },
   { key: 'love',  emoji: '❤️', label: 'Yêu thích', color: '#f55064', bg: '#f55064' },
@@ -307,7 +318,7 @@ export default function PostCard({ post, onDelete }) {
               <div className="post-location">📍 {post.location_label || `${post.latitude}, ${post.longitude}`}</div>
             )}
             {content && content !== '📷' && content !== '🎬' && (
-              <p className="post-content">{content}</p>
+              <p className="post-content">{renderTextWithMentions(content)}</p>
             )}
           </>
         )}

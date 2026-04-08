@@ -133,11 +133,13 @@ body.post-lightbox-open .apple-nav {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 16px;
-    border-radius: 22px;
+    min-height: 54px;
+    padding: 0 24px;
+    border-radius: 24px;
     font-weight: 600;
-    font-size: 1.05rem;
-    letter-spacing: -0.01em;
+    font-size: 15px;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
     text-decoration: none;
     color: #3a3a3c;
     background: var(--glass);
@@ -146,6 +148,8 @@ body.post-lightbox-open .apple-nav {
     border: 1px solid rgba(255, 255, 255, 0.4);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
     transition: color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 .apple-nav-brand:hover {
     color: #1d1d1f;
@@ -5104,6 +5108,24 @@ button.profile-stat-clickable {
     background: #e4e6eb;
 }
 
+.msg-inline-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.msg-inline-actions--own {
+    align-self: flex-end;
+    max-width: 100%;
+}
+
+.msg-inline-actions--other {
+    max-width: 65%;
+}
+
 .msg-context-menu {
     z-index: 1000;
     background: #fff;
@@ -5175,9 +5197,9 @@ button.profile-stat-clickable {
     gap: 4px;
 }
 
-/* Definite width so .msg-bubble width:fit-content resolves vs long unbroken text */
+/* Keep own bubble zone shrink-wrapped so the overflow menu sits close to the bubble */
 .msg-own-stack .msg-bubble-zone {
-    width: 100%;
+    width: fit-content;
     max-width: 100%;
     display: flex;
     flex-direction: column;
@@ -5187,13 +5209,11 @@ button.profile-stat-clickable {
 /* === Bubble hover zone (wraps bubble + tooltip) === */
 .msg-bubble-zone {
     position: relative;
-    max-width: 65%;
+    max-width: 100%;
+    min-width: 0;
 }
 
-.msg-row--other .msg-bubble-zone {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 65%;
+.msg-inline-actions--other .msg-bubble-zone {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -6044,7 +6064,7 @@ button.profile-stat-clickable {
         display: block;
     }
 
-    .msg-bubble-zone {
+    .msg-inline-actions--other {
         max-width: 85%;
     }
 
@@ -7620,8 +7640,10 @@ body[data-theme='dark'] .popup-comment-send:disabled {
 /* ── Header glass panel ── */
 .notifications-page-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 14px;
     padding: 18px 22px;
     margin-bottom: 14px;
     border-radius: 22px;
@@ -7635,6 +7657,14 @@ body[data-theme='dark'] .popup-comment-send:disabled {
         inset 0 1px 0 rgba(255, 255, 255, 1);
     position: relative;
     overflow: hidden;
+}
+
+.notifications-page-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
 }
 
 /* Iridescent top-edge shimmer */
@@ -7739,6 +7769,71 @@ body[data-theme='dark'] .popup-comment-send:disabled {
 }
 
 .notifications-delete-all:active { transform: scale(0.97); }
+
+.notifications-filter-bar {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.06);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    backdrop-filter: blur(20px) saturate(170%);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        inset 0 -1px 0 rgba(15, 23, 42, 0.04),
+        0 6px 20px rgba(15, 23, 42, 0.05);
+}
+
+.notifications-filter-tab {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: transparent;
+    min-height: 36px;
+    padding: 0 16px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 0.83rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #6b7280;
+    transition:
+        color 0.18s ease,
+        background-color 0.18s ease,
+        box-shadow 0.22s ease,
+        transform 0.14s ease;
+}
+
+.notifications-filter-tab:hover {
+    color: #1f2937;
+    background: rgba(255, 255, 255, 0.34);
+}
+
+.notifications-filter-tab:active {
+    transform: scale(0.98);
+}
+
+.notifications-filter-tab:focus-visible {
+    outline: 2px solid rgba(0, 122, 255, 0.4);
+    outline-offset: 2px;
+}
+
+.notifications-filter-tab--active {
+    color: #111827;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        0 1px 1px rgba(15, 23, 42, 0.04),
+        0 8px 18px rgba(15, 23, 42, 0.08);
+}
 
 /* ── Notification list ── */
 .notif-lg-list {
@@ -7988,9 +8083,45 @@ body[data-theme='dark'] .popup-comment-send:disabled {
 }
 
 .notif-lg-empty-icon {
-    font-size: 2.6rem;
-    margin-bottom: 14px;
+    width: 78px;
+    height: 78px;
+    margin: 0 auto 16px;
+    display: grid;
+    place-items: center;
+    position: relative;
+    border-radius: 24px;
+    color: transparent;
+    font-size: 0;
+    background:
+        radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.95), transparent 42%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(244, 247, 252, 0.68));
+    border: 1px solid rgba(255, 255, 255, 0.92);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.96),
+        inset 0 -1px 0 rgba(15, 23, 42, 0.05),
+        0 14px 26px rgba(15, 23, 42, 0.08);
+}
+
+.notif-lg-empty-icon::before {
+    content: '';
+    width: 34px;
+    height: 34px;
     display: block;
+    background: linear-gradient(180deg, #6f7784 0%, #596170 100%);
+    -webkit-mask-image: url('./assets/sf-symbols/bell.fill.png');
+    mask-image: url('./assets/sf-symbols/bell.fill.png');
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    transform: translateY(2px);
+}
+
+.notif-lg-empty--unread .notif-lg-empty-icon::before {
+    -webkit-mask-image: url('./assets/sf-symbols/bell.slash.fill.png');
+    mask-image: url('./assets/sf-symbols/bell.slash.fill.png');
 }
 
 .notif-lg-empty-title {
@@ -8019,7 +8150,28 @@ body[data-theme='dark'] .popup-comment-send:disabled {
         padding: 14px 16px;
     }
 
+    .notifications-page-top {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
     .notifications-lg-title { font-size: 1.4rem; }
+
+    .notifications-header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .notifications-filter-bar {
+        width: 100%;
+        align-self: stretch;
+    }
+
+    .notifications-filter-tab {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 0 12px;
+    }
 
     .notif-lg-item {
         border-radius: 14px;
@@ -8313,6 +8465,30 @@ body[data-theme='dark'] .notif-lg-empty-sub {
     color: var(--text-secondary);
 }
 
+body[data-theme='dark'] .notif-lg-empty {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.025));
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+        0 10px 28px rgba(0, 0, 0, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+body[data-theme='dark'] .notif-lg-empty-icon {
+    background:
+        radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.10), transparent 40%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+    border-color: rgba(255, 255, 255, 0.10);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+        0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+body[data-theme='dark'] .notif-lg-empty-icon::before {
+    background: linear-gradient(180deg, #f2f5f9 0%, #cdd5df 100%);
+}
+
 body[data-theme='dark'] .apple-card,
 body[data-theme='dark'] .post-card,
 body[data-theme='dark'] .apple-form-card,
@@ -8535,6 +8711,32 @@ body[data-theme='dark'] .notifications-delete-all {
     background: rgba(255, 59, 48, 0.14);
     border-color: rgba(255, 59, 48, 0.26);
     color: #ff978f;
+}
+
+body[data-theme='dark'] .notifications-filter-bar {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+        0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+body[data-theme='dark'] .notifications-filter-tab {
+    color: #b0b3b8;
+}
+
+body[data-theme='dark'] .notifications-filter-tab:hover {
+    color: #f2f4f8;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+body[data-theme='dark'] .notifications-filter-tab--active {
+    color: #f5f7fb;
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 8px 18px rgba(0, 0, 0, 0.24);
 }
 
 body[data-theme='dark'] .notif-lg-delete {
@@ -9542,9 +9744,20 @@ body[data-theme='dark'] .rdp-username { color: #e4e6eb; }
   border-left: 3px solid #1877f2;
 }
 .settings-nav-icon {
-  font-size: 18px;
-  width: 24px;
-  text-align: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-image: var(--settings-nav-icon);
+  mask-image: var(--settings-nav-icon);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  opacity: 0.92;
 }
 .settings-nav-label {
   flex: 1;

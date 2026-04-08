@@ -344,6 +344,28 @@ export default function MessageBubble({ message, isOwn, showAvatar, showTime, is
     </div>
   );
 
+  const moreButtonEl = !msg._local && !isUnsent && (hoverRow || showMenu) ? (
+    <button
+      ref={moreRef}
+      className="msg-more-btn"
+      onClick={handleMoreClick}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="5" cy="12" r="2" />
+        <circle cx="12" cy="12" r="2" />
+        <circle cx="19" cy="12" r="2" />
+      </svg>
+    </button>
+  ) : null;
+
+  const bubbleInlineEl = (
+    <div className={`msg-inline-actions ${isOwn ? 'msg-inline-actions--own' : 'msg-inline-actions--other'}`}>
+      {isOwn && moreButtonEl}
+      {bubbleZoneEl}
+      {!isOwn && moreButtonEl}
+    </div>
+  );
+
   return (
     <>
       {showTime && (
@@ -370,7 +392,7 @@ export default function MessageBubble({ message, isOwn, showAvatar, showTime, is
 
         {isOwn ? (
           <div className="msg-own-stack">
-            {bubbleZoneEl}
+            {bubbleInlineEl}
             {(seenAvatar != null || seenName != null) && (
               <div className="msg-seen-indicator msg-seen--own">
                 <img
@@ -386,19 +408,7 @@ export default function MessageBubble({ message, isOwn, showAvatar, showTime, is
             )}
           </div>
         ) : (
-          bubbleZoneEl
-        )}
-
-        {!msg._local && !isUnsent && (hoverRow || showMenu) && (
-          <button
-            ref={moreRef}
-            className="msg-more-btn"
-            onClick={handleMoreClick}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
-            </svg>
-          </button>
+          bubbleInlineEl
         )}
 
         {showTooltip && !showMenu && tipPos && (

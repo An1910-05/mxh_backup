@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getSettings, changePassword, updateSettingsProfile, createPayment, getBalance, getTransactions } from '../services/auth';
+import generalIcon from '../assets/sf-symbols/person.crop.circle.fill.png';
+import passwordIcon from '../assets/sf-symbols/lock.circle.fill.png';
+import walletIcon from '../assets/sf-symbols/creditcard.fill.png';
 
 const MONTHS = [
   'Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
@@ -190,6 +193,12 @@ export default function SettingsPage() {
     { key: 'wallet', label: 'Ví tiền', icon: '💰' },
   ];
 
+  const sectionIcons = {
+    general: generalIcon,
+    password: passwordIcon,
+    wallet: walletIcon,
+  };
+
   return (
     <div className="settings-page">
       <div className="settings-container">
@@ -204,7 +213,11 @@ export default function SettingsPage() {
                 className={`settings-nav-item${activeSection === s.key ? ' settings-nav-item--active' : ''}`}
                 onClick={() => setActiveSection(s.key)}
               >
-                <span className="settings-nav-icon">{s.icon}</span>
+                <span
+                  className="settings-nav-icon"
+                  style={{ '--settings-nav-icon': `url(${sectionIcons[s.key]})` }}
+                  aria-hidden="true"
+                />
                 <span className="settings-nav-label">{s.label}</span>
               </button>
             ))}

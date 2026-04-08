@@ -3,11 +3,19 @@ import { useAuth } from '../hooks/useAuth';
 import { createPost } from '../services/graphql';
 import { uploadFile } from '../services/api';
 import { API_ORIGIN } from '../config';
+import { useMentionInput } from '../hooks/useMentionInput';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 export default function CreatePostForm({ onPostCreated }) {
   const { user } = useAuth();
   const [content, setContent] = useState('');
+  const {
+    mentionResults,
+    showMention,
+    handleMentionChange: mentionChange,
+    selectMention,
+    closeMention,
+  } = useMentionInput();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [mediaFile, setMediaFile] = useState(null);
@@ -77,6 +85,7 @@ export default function CreatePostForm({ onPostCreated }) {
         locationLabel: locationLabel.trim()||null, latitude: geoLat, longitude: geoLng,
       });
       setContent(''); removeMedia(); setLocationLabel(''); setGeoLat(null); setGeoLng(null); setExpanded(false);
+      closeMention();
       if (onPostCreated) onPostCreated(newPost);
     } catch (err) { setError(err.message); setUploading(false); }
     finally { setLoading(false); }
@@ -84,6 +93,34 @@ export default function CreatePostForm({ onPostCreated }) {
 
   const handleExpand = () => { setExpanded(true); setTimeout(() => textRef.current?.focus(), 50); };
   const displayName = user?.username || 'Bạn';
+
+  const handleContentChange = (e) => {
+    setContent(e.target.value);
+    mentionChange(e);
+  };
+
+  const handleMentionSelect = (username) => {
+    const el = textRef.current;
+    if (!el) return;
+    const current = el.value;
+    const caret = el.selectionStart ?? current.length;
+    const upTo = current.slice(0, caret);
+    const atIdx = upTo.lastIndexOf('@');
+    if (atIdx < 0) return;
+    const before = current.slice(0, atIdx);
+    const after = current.slice(caret);
+    const insert = `@${username} `;
+    const newValue = before + insert + after;
+    setContent(newValue);
+    closeMention();
+    setTimeout(() => {
+      if (textRef.current) {
+        const pos = before.length + insert.length;
+        textRef.current.focus();
+        textRef.current.setSelectionRange(pos, pos);
+      }
+    }, 0);
+  };
 
   return (
     <div className="create-post-fb">
@@ -95,7 +132,32 @@ export default function CreatePostForm({ onPostCreated }) {
           {!expanded ? (
             <button type="button" className="create-post-fb-placeholder" onClick={handleExpand}>{displayName} ơi, bạn đang nghĩ gì thế?</button>
           ) : (
-            <textarea ref={textRef} value={content} onChange={e=>setContent(e.target.value)} placeholder={`${displayName} ơi, bạn đang nghĩ gì thế?`} rows={3} className="create-post-fb-textarea" />
+            <div className="create-post-mention-wrap">
+              <textarea
+                ref={textRef}
+                value={content}
+                onChange={handleContentChange}
+                onBlur={() => setTimeout(closeMention, 150)}
+                placeholder={`${displayName} ơi, bạn đang nghĩ gì thế? (gõ @ để tag bạn bè)`}
+                rows={3}
+                className="create-post-fb-textarea"
+              />
+              {showMention && mentionResults.length > 0 && (
+                <div className="mention-dropdown mention-dropdown--post">
+                  {mentionResults.map((u) => (
+                    <button
+                      type="button"
+                      key={u.id}
+                      className="mention-item"
+                      onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u.username); }}
+                    >
+                      <img src={u.avatar ? `${API_ORIGIN}${u.avatar}` : DEFAULT_AVATAR} alt="" />
+                      <span className="mention-name">{u.username}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
