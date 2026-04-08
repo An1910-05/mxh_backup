@@ -143,7 +143,9 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
         {user && (
           <form className="popup-comment-form" onSubmit={handleSend}>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,video/mp4" style={{display:'none'}} onChange={handleFile} />
-            <button type="button" className="popup-comment-attach" onClick={()=>fileRef.current?.click()} aria-label="Đính kèm ảnh/video">📎</button>
+            <button type="button" className="popup-comment-attach" onClick={()=>fileRef.current?.click()} aria-label="Đính kèm ảnh/video">
+              <span className="popup-comment-attach-icon" aria-hidden="true" />
+            </button>
             <input ref={inputRef} type="text" value={input} onChange={e=>setInput(e.target.value)} placeholder="Viết bình luận..." autoFocus />
             <button type="submit" disabled={!canSend} className="popup-comment-send">{uploading||sending?'...':'➤'}</button>
           </form>
