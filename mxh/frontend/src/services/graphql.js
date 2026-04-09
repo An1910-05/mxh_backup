@@ -3,6 +3,7 @@ import { graphqlFetch } from './api';
 const POST_FIELDS = `id user_id username user_avatar content media_url media_type media_width media_height location_label latitude longitude like_count comment_count is_liked created_at`;
 const COMMENT_FIELDS = `id post_id parent_id user_id username user_avatar content created_at media_url media_type media_width media_height`;
 
+
 export async function getFeed(limit = 20, page = 1) {
   const data = await graphqlFetch(`query Feed(`+`$limit: Int, $page: Int) { feed(limit: $limit, page: $page) { ${POST_FIELDS} } }`, { limit, page });
   return data.feed;
@@ -199,6 +200,30 @@ export async function createStory(mediaUrl, mediaType, mediaWidth=null, mediaHei
 export async function deleteStory(storyId) {
   const data = await graphqlFetch(`mutation DeleteStory(`+`$storyId: Int!) { deleteStory(storyId: $storyId) }`, { storyId: parseInt(storyId) });
   return data.deleteStory;
+}
+
+// === Tài Xỉu (server-round) ===
+
+const CURRENT_ROUND_FIELDS = `id round_code status seconds_left betting_deadline tai_total tai_count xiu_total xiu_count dice total result_key result_label my_bet_side my_bet_amount my_did_win jackpot_payout`;
+const ROUND_FIELDS_TX = `id round_code md5_hash dice total result_key result_label jackpot_side jackpot_payout tai_pool_snapshot xiu_pool_snapshot created_at`;
+const BET_FIELDS_TX   = `id round_id round_code bet_side bet_label bet_amount result_key result_label dice total did_win net_amount balance_after jackpot_hit jackpot_payout created_at`;
+
+export async function getTaiXiuOverview() {
+  const data = await graphqlFetch(`query { taiXiuOverview { balance jackpot_tai_pool jackpot_xiu_pool tai_result_rate xiu_result_rate recent_rounds { ${ROUND_FIELDS_TX} } my_recent_bets { ${BET_FIELDS_TX} } jackpot_history { ${ROUND_FIELDS_TX} } current_round { ${CURRENT_ROUND_FIELDS} } } }`);
+  return data.taiXiuOverview;
+}
+
+export async function getTaiXiuCurrentRound() {
+  const data = await graphqlFetch(`query { taiXiuCurrentRound { ${CURRENT_ROUND_FIELDS} } }`);
+  return data.taiXiuCurrentRound;
+}
+
+export async function taiXiuPlaceBet(side, amount) {
+  const data = await graphqlFetch(
+    `mutation TaiXiuPlaceBet($side: String!, $amount: Int!) { taiXiuPlaceBet(side: $side, amount: $amount) { balance current_round { ${CURRENT_ROUND_FIELDS} } } }`,
+    { side, amount: parseInt(amount) }
+  );
+  return data.taiXiuPlaceBet;
 }
 
 // === Notifications ===

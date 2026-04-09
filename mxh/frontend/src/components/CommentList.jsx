@@ -21,14 +21,24 @@ function renderContentWithMentions(text) {
   });
 }
 
-function InlineReplyForm({ postId, parentId, onReplied, placeholder }) {
-  const [content, setContent] = useState('');
+function InlineReplyForm({ postId, parentId, onReplied, placeholder, autoMention }) {
+  const initValue = autoMention ? `@${autoMention} ` : '';
+  const [content, setContent] = useState(initValue);
   const [sending, setSending] = useState(false);
   const [mentionResults, setMentionResults] = useState([]);
   const [showMention, setShowMention] = useState(false);
   const [mentionStart, setMentionStart] = useState(-1);
   const inputRef = useRef(null);
   const searchTimer = useRef(null);
+
+  useEffect(() => {
+    // Focus and place cursor at end of pre-filled mention
+    if (inputRef.current) {
+      inputRef.current.focus();
+      const len = inputRef.current.value.length;
+      inputRef.current.setSelectionRange(len, len);
+    }
+  }, []);
 
   const handleChange = (e) => {
     const next = e.target.value;
@@ -181,7 +191,7 @@ function CommentItem({ comment, postId, postOwnerId, replyToUsername, onReplied,
           <InlineReplyForm
             postId={postId}
             parentId={comment.id}
-            placeholder={`Trả lời ${comment.username}...`}
+            autoMention={comment.username}
             onReplied={(newComment) => {
               setShowReplyForm(false);
               if (onReplied) onReplied(newComment);

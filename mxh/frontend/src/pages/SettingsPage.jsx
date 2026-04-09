@@ -81,15 +81,17 @@ export default function SettingsPage() {
   // Load balance and transactions when wallet tab is selected
   useEffect(() => {
     if (activeSection !== 'wallet') return;
-    (async () => {
+
+    const loadWalletData = async () => {
       try {
         const balData = await getBalance();
         setBalance(balData.balance || 0);
       } catch (err) {
         console.error('Failed to load balance:', err);
       }
-    })();
-    (async () => {
+    };
+
+    const loadTransactions = async () => {
       setTxnLoading(true);
       try {
         const txnData = await getTransactions();
@@ -99,7 +101,15 @@ export default function SettingsPage() {
       } finally {
         setTxnLoading(false);
       }
-    })();
+    };
+
+    loadWalletData();
+    loadTransactions();
+    window.addEventListener('mxh-wallet-refresh', loadWalletData);
+
+    return () => {
+      window.removeEventListener('mxh-wallet-refresh', loadWalletData);
+    };
   }, [activeSection]);
 
   const handleProfileSave = async (e) => {
@@ -446,8 +456,8 @@ export default function SettingsPage() {
                             <div className="wallet-txn-date">{new Date(txn.created_at).toLocaleString('vi-VN')}</div>
                           </div>
                         </div>
-                        <div className={`wallet-txn-amount wallet-txn-amount--${txn.status}`}>
-                          {txn.status === 'success' ? '+' : ''}{formatVND(txn.amount)}
+                        <div className={`wallet-txn-amount wallet-txn-amount--${txn.status}${txn.amount < 0 ? ' wallet-txn-amount--neg' : ''}`}>
+                          {txn.status === 'success' && txn.amount > 0 ? '+' : ''}{formatVND(txn.amount)}
                         </div>
                       </div>
                     ))}

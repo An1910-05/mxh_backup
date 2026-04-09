@@ -52,7 +52,14 @@ try {
         );
 
         foreach ($statements as $statement) {
-            $pdo->exec($statement);
+            $stmt = $pdo->prepare($statement);
+            $stmt->execute();
+
+            do {
+                $stmt->fetchAll();
+            } while ($stmt->nextRowset());
+
+            $stmt->closeCursor();
         }
 
         $pdo->prepare("INSERT INTO _migrations (filename) VALUES (?)")->execute([$filename]);

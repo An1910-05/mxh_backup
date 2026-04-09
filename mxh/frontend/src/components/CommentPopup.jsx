@@ -21,8 +21,9 @@ function renderContentWithMentions(text) {
   });
 }
 
-function InlineReplyForm({ postId, parentId, placeholder, onReplied, onCancel }) {
-  const [content, setContent] = useState('');
+function InlineReplyForm({ postId, parentId, placeholder, onReplied, onCancel, autoMention }) {
+  const initValue = autoMention ? `@${autoMention} ` : '';
+  const [content, setContent] = useState(initValue);
   const [sending, setSending] = useState(false);
   const [mentionResults, setMentionResults] = useState([]);
   const [showMention, setShowMention] = useState(false);
@@ -31,7 +32,11 @@ function InlineReplyForm({ postId, parentId, placeholder, onReplied, onCancel })
   const searchTimer = useRef(null);
 
   useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 20);
+    if (inputRef.current) {
+      inputRef.current.focus();
+      const len = inputRef.current.value.length;
+      inputRef.current.setSelectionRange(len, len);
+    }
   }, []);
 
   const handleChange = (e) => {
@@ -350,7 +355,7 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
             <InlineReplyForm
               postId={post.id}
               parentId={c.id}
-              placeholder={`Trả lời ${c.username}...`}
+              autoMention={c.username}
               onReplied={handleReplied}
               onCancel={() => setOpenReplyFor(null)}
             />

@@ -80,14 +80,22 @@ export default function LeftSidebar() {
 
   useEffect(() => {
     if (!user) return;
-    (async () => {
+
+    const loadBalance = async () => {
       try {
         const data = await getBalance();
         setBalance(data.balance || 0);
       } catch (err) {
         console.error('Failed to load balance:', err);
       }
-    })();
+    };
+
+    loadBalance();
+    window.addEventListener('mxh-wallet-refresh', loadBalance);
+
+    return () => {
+      window.removeEventListener('mxh-wallet-refresh', loadBalance);
+    };
   }, [user, location.pathname]);
 
   if (!user) return null;

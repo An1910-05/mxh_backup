@@ -11,6 +11,7 @@ use App\Services\FriendshipService;
 use App\Services\StoryService;
 use App\Services\NotificationService;
 use App\Services\LikeService;
+use App\Services\TaiXiuService;
 use App\Repositories\UserRepository;
 
 class QueryType extends ObjectType
@@ -247,6 +248,71 @@ class QueryType extends ObjectType
                     'resolve' => function ($root, $args) {
                         $service = new LikeService();
                         return $service->getPostLikers($args['postId'], $args['limit']);
+                    },
+                ],
+
+                'taiXiuOverview' => [
+                    'type' => TypeRegistry::taiXiuOverview(),
+                    'args' => [
+                        'roundLimit' => ['type' => Type::int(), 'defaultValue' => 18],
+                        'betLimit' => ['type' => Type::int(), 'defaultValue' => 12],
+                        'jackpotLimit' => ['type' => Type::int(), 'defaultValue' => 10],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new TaiXiuService();
+                        return $service->getOverview(
+                            (int) $context['user']['id'],
+                            (int) $args['roundLimit'],
+                            (int) $args['betLimit'],
+                            (int) $args['jackpotLimit']
+                        );
+                    },
+                ],
+
+                'taiXiuBetHistory' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::taiXiuBet()))),
+                    'args' => [
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 20],
+                        'page' => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new TaiXiuService();
+                        return $service->getBetHistory((int) $context['user']['id'], (int) $args['limit'], (int) $args['page']);
+                    },
+                ],
+
+                'taiXiuRoundHistory' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::taiXiuRound()))),
+                    'args' => [
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 20],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new TaiXiuService();
+                        return $service->getRoundHistory((int) $args['limit']);
+                    },
+                ],
+
+                'taiXiuJackpotHistory' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::taiXiuRound()))),
+                    'args' => [
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 20],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new TaiXiuService();
+                        return $service->getJackpotHistory((int) $args['limit']);
+                    },
+                ],
+
+                'taiXiuCurrentRound' => [
+                    'type' => TypeRegistry::taiXiuCurrentRound(),
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new TaiXiuService();
+                        return $service->getCurrentRound((int) $context['user']['id']);
                     },
                 ],
 

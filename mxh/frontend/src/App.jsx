@@ -19,6 +19,7 @@ import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import GamesPage from './pages/GamesPage';
 import PaymentResultPage from './pages/PaymentResultPage';
+import TaiXiuFloatingWidget from './components/TaiXiuFloatingWidget';
 import LeftSidebar from './components/LeftSidebar';
 import useIsMobile from './mobile/hooks/useIsMobile';
 import MobileLayout from './mobile/MobileLayout';
@@ -76,6 +77,7 @@ export default function App() {
       <AuthProvider>
         <ChatProvider>
           <BlobSvgFilter />
+          <TaiXiuFloatingWidget />
           <AppShell>
             <Routes>
               <Route path="/login" element={<LoginPage />} />

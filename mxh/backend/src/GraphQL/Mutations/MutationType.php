@@ -13,6 +13,7 @@ use App\Services\ProfileService;
 use App\Services\FriendshipService;
 use App\Services\StoryService;
 use App\Services\NotificationService;
+use App\Services\TaiXiuService;
 use App\Validators\PostValidator;
 use App\Validators\ProfileValidator;
 
@@ -339,6 +340,23 @@ class MutationType extends ObjectType
                         self::requireAuth($context);
                         $service = new StoryService();
                         return $service->deleteStory($args['storyId'], $context['user']['id']);
+                    },
+                ],
+
+                'taiXiuPlaceBet' => [
+                    'type' => TypeRegistry::taiXiuPlaceBetResult(),
+                    'args' => [
+                        'side'   => Type::nonNull(Type::string()),
+                        'amount' => Type::nonNull(Type::int()),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new TaiXiuService();
+                        return $service->placeBet(
+                            (int) $context['user']['id'],
+                            (string) $args['side'],
+                            (int) $args['amount']
+                        );
                     },
                 ],
 

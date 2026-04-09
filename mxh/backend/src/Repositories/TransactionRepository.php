@@ -47,6 +47,15 @@ class TransactionRepository
         return $stmt->fetchAll();
     }
 
+    public function createCompleted(int $userId, string $txnRef, int $amount, string $description = ''): int
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO transactions (user_id, txn_ref, amount, description, status) VALUES (?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$userId, $txnRef, $amount, $description, 'success']);
+        return (int) $this->db->lastInsertId();
+    }
+
     public function addBalance(int $userId, int $amount): bool
     {
         $stmt = $this->db->prepare('UPDATE users SET balance = balance + ? WHERE id = ?');
@@ -56,6 +65,13 @@ class TransactionRepository
     public function getBalance(int $userId): int
     {
         $stmt = $this->db->prepare('SELECT balance FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function getBalanceForUpdate(int $userId): int
+    {
+        $stmt = $this->db->prepare('SELECT balance FROM users WHERE id = ? FOR UPDATE');
         $stmt->execute([$userId]);
         return (int) $stmt->fetchColumn();
     }

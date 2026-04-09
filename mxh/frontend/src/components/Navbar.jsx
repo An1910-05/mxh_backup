@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useChat } from '../contexts/ChatContext';
 import useNotificationUnread from '../hooks/useNotificationUnread';
 import { API_ORIGIN } from '../config';
+import findFriendsIcon from '../assets/sf-symbols/person.crop.circle.fill.badge.plus.png';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
@@ -137,7 +138,19 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
                   Thông báo
                   {notifUnread > 0 && <span className="nav-badge">{notifUnread > 99 ? '99+' : notifUnread}</span>}
                 </Link>
-                <Link ref={setLinkRef(2)} to="/search" className={linkClass(2)}>Tìm bạn</Link>
+                <Link
+                  ref={setLinkRef(2)}
+                  to="/search"
+                  className={`${linkClass(2)} nav-item--icon`}
+                  aria-label="Tìm bạn"
+                  title="Tìm bạn"
+                >
+                  <span
+                    className="nav-symbol-icon"
+                    style={{ '--nav-symbol-icon': `url(${findFriendsIcon})` }}
+                    aria-hidden="true"
+                  />
+                </Link>
                 <Link ref={setLinkRef(3)} to="/friends" className={linkClass(3)}>Bạn bè</Link>
                 <Link ref={setLinkRef(4)} to="/chat" className={`${linkClass(4)} chat-nav-link`}>
                   Tin nhắn
