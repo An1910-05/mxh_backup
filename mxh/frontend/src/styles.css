@@ -10497,6 +10497,95 @@ body.theme-dark .wallet-txn-status--pending { background: rgba(230,81,0,0.15); }
   letter-spacing: 0.3px;
 }
 
+/* Wallet shortcut */
+.lsb-wallet {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 8px 0;
+  padding: 10px 11px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  color: #0f172a;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.lsb-wallet:hover {
+  transform: translateY(-1px);
+  border-color: #cbdcf8;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #f2f7ff 100%);
+}
+.lsb-wallet--active {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff 0%, #e4f0ff 100%);
+  box-shadow: 0 9px 20px rgba(24, 119, 242, 0.12);
+}
+.lsb-wallet-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  color: #1877f2;
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+}
+.lsb-wallet-info {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+.lsb-wallet-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.lsb-wallet-balance {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #0f172a;
+}
+
+body.theme-dark .lsb-wallet {
+  border-color: #3b4759;
+  background: linear-gradient(180deg, #242933 0%, #1b2028 100%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+  color: #f8fafc;
+}
+body.theme-dark .lsb-wallet:hover {
+  border-color: #45658f;
+  background: linear-gradient(180deg, #262d38 0%, #1c232d 100%);
+}
+body.theme-dark .lsb-wallet--active {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: linear-gradient(180deg, rgba(24, 119, 242, 0.24) 0%, rgba(24, 119, 242, 0.14) 100%);
+  box-shadow: 0 10px 22px rgba(8, 102, 255, 0.16);
+}
+body.theme-dark .lsb-wallet-icon {
+  color: #8ec5ff;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(30, 41, 59, 0.7) 100%);
+}
+body.theme-dark .lsb-wallet-label {
+  color: #94a3b8;
+}
+body.theme-dark .lsb-wallet-balance {
+  color: #f8fafc;
+}
+
 /* =============================================
    GAMES PAGE
    ============================================= */

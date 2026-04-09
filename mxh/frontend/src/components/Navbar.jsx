@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useChat } from '../contexts/ChatContext';
 import useNotificationUnread from '../hooks/useNotificationUnread';
 import { API_ORIGIN } from '../config';
-import findFriendsIcon from '../assets/sf-symbols/person.crop.circle.fill.badge.plus.png';
+import searchIcon from '../assets/sf-symbols/magnifyingglass.png';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
@@ -147,7 +147,7 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
                 >
                   <span
                     className="nav-symbol-icon"
-                    style={{ '--nav-symbol-icon': `url(${findFriendsIcon})` }}
+                    style={{ '--nav-symbol-icon': `url(${searchIcon})` }}
                     aria-hidden="true"
                   />
                 </Link>
