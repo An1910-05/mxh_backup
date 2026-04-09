@@ -30,6 +30,13 @@ class TransactionRepository
         return $stmt->fetch() ?: null;
     }
 
+    public function findByTxnRefForUpdate(string $txnRef): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM transactions WHERE txn_ref = ? FOR UPDATE');
+        $stmt->execute([$txnRef]);
+        return $stmt->fetch() ?: null;
+    }
+
     public function updateStatus(string $txnRef, string $status, ?string $responseCode = null, ?string $transactionNo = null, ?string $bankCode = null): bool
     {
         $stmt = $this->db->prepare(

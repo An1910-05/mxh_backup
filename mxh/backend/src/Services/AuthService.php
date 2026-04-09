@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Repositories\UserRepository;
-use App\Repositories\ProfileRepository;
 use App\Helpers\JWTHelper;
+use App\Repositories\ProfileRepository;
+use App\Repositories\UserRepository;
 
 class AuthService
 {
@@ -78,7 +78,6 @@ class AuthService
             throw new \RuntimeException('Không lấy được email từ Google', 400);
         }
 
-        // Check if user with this google_id already exists
         $user = $this->userRepo->findByGoogleId($googleId);
         if ($user) {
             $token = JWTHelper::encode(['user_id' => $user['id']]);
@@ -86,7 +85,6 @@ class AuthService
             return ['user' => $user, 'token' => $token];
         }
 
-        // Check if user with same email exists → link google_id
         $user = $this->userRepo->findByEmail($email);
         if ($user) {
             $this->userRepo->linkGoogleId($user['id'], $googleId);
@@ -95,16 +93,15 @@ class AuthService
             return ['user' => $user, 'token' => $token];
         }
 
-        // New user — require birthday and gender
         if (!$birthday || !$gender) {
             return ['needs_profile' => true, 'email' => $email];
         }
 
-        // Create new account from Google with profile info
         $username = preg_replace('/[^a-zA-Z0-9_]/', '', $name);
         if (strlen($username) < 3) {
             $username = 'user' . substr(md5($googleId), 0, 8);
         }
+
         $base = $username;
         $i = 1;
         while ($this->userRepo->findByUsername($username)) {
@@ -125,7 +122,6 @@ class AuthService
     {
         $user = $this->userRepo->findByEmail($email);
         if (!$user) {
-            // Don't reveal whether email exists
             return ['message' => 'Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu.'];
         }
 
@@ -135,13 +131,26 @@ class AuthService
         $this->userRepo->setResetToken($user['id'], $token, $expires);
 
         $frontendUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'http://localhost:5173', ',');
-        // Take only the first URL if comma-separated
-        $frontendUrl = explode(',', $frontendUrl)[0];
+        $frontendUrl = rtrim(explode(',', $frontendUrl)[0], '/');
         $resetLink = $frontendUrl . '/reset-password?token=' . $token;
+
+        $mailService = new MailService();
+        if ($mailService->isConfigured()) {
+            $mailService->sendPasswordResetEmail(
+                $user['email'],
+                $user['username'] ?? null,
+                $resetLink
+            );
+
+            return [
+                'message' => 'Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu.',
+            ];
+        }
 
         return [
             'message' => 'Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu.',
             'reset_link' => $resetLink,
+            'delivery' => 'debug',
         ];
     }
 
@@ -165,7 +174,6 @@ class AuthService
             throw new \RuntimeException('Không tìm thấy người dùng', 404);
         }
 
-        // If user has a password (not Google-only), verify current password
         if ($user['password_hash'] !== '' && $user['password_hash'] !== null) {
             if (!$currentPassword) {
                 throw new \RuntimeException('Vui lòng nhập mật khẩu hiện tại', 400);
@@ -197,7 +205,9 @@ class AuthService
     public function getFullUser(int $userId): ?array
     {
         $user = $this->userRepo->findByIdFull($userId);
-        if (!$user) return null;
+        if (!$user) {
+            return null;
+        }
 
         $hasPassword = $user['password_hash'] !== '' && $user['password_hash'] !== null;
         $hasGoogle = !empty($user['google_id']);
@@ -229,7 +239,6 @@ class AuthService
             return null;
         }
 
-        // Verify audience matches our client ID (if configured)
         $clientId = $_ENV['GOOGLE_CLIENT_ID'] ?? null;
         if ($clientId && ($data['aud'] ?? '') !== $clientId) {
             return null;

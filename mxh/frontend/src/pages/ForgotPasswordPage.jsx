@@ -15,6 +15,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError('');
     setSuccess(false);
+    setResetLink('');
 
     try {
       const data = await forgotPassword(email);
@@ -46,11 +47,13 @@ export default function ForgotPasswordPage() {
         {success ? (
           <div className="auth-success-block">
             <div className="apple-alert apple-alert-success auth-alert">
-              Nếu email tồn tại, link đặt lại mật khẩu đã được tạo.
+              {resetLink
+                ? 'SMTP chưa được cấu hình trên local, nên link đặt lại được hiển thị trực tiếp bên dưới.'
+                : 'Nếu email tồn tại, link đặt lại mật khẩu đã được gửi qua email.'}
             </div>
             {resetLink && (
               <div className="auth-reset-link-box">
-                <p className="auth-reset-link-label">Link đặt lại mật khẩu (chế độ dev):</p>
+                <p className="auth-reset-link-label">Link đặt lại mật khẩu (local fallback):</p>
                 <a href={resetLink} className="auth-reset-link">{resetLink}</a>
               </div>
             )}

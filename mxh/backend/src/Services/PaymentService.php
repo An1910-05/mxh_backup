@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Config\Database;
 use App\Repositories\TransactionRepository;
 
 class PaymentService
@@ -31,11 +32,10 @@ class PaymentService
         $txnRef = $userId . '_' . time() . '_' . mt_rand(1000, 9999);
         $description = 'Nap tien iPock - ' . number_format($amount) . ' VND';
 
-        // Save pending transaction
+        // Save pending transaction before redirecting to VNPay.
         $this->txnRepo->create($userId, $txnRef, $amount, $description);
 
         $frontendUrl = rtrim(explode(',', $_ENV['FRONTEND_URL'] ?? 'http://localhost:5173')[0], '/');
-        $backendUrl = rtrim($_ENV['APP_URL'] ?? 'http://localhost:8000', '/');
 
         $tz = new \DateTimeZone('Asia/Ho_Chi_Minh');
         $now = new \DateTime('now', $tz);
@@ -62,7 +62,7 @@ class PaymentService
         $query = '';
         $i = 0;
         foreach ($inputData as $key => $value) {
-            if ($i == 1) {
+            if ($i === 1) {
                 $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
                 $query .= '&' . urlencode($key) . '=' . urlencode($value);
             } else {
@@ -82,101 +82,56 @@ class PaymentService
     }
 
     /**
-     * Verify VNPay return/IPN data
+     * Verify VNPay IPN data
      */
     public function verifyPayment(array $vnpData): array
     {
-        $secureHash = $vnpData['vnp_SecureHash'] ?? '';
-        unset($vnpData['vnp_SecureHash'], $vnpData['vnp_SecureHashType']);
-
-        ksort($vnpData);
-        $hashData = '';
-        $i = 0;
-        foreach ($vnpData as $key => $value) {
-            if (str_starts_with($key, 'vnp_')) {
-                if ($i == 1) {
-                    $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
-                } else {
-                    $hashData .= urlencode($key) . '=' . urlencode($value);
-                    $i = 1;
-                }
-            }
-        }
-
-        $checkHash = hash_hmac('sha512', $hashData, $this->hashSecret);
-
-        if (!hash_equals($checkHash, $secureHash)) {
+        $payment = $this->parsePaymentPayload($vnpData);
+        if ($payment === null) {
             return ['RspCode' => '97', 'Message' => 'Invalid signature'];
         }
 
-        $txnRef = $vnpData['vnp_TxnRef'] ?? '';
-        $vnpAmount = ((int)($vnpData['vnp_Amount'] ?? 0)) / 100;
-        $responseCode = $vnpData['vnp_ResponseCode'] ?? '99';
-        $transactionNo = $vnpData['vnp_TransactionNo'] ?? '';
-        $bankCode = $vnpData['vnp_BankCode'] ?? '';
+        $result = $this->finalizePayment($payment);
 
-        $txn = $this->txnRepo->findByTxnRef($txnRef);
-        if (!$txn) {
-            return ['RspCode' => '01', 'Message' => 'Order not found'];
-        }
-
-        if ((int)$txn['amount'] !== (int)$vnpAmount) {
-            return ['RspCode' => '04', 'Message' => 'Invalid amount'];
-        }
-
-        if ($txn['status'] !== 'pending') {
-            return ['RspCode' => '02', 'Message' => 'Order already confirmed'];
-        }
-
-        if ($responseCode === '00') {
-            $this->txnRepo->updateStatus($txnRef, 'success', $responseCode, $transactionNo, $bankCode);
-            $this->txnRepo->addBalance($txn['user_id'], (int)$txn['amount']);
-        } else {
-            $this->txnRepo->updateStatus($txnRef, 'failed', $responseCode, $transactionNo, $bankCode);
-        }
-
-        return ['RspCode' => '00', 'Message' => 'Confirm Success'];
+        return [
+            'RspCode' => $result['rsp_code'],
+            'Message' => $result['rsp_message'],
+        ];
     }
 
     /**
-     * Get payment result for frontend
+     * Get payment result for frontend.
+     * On local environments this also finalizes pending transactions when the
+     * browser returns from VNPay and IPN has not reached localhost.
      */
     public function getPaymentResult(array $vnpData): array
     {
-        $secureHash = $vnpData['vnp_SecureHash'] ?? '';
-        unset($vnpData['vnp_SecureHash'], $vnpData['vnp_SecureHashType']);
-
-        ksort($vnpData);
-        $hashData = '';
-        $i = 0;
-        foreach ($vnpData as $key => $value) {
-            if (str_starts_with($key, 'vnp_')) {
-                if ($i == 1) {
-                    $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
-                } else {
-                    $hashData .= urlencode($key) . '=' . urlencode($value);
-                    $i = 1;
-                }
-            }
-        }
-
-        $checkHash = hash_hmac('sha512', $hashData, $this->hashSecret);
-
-        if (!hash_equals($checkHash, $secureHash)) {
+        $payment = $this->parsePaymentPayload($vnpData);
+        if ($payment === null) {
             return ['valid' => false, 'message' => 'Chữ ký không hợp lệ'];
         }
 
-        $responseCode = $vnpData['vnp_ResponseCode'] ?? '99';
-        $txnRef = $vnpData['vnp_TxnRef'] ?? '';
-        $amount = ((int)($vnpData['vnp_Amount'] ?? 0)) / 100;
+        $result = $this->finalizePayment($payment);
+        if (!$result['valid']) {
+            return [
+                'valid' => false,
+                'message' => $result['message'],
+                'response_code' => $result['response_code'],
+                'txn_ref' => $result['txn_ref'],
+                'amount' => $result['amount'],
+                'status' => $result['status'],
+            ];
+        }
 
         return [
             'valid' => true,
-            'success' => $responseCode === '00',
-            'response_code' => $responseCode,
-            'txn_ref' => $txnRef,
-            'amount' => $amount,
-            'message' => $responseCode === '00' ? 'Thanh toán thành công' : 'Thanh toán thất bại',
+            'success' => $result['success'],
+            'response_code' => $result['response_code'],
+            'txn_ref' => $result['txn_ref'],
+            'amount' => $result['amount'],
+            'message' => $result['message'],
+            'credited' => $result['credited'],
+            'status' => $result['status'],
         ];
     }
 
@@ -188,5 +143,134 @@ class PaymentService
     public function getTransactions(int $userId, int $limit = 20): array
     {
         return $this->txnRepo->getByUserId($userId, $limit);
+    }
+
+    private function parsePaymentPayload(array $vnpData): ?array
+    {
+        $secureHash = $vnpData['vnp_SecureHash'] ?? '';
+        unset($vnpData['vnp_SecureHash'], $vnpData['vnp_SecureHashType']);
+
+        ksort($vnpData);
+        $hashData = '';
+        $i = 0;
+        foreach ($vnpData as $key => $value) {
+            if (!str_starts_with($key, 'vnp_')) {
+                continue;
+            }
+
+            if ($i === 1) {
+                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
+            } else {
+                $hashData .= urlencode($key) . '=' . urlencode($value);
+                $i = 1;
+            }
+        }
+
+        $checkHash = hash_hmac('sha512', $hashData, $this->hashSecret);
+        if (!$secureHash || !hash_equals($checkHash, $secureHash)) {
+            return null;
+        }
+
+        return [
+            'txn_ref' => (string)($vnpData['vnp_TxnRef'] ?? ''),
+            'amount' => ((int)($vnpData['vnp_Amount'] ?? 0)) / 100,
+            'response_code' => (string)($vnpData['vnp_ResponseCode'] ?? '99'),
+            'transaction_no' => (string)($vnpData['vnp_TransactionNo'] ?? ''),
+            'bank_code' => (string)($vnpData['vnp_BankCode'] ?? ''),
+        ];
+    }
+
+    private function finalizePayment(array $payment): array
+    {
+        $db = Database::getConnection();
+        $db->beginTransaction();
+
+        try {
+            $txn = $this->txnRepo->findByTxnRefForUpdate($payment['txn_ref']);
+            if (!$txn) {
+                $db->rollBack();
+                return [
+                    'valid' => false,
+                    'success' => false,
+                    'rsp_code' => '01',
+                    'rsp_message' => 'Order not found',
+                    'response_code' => $payment['response_code'],
+                    'txn_ref' => $payment['txn_ref'],
+                    'amount' => (int)$payment['amount'],
+                    'message' => 'Không tìm thấy giao dịch.',
+                    'credited' => false,
+                    'status' => 'missing',
+                ];
+            }
+
+            if ((int)$txn['amount'] !== (int)$payment['amount']) {
+                $db->rollBack();
+                return [
+                    'valid' => false,
+                    'success' => false,
+                    'rsp_code' => '04',
+                    'rsp_message' => 'Invalid amount',
+                    'response_code' => $payment['response_code'],
+                    'txn_ref' => (string)$txn['txn_ref'],
+                    'amount' => (int)$txn['amount'],
+                    'message' => 'Số tiền giao dịch không khớp.',
+                    'credited' => false,
+                    'status' => (string)$txn['status'],
+                ];
+            }
+
+            $credited = false;
+            $alreadyProcessed = $txn['status'] !== 'pending';
+
+            if (!$alreadyProcessed) {
+                if ($payment['response_code'] === '00') {
+                    $this->txnRepo->updateStatus(
+                        $payment['txn_ref'],
+                        'success',
+                        $payment['response_code'],
+                        $payment['transaction_no'],
+                        $payment['bank_code']
+                    );
+                    $this->txnRepo->addBalance((int)$txn['user_id'], (int)$txn['amount']);
+                    $txn['status'] = 'success';
+                    $txn['vnp_response_code'] = $payment['response_code'];
+                    $credited = true;
+                } else {
+                    $this->txnRepo->updateStatus(
+                        $payment['txn_ref'],
+                        'failed',
+                        $payment['response_code'],
+                        $payment['transaction_no'],
+                        $payment['bank_code']
+                    );
+                    $txn['status'] = 'failed';
+                    $txn['vnp_response_code'] = $payment['response_code'];
+                }
+            }
+
+            $db->commit();
+
+            $responseCode = (string)($txn['vnp_response_code'] ?? $payment['response_code']);
+            $success = $txn['status'] === 'success';
+
+            return [
+                'valid' => true,
+                'success' => $success,
+                'rsp_code' => $alreadyProcessed ? '02' : '00',
+                'rsp_message' => $alreadyProcessed ? 'Order already confirmed' : 'Confirm Success',
+                'response_code' => $responseCode,
+                'txn_ref' => (string)$txn['txn_ref'],
+                'amount' => (int)$txn['amount'],
+                'message' => $success ? 'Thanh toán thành công.' : 'Thanh toán thất bại.',
+                'credited' => $credited,
+                'status' => (string)$txn['status'],
+            ];
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+
+            throw $e;
+        }
     }
 }

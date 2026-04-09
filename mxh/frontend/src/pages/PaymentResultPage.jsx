@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { verifyPayment } from '../services/auth';
 
@@ -31,6 +31,12 @@ export default function PaymentResultPage() {
     })();
   }, [location.search]);
 
+  useEffect(() => {
+    if (result?.valid && result?.success) {
+      window.dispatchEvent(new CustomEvent('mxh-wallet-refresh'));
+    }
+  }, [result]);
+
   if (loading) {
     return (
       <div className="apple-main fade-in">
@@ -50,13 +56,13 @@ export default function PaymentResultPage() {
           <div className={`payment-result-icon payment-result-icon--${success ? 'success' : 'fail'}`}>
             {success ? (
               <svg viewBox="0 0 52 52" width="52" height="52">
-                <circle cx="26" cy="26" r="25" fill="none" stroke="currentColor" strokeWidth="2"/>
-                <path fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16"/>
+                <circle cx="26" cy="26" r="25" fill="none" stroke="currentColor" strokeWidth="2" />
+                <path fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16" />
               </svg>
             ) : (
               <svg viewBox="0 0 52 52" width="52" height="52">
-                <circle cx="26" cy="26" r="25" fill="none" stroke="currentColor" strokeWidth="2"/>
-                <path fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" d="M18 18l16 16M34 18l-16 16"/>
+                <circle cx="26" cy="26" r="25" fill="none" stroke="currentColor" strokeWidth="2" />
+                <path fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" d="M18 18l16 16M34 18l-16 16" />
               </svg>
             )}
           </div>
