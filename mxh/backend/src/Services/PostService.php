@@ -52,14 +52,14 @@ class PostService
     {
         $offset = ($page - 1) * $limit;
         $posts = $this->postRepo->findAll($limit, $offset);
-        return array_map(fn($p) => $this->enrichPost($p, $currentUserId), $posts);
+        return $this->enrichPosts($posts, $currentUserId);
     }
 
     public function getUserPosts(int $userId, int $limit = 20, int $page = 1, ?int $currentUserId = null): array
     {
         $offset = ($page - 1) * $limit;
         $posts = $this->postRepo->findByUserId($userId, $limit, $offset);
-        return array_map(fn($p) => $this->enrichPost($p, $currentUserId), $posts);
+        return $this->enrichPosts($posts, $currentUserId);
     }
 
     public function getFeed(int $userId, int $limit = 20, int $page = 1): array
@@ -68,7 +68,7 @@ class PostService
         $feedUserIds = array_merge([$userId], $followingIds);
         $offset = ($page - 1) * $limit;
         $posts = $this->postRepo->findByUserIds($feedUserIds, $limit, $offset);
-        return array_map(fn($p) => $this->enrichPost($p, $userId), $posts);
+        return $this->enrichPosts($posts, $userId);
     }
 
     public function editPost(int $postId, int $userId, string $content): array
@@ -88,11 +88,32 @@ class PostService
         return $this->postRepo->delete($postId);
     }
 
+    /**
+     * Batch enrich: 3 queries cho toàn bộ danh sách thay vì 3*N queries.
+     */
+    private function enrichPosts(array $posts, ?int $currentUserId = null): array
+    {
+        if (empty($posts)) return [];
+        $postIds = array_column($posts, 'id');
+
+        $likeCounts    = $this->likeRepo->countByPostIds($postIds);
+        $commentCounts = $this->commentRepo->countByPostIds($postIds);
+        $likedSet      = $currentUserId ? $this->likeRepo->likedPostsByUser($postIds, $currentUserId) : [];
+
+        return array_map(function ($post) use ($likeCounts, $commentCounts, $likedSet, $currentUserId) {
+            $id = $post['id'];
+            $post['like_count']    = $likeCounts[$id]    ?? 0;
+            $post['comment_count'] = $commentCounts[$id] ?? 0;
+            $post['is_liked']      = $currentUserId ? ($likedSet[$id] ?? false) : null;
+            return $post;
+        }, $posts);
+    }
+
     private function enrichPost(array $post, ?int $currentUserId = null): array
     {
-        $post['like_count'] = $this->likeRepo->countByPostId($post['id']);
+        $post['like_count']    = $this->likeRepo->countByPostId($post['id']);
         $post['comment_count'] = $this->commentRepo->countByPostId($post['id']);
-        $post['is_liked'] = $currentUserId ? $this->likeRepo->isLikedByUser($post['id'], $currentUserId) : false;
+        $post['is_liked']      = $currentUserId ? $this->likeRepo->isLikedByUser($post['id'], $currentUserId) : null;
         return $post;
     }
 }

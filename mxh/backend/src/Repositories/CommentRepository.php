@@ -46,6 +46,25 @@ class CommentRepository
         return (int) $stmt->fetchColumn();
     }
 
+    /**
+     * Batch: đếm comment cho nhiều post cùng lúc.
+     * Trả về [post_id => count].
+     */
+    public function countByPostIds(array $postIds): array
+    {
+        if (empty($postIds)) return [];
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT post_id, COUNT(*) AS cnt FROM comments WHERE post_id IN ($placeholders) GROUP BY post_id"
+        );
+        $stmt->execute($postIds);
+        $result = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $result[(int)$row['post_id']] = (int)$row['cnt'];
+        }
+        return $result;
+    }
+
     public function delete(int $id): bool
     {
         // Also delete replies whose parent_id references this comment

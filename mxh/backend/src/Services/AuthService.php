@@ -147,11 +147,17 @@ class AuthService
             ];
         }
 
-        return [
-            'message' => 'Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu.',
-            'reset_link' => $resetLink,
-            'delivery' => 'debug',
-        ];
+        // Chỉ trả reset_link trong môi trường development (không phải production)
+        $isDev = strtolower($_ENV['APP_ENV'] ?? 'development') !== 'production';
+        if ($isDev) {
+            return [
+                'message' => 'Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu.',
+                'reset_link' => $resetLink,
+                'delivery' => 'debug',
+            ];
+        }
+
+        return ['message' => 'Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu.'];
     }
 
     public function resetPassword(string $token, string $newPassword): array
@@ -226,6 +232,11 @@ class AuthService
 
     private function verifyGoogleToken(string $idToken): ?array
     {
+        $clientId = $_ENV['GOOGLE_CLIENT_ID'] ?? null;
+        if (!$clientId) {
+            throw new \RuntimeException('GOOGLE_CLIENT_ID chưa được cấu hình', 500);
+        }
+
         $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($idToken);
         $ctx = stream_context_create(['http' => ['timeout' => 5, 'ignore_errors' => true]]);
         $response = @file_get_contents($url, false, $ctx);
@@ -239,8 +250,18 @@ class AuthService
             return null;
         }
 
-        $clientId = $_ENV['GOOGLE_CLIENT_ID'] ?? null;
-        if ($clientId && ($data['aud'] ?? '') !== $clientId) {
+        // Bắt buộc kiểm tra audience để tránh token từ app khác
+        if (($data['aud'] ?? '') !== $clientId) {
+            return null;
+        }
+
+        // Kiểm tra token chưa hết hạn
+        if (($data['exp'] ?? 0) < time()) {
+            return null;
+        }
+
+        // Yêu cầu email đã được xác minh
+        if (!($data['email_verified'] ?? false)) {
             return null;
         }
 

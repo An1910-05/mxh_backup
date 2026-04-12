@@ -54,8 +54,11 @@ class UploadController
         }
 
         $file = $_FILES['media'];
-        $isImage = in_array($file['type'], self::IMAGE_TYPES);
-        $isVideo = in_array($file['type'], self::VIDEO_TYPES);
+        // Kiểm tra sơ bộ MIME từ client để phân loại trước khi lưu
+        // saveFile sẽ xác minh lại bằng finfo sau khi upload
+        $clientMime = $file['type'] ?? '';
+        $isImage = in_array($clientMime, self::IMAGE_TYPES);
+        $isVideo = in_array($clientMime, self::VIDEO_TYPES);
 
         if (!$isImage && !$isVideo) {
             Response::error('Invalid file type. Allowed: jpeg, png, gif, webp, mp4, webm, mov', 422);
@@ -92,7 +95,10 @@ class UploadController
             Response::error($message, 422);
         }
 
-        if (!in_array($file['type'], $allowedTypes)) {
+        // Kiểm tra MIME type từ nội dung thực của file, không tin tưởng $file['type'] từ client
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $realMime = $finfo->file($file['tmp_name']);
+        if ($realMime === false || !in_array($realMime, $allowedTypes)) {
             Response::error('Invalid file type', 422);
         }
 
@@ -101,7 +107,17 @@ class UploadController
             Response::error("File too large. Max {$maxMB}MB", 422);
         }
 
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        // Lấy extension từ MIME thực, không dùng tên file từ client
+        $mimeToExt = [
+            'image/jpeg'      => 'jpg',
+            'image/png'       => 'png',
+            'image/gif'       => 'gif',
+            'image/webp'      => 'webp',
+            'video/mp4'       => 'mp4',
+            'video/webm'      => 'webm',
+            'video/quicktime' => 'mov',
+        ];
+        $ext = $mimeToExt[$realMime] ?? 'bin';
         $filename = $prefix . '_' . $userId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
 
         $subDir = $prefix === 'video' ? 'videos' : ($prefix === 'post' ? 'posts' : $prefix . 's');
@@ -127,7 +143,7 @@ class UploadController
         $width = null;
         $height = null;
 
-        $isImage = in_array($file['type'], self::IMAGE_TYPES);
+        $isImage = in_array($realMime, self::IMAGE_TYPES);
 
         if ($isImage && function_exists('getimagesize')) {
             $info = @getimagesize($destination);
@@ -149,7 +165,7 @@ class UploadController
             $this->autoRotateAndOptimize($destination, $ext);
         }
 
-        if (in_array($file['type'], self::VIDEO_TYPES)) {
+        if (in_array($realMime, self::VIDEO_TYPES)) {
             $dims = $this->getVideoDimensions($destination);
             if ($dims) {
                 $width = $dims['width'];

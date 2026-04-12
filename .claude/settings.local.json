@@ -9,5 +9,9 @@
       "Bash(ssh-keygen -y -f 'C:/Users/nguye/.ssh/id_ed25519')",
       "Bash(curl -s https://raw.githubusercontent.com/asfand-dev/react-facebook-emoji/master/README.md)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "figma"
+  ],
+  "enableAllProjectMcpServers": true
 }

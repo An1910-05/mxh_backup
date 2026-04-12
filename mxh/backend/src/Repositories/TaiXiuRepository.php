@@ -99,6 +99,7 @@ class TaiXiuRepository
 
     public function resolveRound(int $roundId, array $dice, int $total, string $resultKey, ?string $jackpotSide, int $jackpotPayout, int $taiPool, int $xiuPool, string $md5Hash): bool
     {
+        // WHERE status = 'betting' đảm bảo chỉ resolve 1 lần dù có race condition
         $stmt = $this->db->prepare(
             "UPDATE tai_xiu_rounds SET
                 status = 'finished',
@@ -107,9 +108,9 @@ class TaiXiuRepository
                 jackpot_side = ?, jackpot_payout = ?,
                 tai_pool_snapshot = ?, xiu_pool_snapshot = ?,
                 md5_hash = ?
-             WHERE id = ?"
+             WHERE id = ? AND status = 'betting'"
         );
-        return $stmt->execute([
+        $stmt->execute([
             $dice[0], $dice[1], $dice[2],
             $total, $resultKey,
             $jackpotSide, $jackpotPayout,
@@ -117,6 +118,7 @@ class TaiXiuRepository
             $md5Hash,
             $roundId,
         ]);
+        return $stmt->rowCount() > 0;
     }
 
     // ── Bets (server-round style) ────────────────────────────────────────

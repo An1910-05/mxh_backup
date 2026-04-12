@@ -86,7 +86,13 @@ class TaiXiuService
             $newBalance = $balance - $amount;
             $db->commit();
 
-            $updatedRound = $this->repo->getRoundById((int)$round['id']);
+            // Nếu getRoundById fail sau commit, tiền đã trừ nhưng vẫn trả response hợp lệ
+            try {
+                $updatedRound = $this->repo->getRoundById((int)$round['id']);
+            } catch (\Throwable $e) {
+                error_log('[TaiXiu] getRoundById sau commit thất bại: ' . $e->getMessage());
+                $updatedRound = $round; // fallback về round data đã có
+            }
             return [
                 'balance'       => $newBalance,
                 'current_round' => $this->buildCurrentRoundPayload($updatedRound, $userId),
@@ -143,77 +149,77 @@ class TaiXiuService
 
     private function resolveExpiredRound(\PDO $db): void
     {
-        $expired = $this->repo->getExpiredBettingRound();
-        if (!$expired) return;
+        // Xử lý tất cả phiên expired (có thể có nhiều nếu server bị downtime)
+        while ($expired = $this->repo->getExpiredBettingRound()) {
+            $roundId      = (int)$expired['id'];
+            $pendingBets  = $this->repo->getPendingBetsByRound($roundId);
 
-        $roundId      = (int)$expired['id'];
-        $pendingBets  = $this->repo->getPendingBetsByRound($roundId);
+            $jackpotState = $this->repo->getJackpotState(true);
+            $taiPool  = (int)($jackpotState['tai_pool']  ?? self::BASE_JACKPOT_POOL);
+            $xiuPool  = (int)($jackpotState['xiu_pool']  ?? self::BASE_JACKPOT_POOL);
 
-        $jackpotState = $this->repo->getJackpotState(true);
-        $taiPool  = (int)($jackpotState['tai_pool']  ?? self::BASE_JACKPOT_POOL);
-        $xiuPool  = (int)($jackpotState['xiu_pool']  ?? self::BASE_JACKPOT_POOL);
+            // Cộng vào pool từ tất cả cược
+            foreach ($pendingBets as $bet) {
+                $contribution = max(1000, (int) floor((int)$bet['bet_amount'] * 0.05));
+                if ($bet['bet_side'] === 'tai') $taiPool += $contribution;
+                else $xiuPool += $contribution;
+            }
 
-        // Cộng vào pool từ tất cả cược
-        foreach ($pendingBets as $bet) {
-            $contribution = max(1000, (int) floor((int)$bet['bet_amount'] * 0.05));
-            if ($bet['bet_side'] === 'tai') $taiPool += $contribution;
-            else $xiuPool += $contribution;
-        }
+            $dice      = $this->rollDice();
+            $total     = array_sum($dice);
+            $resultKey = $total >= 11 ? 'tai' : 'xiu';
+            $jackpotSide   = null;
+            $jackpotPayout = 0;
 
-        $dice      = $this->rollDice();
-        $total     = array_sum($dice);
-        $resultKey = $total >= 11 ? 'tai' : 'xiu';
-        $jackpotSide   = null;
-        $jackpotPayout = 0;
+            // Jackpot
+            if ($total === 18) {
+                $jackpotSide   = 'tai';
+                $jackpotPayout = $taiPool;
+                $taiPool       = self::BASE_JACKPOT_POOL;
+            } elseif ($total === 3) {
+                $jackpotSide   = 'xiu';
+                $jackpotPayout = $xiuPool;
+                $xiuPool       = self::BASE_JACKPOT_POOL;
+            }
 
-        // Jackpot
-        if ($total === 18) {
-            $jackpotSide   = 'tai';
-            $jackpotPayout = $taiPool;
-            $taiPool       = self::BASE_JACKPOT_POOL;
-        } elseif ($total === 3) {
-            $jackpotSide   = 'xiu';
-            $jackpotPayout = $xiuPool;
-            $xiuPool       = self::BASE_JACKPOT_POOL;
-        }
+            $md5Hash = md5(implode('|', [(int)$expired['round_code'], ...$dice, microtime(true), bin2hex(random_bytes(4))]));
 
-        $md5Hash = md5(implode('|', [(int)$expired['round_code'], ...$dice, microtime(true), bin2hex(random_bytes(4))]));
+            // Update round — nếu trả false (rowCount=0) tức là request khác đã resolve rồi, bỏ qua
+            $resolved = $this->repo->resolveRound($roundId, $dice, $total, $resultKey, $jackpotSide, $jackpotPayout, $taiPool, $xiuPool, $md5Hash);
+            if (!$resolved) continue;
 
-        // Update round
-        $this->repo->resolveRound($roundId, $dice, $total, $resultKey, $jackpotSide, $jackpotPayout, $taiPool, $xiuPool, $md5Hash);
-        $this->repo->updateJackpotState($taiPool, $xiuPool);
+            $this->repo->updateJackpotState($taiPool, $xiuPool);
 
-        // Resolve each bet
-        foreach ($pendingBets as $bet) {
-            $userId     = (int)$bet['user_id'];
-            $betAmount  = (int)$bet['bet_amount'];
-            $betSide    = $bet['bet_side'];
-            $didWin     = $betSide === $resultKey;
-            $myJackpot  = ($didWin && $jackpotSide === $betSide) ? (int)round($jackpotPayout * ($betAmount / max(1, $this->getTotalBetForSide($pendingBets, $betSide)))) : 0;
+            // Resolve each bet
+            foreach ($pendingBets as $bet) {
+                $userId     = (int)$bet['user_id'];
+                $betAmount  = (int)$bet['bet_amount'];
+                $betSide    = $bet['bet_side'];
+                $didWin     = $betSide === $resultKey;
+                $myJackpot  = ($didWin && $jackpotSide === $betSide) ? (int)round($jackpotPayout * ($betAmount / max(1, $this->getTotalBetForSide($pendingBets, $betSide)))) : 0;
 
-            $netAmount   = $didWin ? $betAmount : 0; // trừ tiền đã trừ khi bet, nên thắng = +amount, thua = 0 thêm
-            $netAmount  += $myJackpot;
-            // Khôi phục vốn nếu thắng
-            $payout      = $didWin ? $betAmount * 2 + $myJackpot : $myJackpot;
+                // Khôi phục vốn nếu thắng: thắng = 2x cược + jackpot, thua = chỉ jackpot (nếu có)
+                $payout      = $didWin ? $betAmount * 2 + $myJackpot : $myJackpot;
 
-            $currentBalance = $this->transactionRepo->getBalanceForUpdate($userId);
-            $balanceAfter   = $currentBalance + $payout;
+                $currentBalance = $this->transactionRepo->getBalanceForUpdate($userId);
+                $balanceAfter   = $currentBalance + $payout;
 
-            $this->transactionRepo->addBalance($userId, $payout);
+                $this->transactionRepo->addBalance($userId, $payout);
 
-            $this->repo->resolveBet(
-                (int)$bet['id'],
-                $resultKey,
-                $didWin,
-                $didWin ? $betAmount + $myJackpot : -$betAmount,
-                $balanceAfter,
-                $myJackpot > 0,
-                $myJackpot
-            );
+                $this->repo->resolveBet(
+                    (int)$bet['id'],
+                    $resultKey,
+                    $didWin,
+                    $didWin ? $betAmount + $myJackpot : -$betAmount,
+                    $balanceAfter,
+                    $myJackpot > 0,
+                    $myJackpot
+                );
 
-            $txnRef = 'TAIXIU-' . $expired['round_code'] . '-' . $userId . '-' . $bet['id'];
-            $desc   = $this->buildTxnDesc((int)$expired['round_code'], $betSide, $resultKey, $didWin ? $betAmount : -$betAmount, $myJackpot);
-            $this->transactionRepo->createCompleted($userId, $txnRef, $payout - $betAmount, $desc);
+                $txnRef = 'TAIXIU-' . $expired['round_code'] . '-' . $userId . '-' . $bet['id'];
+                $desc   = $this->buildTxnDesc((int)$expired['round_code'], $betSide, $resultKey, $didWin ? $betAmount : -$betAmount, $myJackpot);
+                $this->transactionRepo->createCompleted($userId, $txnRef, $payout - $betAmount, $desc);
+            }
         }
     }
 

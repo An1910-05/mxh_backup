@@ -44,7 +44,7 @@ class UserRepository
 
     public function findByCustomUrl(string $url): ?array
     {
-        $stmt = $this->db->prepare('SELECT id, username, email, custom_url, created_at, updated_at FROM users WHERE custom_url = ?');
+        $stmt = $this->db->prepare('SELECT u.id, u.username, u.email, u.custom_url, u.created_at, u.updated_at, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.custom_url = ?');
         $stmt->execute([$url]);
         return $stmt->fetch() ?: null;
     }

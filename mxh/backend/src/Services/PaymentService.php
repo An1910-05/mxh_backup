@@ -15,8 +15,11 @@ class PaymentService
     public function __construct()
     {
         $this->txnRepo = new TransactionRepository();
-        $this->tmnCode = $_ENV['VNP_TMN_CODE'] ?? '5UQ9JN3J';
-        $this->hashSecret = $_ENV['VNP_HASH_SECRET'] ?? '4ADPX1KAMS0N2GKFA834HHVT0A6DELTO';
+        if (empty($_ENV['VNP_TMN_CODE']) || empty($_ENV['VNP_HASH_SECRET'])) {
+            throw new \RuntimeException('VNPay credentials (VNP_TMN_CODE, VNP_HASH_SECRET) chưa được cấu hình trong .env');
+        }
+        $this->tmnCode = $_ENV['VNP_TMN_CODE'];
+        $this->hashSecret = $_ENV['VNP_HASH_SECRET'];
         $this->vnpUrl = $_ENV['VNP_URL'] ?? 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
     }
 

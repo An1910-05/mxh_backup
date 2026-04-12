@@ -56,6 +56,44 @@ class LikeRepository
     }
 
     /**
+     * Batch: đếm like cho nhiều post cùng lúc.
+     * Trả về [post_id => count].
+     */
+    public function countByPostIds(array $postIds): array
+    {
+        if (empty($postIds)) return [];
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT post_id, COUNT(*) AS cnt FROM likes WHERE post_id IN ($placeholders) GROUP BY post_id"
+        );
+        $stmt->execute($postIds);
+        $result = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $result[(int)$row['post_id']] = (int)$row['cnt'];
+        }
+        return $result;
+    }
+
+    /**
+     * Batch: kiểm tra user đã like những post nào trong danh sách.
+     * Trả về [post_id => true] (chỉ chứa post đã like).
+     */
+    public function likedPostsByUser(array $postIds, int $userId): array
+    {
+        if (empty($postIds)) return [];
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT post_id FROM likes WHERE user_id = ? AND post_id IN ($placeholders)"
+        );
+        $stmt->execute(array_merge([$userId], $postIds));
+        $result = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $result[(int)$row['post_id']] = true;
+        }
+        return $result;
+    }
+
+    /**
      * Get users who reacted to a post, ordered by most recent first.
      * Returns array of [id, username, user_avatar, reaction_type].
      */

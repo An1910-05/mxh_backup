@@ -218,6 +218,30 @@ export async function getTaiXiuCurrentRound() {
   return data.taiXiuCurrentRound;
 }
 
+export async function getTaiXiuBetHistory(limit = 20, page = 1) {
+  const data = await graphqlFetch(
+    `query TaiXiuBetHistory($limit: Int, $page: Int) { taiXiuBetHistory(limit: $limit, page: $page) { ${BET_FIELDS_TX} } }`,
+    { limit: parseInt(limit), page: parseInt(page) }
+  );
+  return data.taiXiuBetHistory;
+}
+
+export async function getTaiXiuRoundHistory(limit = 20) {
+  const data = await graphqlFetch(
+    `query TaiXiuRoundHistory($limit: Int) { taiXiuRoundHistory(limit: $limit) { ${ROUND_FIELDS_TX} } }`,
+    { limit: parseInt(limit) }
+  );
+  return data.taiXiuRoundHistory;
+}
+
+export async function getTaiXiuJackpotHistory(limit = 20) {
+  const data = await graphqlFetch(
+    `query TaiXiuJackpotHistory($limit: Int) { taiXiuJackpotHistory(limit: $limit) { ${ROUND_FIELDS_TX} } }`,
+    { limit: parseInt(limit) }
+  );
+  return data.taiXiuJackpotHistory;
+}
+
 export async function taiXiuPlaceBet(side, amount) {
   const data = await graphqlFetch(
     `mutation TaiXiuPlaceBet($side: String!, $amount: Int!) { taiXiuPlaceBet(side: $side, amount: $amount) { balance current_round { ${CURRENT_ROUND_FIELDS} } } }`,
