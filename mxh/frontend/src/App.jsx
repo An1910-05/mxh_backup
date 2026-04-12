@@ -21,6 +21,8 @@ import GamesPage from './pages/GamesPage';
 import PaymentResultPage from './pages/PaymentResultPage';
 import TaiXiuFloatingWidget from './components/TaiXiuFloatingWidget';
 import LeftSidebar from './components/LeftSidebar';
+import FloatingChatManager from './components/FloatingChatWindow';
+import RightSidebar from './components/RightSidebar';
 import useIsMobile from './mobile/hooks/useIsMobile';
 import MobileLayout from './mobile/MobileLayout';
 
@@ -66,6 +68,7 @@ function AppShell({ children }) {
       <div className="desktop-layout">
         <LeftSidebar />
         <div className="desktop-content">{children}</div>
+        <RightSidebar />
       </div>
     </>
   );
@@ -78,6 +81,7 @@ export default function App() {
         <ChatProvider>
           <BlobSvgFilter />
           <TaiXiuFloatingWidget />
+          <FloatingChatManager />
           <AppShell>
             <Routes>
               <Route path="/login" element={<LoginPage />} />

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Repositories\FollowRepository;
 use App\Repositories\FriendshipRepository;
 use App\Repositories\NotificationRepository;
 use App\Repositories\UserRepository;
@@ -9,11 +10,13 @@ use App\Repositories\UserRepository;
 class FriendshipService
 {
     private FriendshipRepository $friendRepo;
+    private FollowRepository $followRepo;
     private UserRepository $userRepo;
 
     public function __construct()
     {
         $this->friendRepo = new FriendshipRepository();
+        $this->followRepo = new FollowRepository();
         $this->userRepo = new UserRepository();
     }
 
@@ -38,6 +41,7 @@ class FriendshipService
                     throw new \RuntimeException('Friend request already sent', 409);
                 }
                 // The other person already sent us a request - auto accept
+                $this->followSenderIfNeeded($senderId, $receiverId);
                 $this->friendRepo->acceptRequest($existing['id']);
                 (new NotificationRepository())->insert($receiverId, 'friend_accept', $senderId, null, null);
                 return ['status' => 'accepted', 'message' => 'Friend request accepted (they already sent you one)', 'friendship_id' => (int)$existing['id']];
@@ -47,6 +51,7 @@ class FriendshipService
             }
         }
 
+        $this->followSenderIfNeeded($senderId, $receiverId);
         $id = $this->friendRepo->sendRequest($senderId, $receiverId);
         (new NotificationRepository())->insert($receiverId, 'friend_request', $senderId, null, null);
         return ['status' => 'pending', 'message' => 'Friend request sent', 'friendship_id' => $id];
@@ -160,5 +165,12 @@ class FriendshipService
     public function countFriends(int $userId): int
     {
         return $this->friendRepo->countFriends($userId);
+    }
+
+    private function followSenderIfNeeded(int $senderId, int $receiverId): void
+    {
+        if (!$this->followRepo->isFollowing($senderId, $receiverId)) {
+            $this->followRepo->create($senderId, $receiverId);
+        }
     }
 }

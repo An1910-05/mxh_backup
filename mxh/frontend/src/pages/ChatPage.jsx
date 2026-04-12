@@ -85,7 +85,7 @@ export default function ChatPage() {
             />
           ) : (
             <div className="chat-empty">
-              <div className="chat-empty-icon">💬</div>
+              <div className="chat-empty-icon" aria-hidden="true" />
               <p>Chọn cuộc trò chuyện để bắt đầu</p>
             </div>
           )}

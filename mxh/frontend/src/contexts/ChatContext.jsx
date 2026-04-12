@@ -6,7 +6,8 @@ import { getConversations } from '../services/chat';
 const ChatContext = createContext(null);
 
 export function ChatProvider({ children }) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
+  const token = localStorage.getItem('token');
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
@@ -84,6 +85,31 @@ export function ChatProvider({ children }) {
       on('updateReadHistory', (data) => {
         // Could update UI to show read receipts
       }),
+
+      // Sender's own message — server only sends 'ack' (not updateNewMessage) to the sender
+      on('ack', (msg) => {
+        if (!msg || !msg.conversation_id) return;
+        setConversations(prev => {
+          const updated = prev.map(c => {
+            if (c.id == msg.conversation_id) {
+              return {
+                ...c,
+                last_message: msg.content,
+                last_message_type: msg.content_type,
+                last_message_sender_id: msg.sender_id,
+                last_message_at: msg.created_at,
+              };
+            }
+            return c;
+          });
+          updated.sort((a, b) => {
+            const ta = a.last_message_at || a.updated_at || '';
+            const tb = b.last_message_at || b.updated_at || '';
+            return tb.localeCompare(ta);
+          });
+          return updated;
+        });
+      }),
     ];
 
     return () => unsubs.forEach(u => u());
@@ -108,6 +134,27 @@ export function ChatProvider({ children }) {
 
   const totalUnread = conversations.reduce((sum, c) => sum + (parseInt(c.unread_count) || 0), 0);
 
+  // Floating chat windows (Facebook-style popups)
+  const [openChats, setOpenChats] = useState([]);
+
+  const openChat = useCallback((conv) => {
+    setOpenChats(prev => {
+      if (prev.some(c => c.id === conv.id)) {
+        // Already open — un-minimize it
+        return prev.map(c => c.id === conv.id ? { ...c, minimized: false } : c);
+      }
+      return [...prev, { ...conv, minimized: false }];
+    });
+  }, []);
+
+  const closeChat = useCallback((convId) => {
+    setOpenChats(prev => prev.filter(c => c.id !== convId));
+  }, []);
+
+  const minimizeChat = useCallback((convId) => {
+    setOpenChats(prev => prev.map(c => c.id === convId ? { ...c, minimized: !c.minimized } : c));
+  }, []);
+
   return (
     <ChatContext.Provider value={{
       conversations,
@@ -120,6 +167,10 @@ export function ChatProvider({ children }) {
       loadConversations,
       markConversationRead,
       totalUnread,
+      openChats,
+      openChat,
+      closeChat,
+      minimizeChat,
     }}>
       {children}
     </ChatContext.Provider>

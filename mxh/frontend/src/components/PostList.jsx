@@ -4,9 +4,9 @@ export default function PostList({ posts, onDelete }) {
   if (!posts || posts.length === 0) {
     return (
       <div className="apple-empty">
-        <div className="apple-empty-icon">📝</div>
-        <div className="apple-empty-text">No posts yet</div>
-        <div className="apple-empty-sub">Be the first to share something!</div>
+        <div className="apple-empty-icon apple-empty-icon--posts" aria-hidden="true" />
+        <div className="apple-empty-text">Chưa có bài viết nào</div>
+        <div className="apple-empty-sub">Hãy là người đầu tiên chia sẻ điều gì đó!</div>
       </div>
     );
   }

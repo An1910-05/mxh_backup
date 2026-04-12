@@ -3,6 +3,8 @@ title MXH - iPock Social Network
 chcp 65001 >nul
 cd /d "%~dp0"
 
+:menu
+cls
 echo.
 echo ============================================
 echo   MXH - iPock Social Network
@@ -31,9 +33,9 @@ if "%choice%"=="2" goto start_build
 if "%choice%"=="3" goto stop_all
 if "%choice%"=="4" goto show_logs
 
-echo Lua chon khong hop le. Thoat.
-pause
-exit /b 1
+echo Lua chon khong hop le. Vui long thu lai.
+timeout /t 2 /nobreak >nul
+goto menu
 
 :start_quick
 echo.
@@ -53,13 +55,16 @@ echo Dang dung tat ca container...
 docker compose --profile local-db down
 echo Da dung xong.
 pause
-exit /b 0
+goto menu
 
 :show_logs
 echo.
 echo Hien thi log (Ctrl+C de thoat)...
-docker compose logs -f
-exit /b 0
+docker compose --profile local-db logs -f
+echo.
+echo Da thoat xem log. Quay lai menu...
+timeout /t 2 /nobreak >nul
+goto menu
 
 :done
 echo.
@@ -76,3 +81,4 @@ echo   WebSocket: ws://localhost:8080
 echo ============================================
 echo.
 pause
+goto menu
