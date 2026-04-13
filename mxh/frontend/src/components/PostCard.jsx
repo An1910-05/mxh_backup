@@ -61,6 +61,7 @@ export default function PostCard({ post, onDelete }) {
   const [liked, setLiked] = useState(post.is_liked);
   const [likeCount, setLikeCount] = useState(post.like_count || 0);
   const [reaction, setReaction] = useState(post.is_liked ? REACTIONS[0] : null);
+  const [topReactions, setTopReactions] = useState(post.top_reactions || []);
   const [showPicker, setShowPicker] = useState(false);
   const pickerTimerRef = useRef(null);
   const pickerRef = useRef(null);
@@ -165,6 +166,16 @@ export default function PostCard({ post, onDelete }) {
     setShowLikersPopup(true);
   }, [loadLikers]);
 
+  // Cập nhật topReactions optimistically khi user thêm/xóa reaction
+  const updateTopReactions = useCallback((addType, removeType) => {
+    setTopReactions((prev) => {
+      let next = [...prev];
+      if (removeType) next = next.filter((t) => t !== removeType);
+      if (addType && !next.includes(addType)) next = [addType, ...next].slice(0, 2);
+      return next;
+    });
+  }, []);
+
   const handleReact = useCallback(async (r) => {
     setShowPicker(false);
     try {
@@ -174,18 +185,20 @@ export default function PostCard({ post, onDelete }) {
         setLiked(false);
         setReaction(null);
         setLikeCount((c) => c - 1);
+        updateTopReactions(null, r.key);
       } else {
         // new like or reaction change — always call likePost (upsert)
         await likePost(post.id, r.key);
         if (!liked) setLikeCount((c) => c + 1);
         setLiked(true);
         setReaction(r);
+        updateTopReactions(r.key, reaction?.key);
       }
       setLikers(null); // invalidate cache
     } catch (err) {
       console.error('Like error:', err.message);
     }
-  }, [liked, reaction, post.id]);
+  }, [liked, reaction, post.id, updateTopReactions]);
 
   const handleLike = useCallback(async () => {
     setShowPicker(false);
@@ -195,11 +208,13 @@ export default function PostCard({ post, onDelete }) {
         setLiked(false);
         setReaction(null);
         setLikeCount((c) => c - 1);
+        updateTopReactions(null, reaction?.key || 'like');
       } else {
         await likePost(post.id, 'like');
         setLiked(true);
         setReaction(REACTIONS[0]);
         setLikeCount((c) => c + 1);
+        updateTopReactions('like', null);
       }
       setLikers(null); // invalidate cache
     } catch (err) {
@@ -418,19 +433,32 @@ export default function PostCard({ post, onDelete }) {
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLikersSummaryClick(); }}
                 aria-label="Xem ai đã bày tỏ cảm xúc"
               >
-                <span className="post-fb-like-icon">
-                  {liked && reaction && reaction.key !== 'like' ? (
-                    <span className="post-fb-summary-emoji">
-                      <FacebookEmoji type={reaction.key} size="xxs" />
-                    </span>
-                  ) : (
+                <span className="post-fb-like-icons">
+                  {topReactions.map((type, i) =>
+                    type === 'like' ? (
+                      <svg key={type} viewBox="0 0 16 16" width="18" height="18" fill="none" className={`post-fb-like-icon-item${i > 0 ? ' post-fb-like-icon-item--overlap' : ''}`}>
+                        <defs>
+                          <linearGradient id={`likeGrad${i}`} x1="2.4" y1="2.4" x2="13.6" y2="13.6" gradientUnits="userSpaceOnUse">
+                            <stop stopColor="#02ADFC" /><stop offset=".5" stopColor="#0866FF" /><stop offset="1" stopColor="#2B7EFF" />
+                          </linearGradient>
+                        </defs>
+                        <circle cx="8" cy="8" r="8" fill={`url(#likeGrad${i})`} />
+                        <path d="M7.3 3.87a.7.7 0 01.7-.7c.67 0 1.22.55 1.22 1.22v1.75a.1.1 0 00.1.1h1.8c.99 0 1.72.93 1.49 1.89l-.46 1.9a2.3 2.3 0 01-2.24 1.77H6.92a.58.58 0 01-.58-.58V7.74c0-.42.1-.83.28-1.2l.29-.57a3.69 3.69 0 00.39-1.65v-.45zM4.37 7a.77.77 0 00-.77.77v3.26c0 .42.34.77.77.77h.77a.38.38 0 00.38-.38V7.38A.38.38 0 005.13 7h-.77z" fill="#fff" />
+                      </svg>
+                    ) : (
+                      <span key={type} className={`post-fb-like-icon-item post-fb-summary-emoji${i > 0 ? ' post-fb-like-icon-item--overlap' : ''}`}>
+                        <FacebookEmoji type={type} size="xxs" />
+                      </span>
+                    )
+                  )}
+                  {topReactions.length === 0 && (
                     <svg viewBox="0 0 16 16" width="18" height="18" fill="none">
                       <defs>
-                        <linearGradient id="likeGrad" x1="2.4" y1="2.4" x2="13.6" y2="13.6" gradientUnits="userSpaceOnUse">
+                        <linearGradient id="likeGrad0" x1="2.4" y1="2.4" x2="13.6" y2="13.6" gradientUnits="userSpaceOnUse">
                           <stop stopColor="#02ADFC" /><stop offset=".5" stopColor="#0866FF" /><stop offset="1" stopColor="#2B7EFF" />
                         </linearGradient>
                       </defs>
-                      <circle cx="8" cy="8" r="8" fill="url(#likeGrad)" />
+                      <circle cx="8" cy="8" r="8" fill="url(#likeGrad0)" />
                       <path d="M7.3 3.87a.7.7 0 01.7-.7c.67 0 1.22.55 1.22 1.22v1.75a.1.1 0 00.1.1h1.8c.99 0 1.72.93 1.49 1.89l-.46 1.9a2.3 2.3 0 01-2.24 1.77H6.92a.58.58 0 01-.58-.58V7.74c0-.42.1-.83.28-1.2l.29-.57a3.69 3.69 0 00.39-1.65v-.45zM4.37 7a.77.77 0 00-.77.77v3.26c0 .42.34.77.77.77h.77a.38.38 0 00.38-.38V7.38A.38.38 0 005.13 7h-.77z" fill="#fff" />
                     </svg>
                   )}
@@ -489,8 +517,8 @@ export default function PostCard({ post, onDelete }) {
                   <FacebookEmoji type={reaction.key} size="xs" />
                 </span>
               ) : (
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7 22V11m-5 2v7a2 2 0 002 2h12.4a2 2 0 001.94-1.52l1.72-7A2 2 0 0018.12 10H14V5a3 3 0 00-3-3l-4 9" />
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M7.493 18.75c-.425 0-.82-.236-.975-.632A7.48 7.48 0 016 15.375c0-1.75.599-3.358 1.602-4.634.151-.192.373-.309.6-.397.473-.183.89-.514 1.212-.924a9.042 9.042 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H14.23c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23h-.777zM2.331 10.977a11.969 11.969 0 00-.831 4.398 12 12 0 00.52 3.507c.26.85 1.084 1.368 1.973 1.368H4.9c.445 0 .72-.498.523-.898a8.963 8.963 0 01-.924-3.977c0-1.708.476-3.305 1.302-4.666.245-.403-.028-.959-.5-.959H4.25c-.832 0-1.612.453-1.918 1.227z"/>
                 </svg>
               )}
               <span>{liked && reaction ? reaction.label : 'Thích'}</span>

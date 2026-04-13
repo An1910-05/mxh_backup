@@ -94,6 +94,33 @@ class LikeRepository
     }
 
     /**
+     * Batch: top 2 reaction types per post.
+     * Returns [post_id => ['like', 'love', ...]].
+     */
+    public function topReactionsByPostIds(array $postIds, int $top = 2): array
+    {
+        if (empty($postIds)) return [];
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT post_id, reaction_type, COUNT(*) AS cnt
+             FROM likes
+             WHERE post_id IN ($placeholders)
+             GROUP BY post_id, reaction_type
+             ORDER BY post_id ASC, cnt DESC"
+        );
+        $stmt->execute($postIds);
+        $result = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $pid = (int)$row['post_id'];
+            if (!isset($result[$pid])) $result[$pid] = [];
+            if (count($result[$pid]) < $top) {
+                $result[$pid][] = $row['reaction_type'];
+            }
+        }
+        return $result;
+    }
+
+    /**
      * Get users who reacted to a post, ordered by most recent first.
      * Returns array of [id, username, user_avatar, reaction_type].
      */

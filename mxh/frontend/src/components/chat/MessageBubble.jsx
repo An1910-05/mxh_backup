@@ -131,6 +131,21 @@ function formatFullTime(dateStr) {
   });
 }
 
+function formatSentTime(dateStr) {
+  if (!dateStr) return '';
+  const str = String(dateStr).includes('T') || String(dateStr).includes('Z') ? dateStr : dateStr + 'Z';
+  const d = new Date(str);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffDays = Math.floor(diffMs / 86400000);
+  const hhmm = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+  const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  if (diffDays === 0) return `Đã gửi lúc ${hhmm}`;
+  if (diffDays === 1) return `Đã gửi hôm qua lúc ${hhmm}`;
+  if (diffDays < 7) return `Đã gửi ${days[d.getDay()]} lúc ${hhmm}`;
+  return `Đã gửi ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })} lúc ${hhmm}`;
+}
+
 function formatChatDivider(dateStr) {
   if (!dateStr) return '';
   const str = String(dateStr).includes('T') || String(dateStr).includes('Z') ? dateStr : dateStr + 'Z';
@@ -138,14 +153,13 @@ function formatChatDivider(dateStr) {
   const now = new Date();
   const diffMs = now - d;
   const diffDays = Math.floor(diffMs / 86400000);
+  const hhmm = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+  const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
-  if (diffDays === 0) return 'Hôm nay';
-  if (diffDays === 1) return 'Hôm qua';
-  if (diffDays < 7) {
-    const days = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
-    return days[d.getDay()];
-  }
-  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' });
+  if (diffDays === 0) return `Hôm nay lúc ${hhmm}`;
+  if (diffDays === 1) return `Hôm qua lúc ${hhmm}`;
+  if (diffDays < 7) return `${weekdays[d.getDay()]} lúc ${hhmm}`;
+  return `${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })} lúc ${hhmm}`;
 }
 
 function PostLinkPreview({ postId }) {
@@ -212,7 +226,7 @@ function PostLinkPreview({ postId }) {
   );
 }
 
-export default function MessageBubble({ message, isOwn, showAvatar, showTime, isFirst, isLast, seenAvatar, seenName, seenAt, isNew, onUnsend, onHide }) {
+export default function MessageBubble({ message, isOwn, showAvatar, showTime, isFirst, isLast, seenAvatar, seenName, seenAt, showSentTime, isNew, onUnsend, onHide }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [hoverRow, setHoverRow] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -222,6 +236,14 @@ export default function MessageBubble({ message, isOwn, showAvatar, showTime, is
   const isUnsent = msg.is_unsent === true || msg.is_unsent === 1 || msg.is_unsent === '1';
   const hasMedia = !isUnsent && msg.media_url && (msg.content_type === 'image' || msg.content_type === 'video');
   const hasText = !isUnsent && !!msg.content;
+  // Detect emoji-only message (no background bubble, large display)
+  const isEmojiOnly = !isUnsent && hasText && !hasMedia && (() => {
+    const t = msg.content.trim();
+    if (!t || t.length > 12) return false;
+    // Remove all emoji + ZWJ sequences + variation selectors + text chars
+    const stripped = t.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}\uFE0F\u200D\u20E3\s]/gu, '');
+    return stripped.length === 0;
+  })();
   const sharePostId = isShareMessage(msg.content) ? extractPostId(msg.content) : null;
   const externalUrls = !sharePostId && hasText ? extractUrls(msg.content) : [];
   const hasExternalUrl = externalUrls.length > 0;
@@ -274,6 +296,7 @@ export default function MessageBubble({ message, isOwn, showAvatar, showTime, is
     isFirst && isLast ? 'msg-bubble--solo' : '',
     isNew && !msg._local ? (isOwn ? 'msg-bubble--new-own' : 'msg-bubble--new-other') : '',
     isUnsent ? 'msg-bubble--unsent' : '',
+    isEmojiOnly ? 'msg-bubble--emoji-only' : '',
   ].filter(Boolean).join(' ');
 
   const seenAlt = seenAt && seenName
@@ -405,6 +428,9 @@ export default function MessageBubble({ message, isOwn, showAvatar, showTime, is
                   draggable={false}
                 />
               </div>
+            )}
+            {showSentTime && (
+              <div className="msg-sent-time">{formatSentTime(message.created_at)}</div>
             )}
           </div>
         ) : (

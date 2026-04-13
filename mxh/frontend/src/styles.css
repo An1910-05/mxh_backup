@@ -1998,6 +1998,22 @@ textarea.apple-input {
     display: flex;
     align-items: center;
 }
+.post-fb-like-icons {
+    display: flex;
+    align-items: center;
+}
+.post-fb-like-icon-item {
+    display: flex;
+    align-items: center;
+    border-radius: 50%;
+    border: 1.5px solid #fff;
+}
+.post-fb-like-icon-item--overlap {
+    margin-left: -6px;
+}
+body[data-theme='dark'] .post-fb-like-icon-item {
+    border-color: #242526;
+}
 
 .post-fb-like-count {
     font-size: 0.9375rem;
@@ -5503,15 +5519,36 @@ body.theme-dark .ai-chat-window-input-row { background: #242526; border-top-colo
    MESSAGE BUBBLES — FACEBOOK MESSENGER STYLE
    ============================================= */
 .msg-time-divider {
-    text-align: center;
-    margin: 12px 0 8px;
+    display: flex;
+    align-items: center;
+    margin: 16px 8px 10px;
+    gap: 0;
+}
+
+.msg-time-divider::before,
+.msg-time-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e4e6eb;
 }
 
 .msg-time-divider span {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: #65676b;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
+    font-weight: 600;
+    padding: 0 10px;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+
+body[data-theme='dark'] .msg-time-divider::before,
+body[data-theme='dark'] .msg-time-divider::after {
+    background: #3a3b3c;
+}
+
+body[data-theme='dark'] .msg-time-divider span {
+    color: #b0b3b8;
 }
 
 .msg-row {
@@ -5621,6 +5658,22 @@ body.theme-dark .ai-chat-window-input-row { background: #242526; border-top-colo
 /* Tin thu hồi: nền trong suốt — chữ trắng (màu bubble own) trên nền chat sáng sẽ biến mất */
 .msg-bubble--unsent.msg-bubble--own {
     border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Emoji-only: không có bubble, hiển thị lớn giống Facebook */
+.msg-bubble--emoji-only {
+    background: transparent !important;
+    border-radius: 0 !important;
+    padding: 2px 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+.msg-bubble--emoji-only .msg-text {
+    font-size: 36px;
+    line-height: 1.2;
+    background: none;
+    padding: 0;
+    display: block;
 }
 
 .msg-unsent-text {
@@ -5806,6 +5859,19 @@ body.theme-dark .ai-chat-window-input-row { background: #242526; border-top-colo
     object-fit: cover;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
     display: block;
+}
+
+/* === Sent time label (below last own message) === */
+.msg-sent-time {
+    font-size: 0.7rem;
+    color: #65676b;
+    text-align: right;
+    padding-right: 4px;
+    margin-top: 2px;
+}
+
+body[data-theme='dark'] .msg-sent-time {
+    color: #b0b3b8;
 }
 
 /* === Media in message === */
@@ -6505,20 +6571,62 @@ body.theme-dark .ai-chat-window-input-row { background: #242526; border-top-colo
     background: #d8dadf;
 }
 
+/* ── Chat composer (Facebook-style) ── */
 .chat-input-area {
     padding: 8px 12px;
     background: #fff;
+    border-top: 1px solid #e4e6eb;
 }
 
-.chat-input-wrap {
+.chat-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+/* Left action buttons group */
+.chat-composer-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    padding-bottom: 4px;
+}
+
+.chat-composer-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0084ff;
+    transition: background 0.15s;
+    padding: 0;
+    flex-shrink: 0;
+}
+.chat-composer-btn:hover:not(:disabled) {
+    background: #e7f3ff;
+}
+.chat-composer-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* Input pill */
+.chat-composer-pill {
+    flex: 1;
     display: flex;
     align-items: flex-end;
     background: #f0f2f5;
     border-radius: 20px;
     transition: background 0.15s;
+    min-width: 0;
 }
-
-.chat-input-wrap:focus-within {
+.chat-composer-pill:focus-within {
     background: #e4e6eb;
 }
 
@@ -6539,74 +6647,45 @@ body.theme-dark .ai-chat-window-input-row { background: #242526; border-top-colo
     scrollbar-width: thin;
     scrollbar-color: rgba(0,0,0,0.2) transparent;
 }
+.chat-input::-webkit-scrollbar { width: 6px; }
+.chat-input::-webkit-scrollbar-track { background: transparent; }
+.chat-input::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+.chat-input::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.35); }
 
-.chat-input::-webkit-scrollbar {
-    width: 6px;
-}
-
-.chat-input::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.chat-input::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.2);
-    border-radius: 3px;
-}
-
-.chat-input::-webkit-scrollbar-thumb:hover {
-    background: rgba(0,0,0,0.35);
-}
-
-.chat-send-btn {
-    width: 32px;
-    height: 32px;
+/* Send / Like button */
+.chat-composer-send {
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     border: none;
     background: transparent;
-    color: #0084ff;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.15s, opacity 0.15s;
+    color: #0084ff;
+    transition: background 0.15s, transform 0.15s;
     flex-shrink: 0;
     padding: 0;
-    margin: 0 4px 2px 0;
+    padding-bottom: 4px;
 }
-
-.chat-send-btn:hover:not(:disabled) {
-    color: #0066dd;
+.chat-composer-send:hover:not(:disabled) {
+    background: #e7f3ff;
+    transform: scale(1.1);
 }
-
-.chat-send-btn:disabled {
-    color: #bcc0c4;
-    cursor: default;
-    opacity: 0.5;
-}
-
-/* Media attach button */
-.chat-media-btn {
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #65676b;
-    border-radius: 50%;
-    transition: background 0.15s, color 0.15s;
-    margin-right: 4px;
-}
-.chat-media-btn:hover:not(:disabled) {
-    background: #e4e6eb;
-    color: var(--primary, #1877f2);
-}
-.chat-media-btn:disabled {
+.chat-composer-send:disabled {
     opacity: 0.5;
     cursor: default;
+    transform: none;
+}
+/* Like/thumbs-up state — slightly larger, accent color */
+.chat-composer-send--like {
+    color: #0084ff;
+    font-size: 20px;
+}
+.chat-composer-send--like:hover:not(:disabled) {
+    background: #e7f3ff;
+    transform: scale(1.15);
 }
 
 /* Media preview above input */
@@ -6620,14 +6699,14 @@ body.theme-dark .ai-chat-window-input-row { background: #242526; border-top-colo
 .chat-media-preview-img {
     max-width: 180px;
     max-height: 140px;
-    border-radius: 10px;
+    border-radius: 12px;
     object-fit: cover;
     border: 1px solid #e4e6eb;
 }
 .chat-media-preview-video {
     max-width: 240px;
     max-height: 140px;
-    border-radius: 10px;
+    border-radius: 12px;
     border: 1px solid #e4e6eb;
 }
 .chat-media-preview-overlay {
@@ -6637,12 +6716,12 @@ body.theme-dark .ai-chat-window-input-row { background: #242526; border-top-colo
     align-items: center;
     justify-content: center;
     background: rgba(0,0,0,0.25);
-    border-radius: 10px;
+    border-radius: 12px;
 }
 .chat-media-preview-remove {
     position: absolute;
     top: 4px;
-    left: 180px;
+    left: 164px;
     width: 22px;
     height: 22px;
     border-radius: 50%;
@@ -6655,18 +6734,23 @@ body.theme-dark .ai-chat-window-input-row { background: #242526; border-top-colo
     color: #fff;
     padding: 0;
 }
-.chat-media-preview-remove:hover {
-    background: rgba(0,0,0,0.8);
-}
+.chat-media-preview-remove:hover { background: rgba(0,0,0,0.8); }
 
 /* Dark theme */
+body[data-theme='dark'] .chat-input-area {
+    border-top-color: #3a3b3c;
+}
 body[data-theme='dark'] .chat-media-preview {
     background: #242526;
 }
-body[data-theme='dark'] .chat-media-btn {
-    color: #b0b3b8;
+body[data-theme='dark'] .chat-composer-pill {
+    background: #3a3b3c;
 }
-body[data-theme='dark'] .chat-media-btn:hover:not(:disabled) {
+body[data-theme='dark'] .chat-composer-pill:focus-within {
+    background: #4a4b4c;
+}
+body[data-theme='dark'] .chat-composer-btn:hover:not(:disabled),
+body[data-theme='dark'] .chat-composer-send:hover:not(:disabled) {
     background: #3a3b3c;
 }
 
@@ -10771,6 +10855,15 @@ body.theme-dark .wallet-txn-status--pending { background: rgba(230,81,0,0.15); }
 }
 .desktop-content {
   min-width: 0;
+  margin-left: 280px;
+  margin-right: 240px;
+}
+
+/* Ẩn cả 2 sidebar cùng lúc — tránh content bị lệch giữa trang */
+@media (max-width: 1200px) {
+  .left-sidebar  { display: none !important; }
+  .right-sidebar { display: none !important; }
+  .desktop-content { margin-left: 0; margin-right: 0; }
 }
 
 /* Left Sidebar */
@@ -12041,11 +12134,11 @@ body.theme-dark .rsb-no-result {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 6px 8px 6px 10px;
   background: #fff;
   border-bottom: 1px solid #e4e6eb;
   cursor: pointer;
-  gap: 8px;
+  gap: 6px;
   border-radius: 10px 10px 0 0;
   -webkit-user-select: none;
   user-select: none;
@@ -12069,8 +12162,8 @@ body.theme-dark .rsb-no-result {
   flex-shrink: 0;
 }
 .fcw-avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -12100,6 +12193,9 @@ body.theme-dark .rsb-no-result {
 .fcw-status {
   font-size: 11px;
   color: #31a24c;
+}
+.fcw-status--offline {
+  color: #65676b;
 }
 .fcw-header-actions {
   display: flex;

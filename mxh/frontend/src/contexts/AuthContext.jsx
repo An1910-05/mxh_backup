@@ -31,13 +31,13 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const data = await loginApi(email, password);
-    setUser(data.user);
+    await fetchUser();
     return data;
   };
 
   const register = async (username, email, password, birthday = null, gender = null) => {
     const data = await registerApi(username, email, password, birthday, gender);
-    setUser(data.user);
+    await fetchUser();
     return data;
   };
 
@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
     if (data.needs_profile) {
       return data; // caller handles the profile form
     }
-    setUser(data.user);
+    await fetchUser();
     return data;
   };
 

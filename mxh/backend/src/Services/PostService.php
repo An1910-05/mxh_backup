@@ -99,12 +99,14 @@ class PostService
         $likeCounts    = $this->likeRepo->countByPostIds($postIds);
         $commentCounts = $this->commentRepo->countByPostIds($postIds);
         $likedSet      = $currentUserId ? $this->likeRepo->likedPostsByUser($postIds, $currentUserId) : [];
+        $topReactions  = $this->likeRepo->topReactionsByPostIds($postIds, 2);
 
-        return array_map(function ($post) use ($likeCounts, $commentCounts, $likedSet, $currentUserId) {
+        return array_map(function ($post) use ($likeCounts, $commentCounts, $likedSet, $topReactions, $currentUserId) {
             $id = $post['id'];
             $post['like_count']    = $likeCounts[$id]    ?? 0;
             $post['comment_count'] = $commentCounts[$id] ?? 0;
             $post['is_liked']      = $currentUserId ? ($likedSet[$id] ?? false) : null;
+            $post['top_reactions'] = $topReactions[$id]  ?? [];
             return $post;
         }, $posts);
     }
@@ -114,6 +116,8 @@ class PostService
         $post['like_count']    = $this->likeRepo->countByPostId($post['id']);
         $post['comment_count'] = $this->commentRepo->countByPostId($post['id']);
         $post['is_liked']      = $currentUserId ? $this->likeRepo->isLikedByUser($post['id'], $currentUserId) : null;
+        $topReactions          = $this->likeRepo->topReactionsByPostIds([$post['id']], 2);
+        $post['top_reactions'] = $topReactions[$post['id']] ?? [];
         return $post;
     }
 }

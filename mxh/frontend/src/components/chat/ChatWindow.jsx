@@ -246,6 +246,41 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
   }, [messages]);
 
 
+  const handleSendQuickEmoji = async (emoji) => {
+    if (sending) return;
+    const clientMsgId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const localMsg = {
+      client_msg_id: clientMsgId,
+      conversation_id: convId,
+      sender_id: user.id,
+      username: user.username,
+      content: emoji,
+      content_type: 'text',
+      created_at: new Date().toISOString(),
+      _local: true,
+    };
+    newMsgIds.current.add(clientMsgId);
+    setMessages(prev => [...prev, localMsg]);
+    setSending(true);
+    try {
+      if (isWsConnected()) {
+        await sendMessage(convId, emoji, { clientMsgId });
+      } else {
+        const serverMsg = await sendMessageRest(convId, emoji);
+        serverMsg.client_msg_id = clientMsgId;
+        setMessages(prev => {
+          const updated = prev.filter(m => !(m._local && m.client_msg_id === clientMsgId));
+          return [...updated, serverMsg];
+        });
+      }
+    } catch (e) {
+      console.error('Quick emoji send failed:', e);
+      setMessages(prev => prev.filter(m => !(m._local && m.client_msg_id === clientMsgId)));
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleMediaSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -443,6 +478,14 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
   const displayAvatar = conversation.display_avatar;
   const otherUserId = conversation.other_user_id;
 
+  // Index of the last confirmed (non-local) own message — for "Đã gửi" label
+  const lastOwnIdx = (() => {
+    for (let k = messages.length - 1; k >= 0; k--) {
+      if (Number(messages[k].sender_id) === Number(user?.id) && !messages[k]._local) return k;
+    }
+    return -1;
+  })();
+
   return (
     <div className="chat-window">
       <div className="chat-window-header">
@@ -506,6 +549,7 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
                 seenAvatar={isSeenHere ? (otherReadInfo?.avatar?.trim() || displayAvatar?.trim() || DEFAULT_AVATAR) : null}
                 seenName={isSeenHere ? (otherReadInfo?.username || displayName) : null}
                 seenAt={isSeenHere ? otherReadInfo?.read_at : null}
+                showSentTime={isOwn && i === lastOwnIdx && !isSeenHere}
                 isNew={newMsgIds.current.has(String(msg.id)) || newMsgIds.current.has(msg.client_msg_id)}
                 onUnsend={handleUnsend}
                 onHide={handleHide}
@@ -552,34 +596,57 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
           style={{ display: 'none' }}
           onChange={handleMediaSelect}
         />
-        <div className="chat-input-wrap">
+        <div className="chat-composer">
+          {/* Left action buttons */}
+          <div className="chat-composer-actions">
+            <button
+              type="button"
+              className="chat-composer-btn"
+              title="Gửi ảnh/video"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={mediaUploading}
+            >
+              {/* Image icon */}
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M9.302.5H6.698C5.8.5 5.05.5 4.456.58c-.628.084-1.195.27-1.65.725-.456.456-.642 1.023-.726 1.65C2 3.55 2 4.3 2 5.199v13.604c0 .899 0 1.648.08 2.242.084.628.27 1.195.725 1.65.456.455 1.023.641 1.65.725C5.05 23.5 5.8 23.5 6.698 23.5h10.604c.899 0 1.648 0 2.242-.08.628-.084 1.195-.27 1.65-.725.456-.456.642-1.023.726-1.65.08-.595.08-1.344.08-2.243V5.198c0-.898 0-1.648-.08-2.242-.084-.628-.27-1.195-.726-1.65C20.74.85 20.172.663 19.544.58 18.95.5 18.2.5 17.302.5zM7 6.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0zm4.302 6.677a1.75 1.75 0 0 0-2.475 0L5 16.356l-.43-.43a1.75 1.75 0 0 0-2.474 0l-.596.597V5.25c0-.964.002-1.612.067-2.095.062-.461.169-.659.3-.789.13-.13.327-.237.788-.3C3.138 2.003 3.786 2 4.75 2h14.5c.964 0 1.612.002 2.095.067.461.062.659.169.789.3.13.13.237.327.3.788.064.483.066 1.131.066 2.095v9.772l-.596-.595a1.75 1.75 0 0 0-2.475 0L17 15.356l-2.5-3.01a1.75 1.75 0 0 0-2.667-.007L9 15.356l-1.698-2.429z"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Input pill */}
+          <div className="chat-composer-pill">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Aa"
+              rows={1}
+              className="chat-input"
+            />
+          </div>
+
+          {/* Send / Quick-emoji button */}
           <button
             type="button"
-            className="chat-media-btn"
-            title="Gửi ảnh/video"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={mediaUploading}
+            onClick={() => {
+              if (!input.trim() && !mediaFile) {
+                handleSendQuickEmoji('🥺');
+              } else {
+                handleSend();
+              }
+            }}
+            disabled={sending || mediaUploading}
+            className={`chat-composer-send${(!input.trim() && !mediaFile) ? ' chat-composer-send--like' : ''}`}
+            title={(!input.trim() && !mediaFile) ? 'Gửi 🥺' : 'Gửi'}
           >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-            </svg>
-          </button>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Aa"
-            rows={1}
-            className="chat-input"
-          />
-          <button
-            onClick={handleSend}
-            disabled={(!input.trim() && !mediaFile) || sending || mediaUploading}
-            className="chat-send-btn"
-            title="Gửi"
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
+            {(!input.trim() && !mediaFile) ? (
+              <span style={{ fontSize: 22, lineHeight: 1 }}>🥺</span>
+            ) : (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            )}
           </button>
         </div>
       </div>

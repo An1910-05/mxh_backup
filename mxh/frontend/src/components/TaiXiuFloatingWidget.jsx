@@ -439,14 +439,7 @@ export default function TaiXiuFloatingWidget() {
     : { position: 'fixed', bottom: DEFAULT_POS.bottom, right: DEFAULT_POS.right, zIndex: 9999 };
 
   if (!open) {
-    return (
-      <button
-        className="tx-bubble"
-        style={{ position: 'fixed', bottom: DEFAULT_POS.bottom, right: DEFAULT_POS.right, zIndex: 9999 }}
-        onClick={handleOpen}
-        title="Mở Tài Xỉu"
-      >🎲</button>
-    );
+    return null;
   }
 
   if (minimized) {
