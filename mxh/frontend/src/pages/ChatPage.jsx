@@ -4,6 +4,7 @@ import { useChat } from '../contexts/ChatContext';
 import { getOrCreateConversation } from '../services/chat';
 import ConversationList from '../components/chat/ConversationList';
 import ChatWindow from '../components/chat/ChatWindow';
+import AIChatWindow from '../components/chat/AIChatWindow';
 
 export default function ChatPage() {
   const [searchParams] = useSearchParams();
@@ -77,6 +78,8 @@ export default function ChatPage() {
         <div className="chat-main">
           {loading ? (
             <div className="chat-empty">Đang tải...</div>
+          ) : activeConversation?.isAI ? (
+            <AIChatWindow onBack={handleBack} />
           ) : activeConversation ? (
             <ChatWindow
               conversation={activeConversation}

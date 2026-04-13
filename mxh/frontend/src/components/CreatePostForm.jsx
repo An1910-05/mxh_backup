@@ -4,6 +4,7 @@ import { createPost } from '../services/graphql';
 import { uploadFile } from '../services/api';
 import { API_ORIGIN } from '../config';
 import { useMentionInput } from '../hooks/useMentionInput';
+import LocationPicker from './LocationPicker';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 export default function CreatePostForm({ onPostCreated }) {
@@ -27,6 +28,7 @@ export default function CreatePostForm({ onPostCreated }) {
   const [geoLat, setGeoLat] = useState(null);
   const [geoLng, setGeoLng] = useState(null);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const fileRef = useRef(null);
   const textRef = useRef(null);
 
@@ -51,18 +53,21 @@ export default function CreatePostForm({ onPostCreated }) {
   };
 
   const pickLocation = () => {
-    if (!navigator.geolocation) { setError('Trình duyệt không hỗ trợ GPS'); return; }
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGeoLat(pos.coords.latitude);
-        setGeoLng(pos.coords.longitude);
-        setLocationLabel(pos.coords.latitude.toFixed(4)+', '+pos.coords.longitude.toFixed(4));
-        setGeoLoading(false);
-        setExpanded(true);
-      },
-      () => { setError('Không lấy được vị trí'); setGeoLoading(false); }
-    );
+    setShowLocationPicker(true);
+  };
+
+  const handleLocationConfirm = ({ lat, lng, label }) => {
+    setGeoLat(lat);
+    setGeoLng(lng);
+    setLocationLabel(label);
+    setShowLocationPicker(false);
+    setExpanded(true);
+  };
+
+  const clearLocation = () => {
+    setGeoLat(null);
+    setGeoLng(null);
+    setLocationLabel('');
   };
 
   const handleSubmit = async (e) => {
@@ -124,6 +129,12 @@ export default function CreatePostForm({ onPostCreated }) {
 
   return (
     <div className="create-post-fb">
+      {showLocationPicker && (
+        <LocationPicker
+          onConfirm={handleLocationConfirm}
+          onCancel={() => setShowLocationPicker(false)}
+        />
+      )}
       <form onSubmit={handleSubmit}>
         <div className="create-post-fb-top">
           <div className="create-post-fb-avatar">
@@ -177,18 +188,34 @@ export default function CreatePostForm({ onPostCreated }) {
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#45bd62" strokeWidth="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="#45bd62"/><path d="M21 15l-5-5L5 21" stroke="#45bd62" strokeWidth="2" strokeLinecap="round"/></svg>
             <span>Ảnh/video</span>
           </button>
-          <button type="button" className="create-post-fb-action" onClick={pickLocation} disabled={geoLoading}>
+          <button type="button" className="create-post-fb-action" onClick={pickLocation}>
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#45bd62" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span>{geoLoading?'...':'📍 Vị trí'}</span>
+            <span>📍 Vị trí</span>
           </button>
         </div>
 
         {expanded && (
           <>
             <div className="create-post-fb-extra">
-              {locationLabel && (
-                <div className="create-post-fb-location">
-                  <span style={{fontSize:'0.85rem',color:'#65676b'}}>📍 {locationLabel}</span>
+              {locationLabel && geoLat != null && geoLng != null && (
+                <div className="cpf-location-preview">
+                  <div className="cpf-location-map-wrap">
+                    <iframe
+                      title="Xem trước vị trí"
+                      className="cpf-location-map-iframe"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${geoLng - 0.015},${geoLat - 0.009},${geoLng + 0.015},${geoLat + 0.009}&layer=mapnik&marker=${geoLat},${geoLng}`}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="cpf-location-map-overlay" />
+                  </div>
+                  <div className="cpf-location-footer">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="#e41e3f" style={{flexShrink:0}}>
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                    <span className="cpf-location-label">{locationLabel}</span>
+                    <button type="button" className="cpf-location-clear" onClick={clearLocation} title="Xóa vị trí">✕</button>
+                  </div>
                 </div>
               )}
             </div>

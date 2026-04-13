@@ -1,4 +1,18 @@
 {
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json,os; f='mxh/README.md'; c=open(f,encoding='utf-8').read() if os.path.exists(f) else ''; print(json.dumps({'hookSpecificOutput':{'hookEventName':'SessionStart','additionalContext':'=== README.md (Cập nhật gần đây của project MXH — đọc trước khi sửa code) ===\\n\\n'+c}}))\" 2>/dev/null || true",
+            "timeout": 10,
+            "statusMessage": "Đang tải README.md..."
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H 'Content-Type: application/json' -H 'Origin: http://localhost:5006' -d '{\"email\":\"alice@example.com\",\"password\":\"password123\"}' -v)",

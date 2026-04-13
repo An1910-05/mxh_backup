@@ -4,6 +4,8 @@
 > Mọi AI model (Claude, GPT, Copilot, v.v.) **PHẢI đọc file này trước** khi viết hoặc sửa bất kỳ dòng code nào.
 > Vi phạm bất kỳ mục nào dưới đây = code sai, cần rollback.
 
+> **BẮT BUỘC:** Trước khi thực hiện bất kỳ thay đổi nào, PHẢI đọc `mxh/README.md` (mục "Cập nhật gần đây") để biết các tính năng đã có, tránh làm trùng lặp hoặc xung đột với code hiện tại.
+
 ---
 
 ## 1. Tổng quan kiến trúc — KHÔNG ĐƯỢC thay đổi

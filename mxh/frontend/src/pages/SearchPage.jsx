@@ -15,6 +15,10 @@ import { useAuth } from '../hooks/useAuth';
 import { API_ORIGIN } from '../config';
 const DEFAULT_AVATAR = '/default-avatar.png';
 
+function bumpFriendRequestsBadge() {
+  window.dispatchEvent(new Event('mxh-friend-requests-refresh'));
+}
+
 export default function SearchPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -48,6 +52,7 @@ export default function SearchPage() {
       setPending(p || []);
       setSent(s || []);
       setFriends(f || []);
+      bumpFriendRequestsBadge();
     } catch (err) {
       console.error(err);
     } finally {

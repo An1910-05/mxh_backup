@@ -6,6 +6,7 @@ import { getMessages, sendMessageRest, getReadReceipt, unsendMessageRest, hideMe
 import { sendMessage, sendTyping, on, isWsConnected, unsendMessage as wsUnsend, hideMessage as wsHide } from '../../services/websocket';
 import { timeAgo } from '../../utils/time';
 import MessageBubble from './MessageBubble';
+import { uploadFile } from '../../services/api';
 import { API_ORIGIN } from '../../config';
 const DEFAULT_AVATAR = '/default-avatar.png';
 const URL_REGEX = /(https?:\/\/[^\s<>"']+)/;
@@ -87,8 +88,12 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
   const [otherReadInfo, setOtherReadInfo] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewDismissed, setPreviewDismissed] = useState(false);
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaPreview, setMediaPreview] = useState(null);
+  const [mediaUploading, setMediaUploading] = useState(false);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const typingTimer = useRef(null);
   const lastTypingSent = useRef(0);
   const messagesRef = useRef([]);
@@ -241,11 +246,82 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
   }, [messages]);
 
 
+  const handleMediaSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+    if (!isImage && !isVideo) return;
+    setMediaFile(file);
+    setMediaPreview({ url: URL.createObjectURL(file), type: isVideo ? 'video' : 'image', name: file.name });
+    e.target.value = '';
+  };
+
+  const handleMediaRemove = () => {
+    if (mediaPreview?.url) URL.revokeObjectURL(mediaPreview.url);
+    setMediaFile(null);
+    setMediaPreview(null);
+  };
+
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text && !mediaFile) return;
+    if (sending || mediaUploading) return;
 
     const clientMsgId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    if (mediaFile) {
+      const file = mediaFile;
+      const preview = mediaPreview;
+      setMediaFile(null);
+      setMediaPreview(null);
+      setInput('');
+      setPreviewUrl(null);
+      setPreviewDismissed(false);
+      if (inputRef.current) inputRef.current.style.height = 'auto';
+
+      const contentType = preview.type === 'video' ? 'video' : 'image';
+      const localMsg = {
+        client_msg_id: clientMsgId,
+        conversation_id: convId,
+        sender_id: user.id,
+        username: user.username,
+        content: text || null,
+        content_type: contentType,
+        media_url: preview.url,
+        created_at: new Date().toISOString(),
+        _local: true,
+        _uploading: true,
+      };
+      newMsgIds.current.add(clientMsgId);
+      setMessages(prev => [...prev, localMsg]);
+      setMediaUploading(true);
+
+      try {
+        const uploadRes = await uploadFile('/upload/media', 'media', file);
+        const data = uploadRes.data || uploadRes;
+        const mediaUrl = data.media_url || data.url;
+        const serverMsg = await sendMessageRest(convId, text || '', {
+          contentType,
+          mediaUrl,
+          mediaWidth: data.media_width || null,
+          mediaHeight: data.media_height || null,
+        });
+        serverMsg.client_msg_id = clientMsgId;
+        URL.revokeObjectURL(preview.url);
+        setMessages(prev => {
+          const updated = prev.filter(m => !(m._local && m.client_msg_id === clientMsgId));
+          return [...updated, serverMsg];
+        });
+      } catch (e) {
+        console.error('Media send failed:', e);
+        URL.revokeObjectURL(preview.url);
+        setMessages(prev => prev.filter(m => !(m._local && m.client_msg_id === clientMsgId)));
+      } finally {
+        setMediaUploading(false);
+      }
+      return;
+    }
 
     const localMsg = {
       client_msg_id: clientMsgId,
@@ -452,8 +528,42 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
         <InputLinkPreview url={previewUrl} onDismiss={() => setPreviewDismissed(true)} />
       )}
 
+      {mediaPreview && (
+        <div className="chat-media-preview">
+          {mediaPreview.type === 'image' ? (
+            <img src={mediaPreview.url} alt="" className="chat-media-preview-img" />
+          ) : (
+            <video src={mediaPreview.url} className="chat-media-preview-video" controls />
+          )}
+          {mediaUploading && <div className="chat-media-preview-overlay"><span className="apple-spinner" style={{ width: 24, height: 24 }} /></div>}
+          {!mediaUploading && (
+            <button type="button" className="chat-media-preview-remove" onClick={handleMediaRemove} title="Xóa">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18.3 5.71a1 1 0 00-1.42 0L12 10.59 7.12 5.71a1 1 0 00-1.42 1.42L10.59 12l-4.89 4.88a1 1 0 001.42 1.42L12 13.41l4.88 4.89a1 1 0 001.42-1.42L13.41 12l4.89-4.88a1 1 0 000-1.41z" /></svg>
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="chat-input-area">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          style={{ display: 'none' }}
+          onChange={handleMediaSelect}
+        />
         <div className="chat-input-wrap">
+          <button
+            type="button"
+            className="chat-media-btn"
+            title="Gửi ảnh/video"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={mediaUploading}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+            </svg>
+          </button>
           <textarea
             ref={inputRef}
             value={input}
@@ -465,7 +575,7 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || sending}
+            disabled={(!input.trim() && !mediaFile) || sending || mediaUploading}
             className="chat-send-btn"
             title="Gửi"
           >

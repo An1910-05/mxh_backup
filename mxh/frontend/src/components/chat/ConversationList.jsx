@@ -76,17 +76,46 @@ export default function ConversationList({
     }
   };
 
-  if (!conversations || conversations.length === 0) {
-    return (
-      <div className="conv-list-empty">
-        <p>Chưa có cuộc trò chuyện nào</p>
-      </div>
-    );
-  }
+  const isAIActive = activeId === '__ai__';
 
   return (
     <div className="conv-list">
-      {conversations.map((conv) => {
+      {/* Gemini AI entry — luôn đứng đầu */}
+      <button
+        type="button"
+        className={`conv-item conv-item--ai${isAIActive ? ' conv-item--active' : ''}`}
+        onClick={() => onSelect({ id: '__ai__', isAI: true, display_name: 'Gemini AI' })}
+      >
+        <div className="conv-avatar conv-avatar--ai">
+          <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
+            <defs>
+              <linearGradient id="convAiGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/>
+              </linearGradient>
+            </defs>
+            <circle cx="18" cy="18" r="18" fill="url(#convAiGrad)"/>
+            <path d="M18 9l1.8 5.5H25l-4.3 3.1 1.6 5.1L18 19.6l-4.3 3.1 1.6-5.1L11 14.5h5.2L18 9z" fill="white"/>
+          </svg>
+          <span className="conv-online-dot conv-online-dot--ai" />
+        </div>
+        <div className="conv-info">
+          <div className="conv-name-row">
+            <span className="conv-name">Gemini AI</span>
+            <span className="conv-ai-badge">AI</span>
+          </div>
+          <div className="conv-preview-row">
+            <span className="conv-preview conv-preview--ai">Trợ lý AI · Hỏi bất cứ điều gì</span>
+          </div>
+        </div>
+      </button>
+
+      {(!conversations || conversations.length === 0) && (
+        <div className="conv-list-empty">
+          <p>Chưa có cuộc trò chuyện nào</p>
+        </div>
+      )}
+
+      {(conversations || []).map((conv) => {
         const isActive = conv.id == activeId;
         const unread = parseInt(conv.unread_count) || 0;
 

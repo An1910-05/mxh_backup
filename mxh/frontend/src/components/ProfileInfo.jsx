@@ -13,6 +13,10 @@ import { formatHandleDisplay } from '../utils/userDisplay';
 import { API_ORIGIN } from '../config';
 const DEFAULT_AVATAR = '/default-avatar.png';
 
+function bumpFriendRequestsBadge() {
+  window.dispatchEvent(new Event('mxh-friend-requests-refresh'));
+}
+
 function userLink(u) {
   return u.custom_url ? `/${u.custom_url}` : `/profile_id=${u.id}`;
 }
@@ -114,6 +118,7 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
           setFriendshipId(null);
         }
       }
+      bumpFriendRequestsBadge();
     } catch (err) { console.error(err.message); }
     finally { setLoading(false); }
   };

@@ -267,7 +267,14 @@ export default function PostCard({ post, onDelete }) {
             <img src={post.user_avatar ? `${API_ORIGIN}${post.user_avatar}` : DEFAULT_AVATAR} alt="" />
           </Link>
           <div className="post-meta">
-            <Link to={`/profile_id=${post.user_id}`} className="post-username">{post.username}</Link>
+            <div className="post-username-line">
+              <Link to={`/profile_id=${post.user_id}`} className="post-username">{post.username}</Link>
+              {post.location_label && (
+                <span className="post-location-inline">
+                  {' '}đang ở <span className="post-location-inline-name">{post.location_label}</span>
+                </span>
+              )}
+            </div>
             <span className="post-time">{timeAgo(post.created_at)}</span>
           </div>
           <div className="post-menu-wrap" ref={menuRef}>
@@ -314,8 +321,44 @@ export default function PostCard({ post, onDelete }) {
           </div>
         ) : (
           <>
-            {(post.location_label || (post.latitude != null && post.longitude != null)) && (
-              <div className="post-location">📍 {post.location_label || `${post.latitude}, ${post.longitude}`}</div>
+            {(post.latitude != null && post.longitude != null) && (
+              <div className="post-location-card">
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${post.latitude},${post.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="post-location-map-link"
+                  title="Mở chỉ đường trên Google Maps"
+                >
+                  <div className="post-location-map-wrap">
+                    <iframe
+                      title="Bản đồ vị trí"
+                      className="post-location-map-iframe"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${post.longitude - 0.02},${post.latitude - 0.012},${post.longitude + 0.02},${post.latitude + 0.012}&layer=mapnik&marker=${post.latitude},${post.longitude}`}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="post-location-map-overlay">
+                      <span className="post-location-map-overlay-hint">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/></svg>
+                        Xem chỉ đường
+                      </span>
+                    </div>
+                  </div>
+                </a>
+                <div className="post-location-card-footer">
+                  <div className="post-location-card-pin">
+                    <svg viewBox="0 0 24 24" width="32" height="32" fill="#e41e3f">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                  </div>
+                  <div className="post-location-card-info">
+                    {post.location_label && (
+                      <span className="post-location-card-name">{post.location_label}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
             {content && content !== '📷' && content !== '🎬' && (
               <p className="post-content">{renderTextWithMentions(content)}</p>

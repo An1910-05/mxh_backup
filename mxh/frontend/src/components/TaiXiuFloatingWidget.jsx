@@ -502,8 +502,8 @@ export default function TaiXiuFloatingWidget() {
               <span className="tx-menu-round">#{round?.round_code || '...'}</span>
               <h3 className={`tx-menu-title${menuTab === 'rounds' ? ' tx-menu-title--stack' : ''}`}>{MENU_TABS[activeMenuIndex]?.label?.toUpperCase()}</h3>
               <div className="tx-menu-header-actions">
-                <button className="tx-menu-head-btn" onClick={handleCollapse} title="Thu gọn">▁</button>
-                <button className="tx-menu-head-btn tx-menu-head-btn--close" onClick={handleMenuClose} title="Đóng menu">✕</button>
+                <button className="tx-menu-head-btn" onClick={handleMenuClose} title="Quay lại">←</button>
+                <button className="tx-menu-head-btn tx-menu-head-btn--close" onClick={handleClose} title="Đóng">✕</button>
               </div>
             </div>
 

@@ -71,6 +71,9 @@ echo.
 echo Dang cho container san sang...
 timeout /t 5 /nobreak >nul
 echo.
+echo Kiem tra va cai npm packages con thieu...
+docker compose exec frontend npm install leaflet --save >nul 2>&1
+echo.
 docker compose ps
 echo.
 echo ============================================

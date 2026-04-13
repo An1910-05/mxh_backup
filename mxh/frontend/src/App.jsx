@@ -28,6 +28,12 @@ import MobileLayout from './mobile/MobileLayout';
 
 const THEME_STORAGE_KEY = 'mxh-theme-mode';
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
 function getInitialTheme() {
   if (typeof window === 'undefined') return 'light';
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
@@ -77,6 +83,7 @@ function AppShell({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <ChatProvider>
           <BlobSvgFilter />

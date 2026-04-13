@@ -14,6 +14,10 @@ import BlobButton from '../components/BlobButton';
 import { API_ORIGIN } from '../config';
 const DEFAULT_AVATAR = '/default-avatar.png';
 
+function bumpFriendRequestsBadge() {
+  window.dispatchEvent(new Event('mxh-friend-requests-refresh'));
+}
+
 function UserCard({ user, link, actions, subtitle }) {
   return (
     <div className="friend-card fade-in">
@@ -51,6 +55,7 @@ export default function FriendsPage() {
       setFriends(f);
       setPending(p);
       setSent(s);
+      bumpFriendRequestsBadge();
     } catch (err) {
       console.error(err);
     } finally {
@@ -63,21 +68,21 @@ export default function FriendsPage() {
   const handleAccept = async (friendshipId) => {
     try {
       await acceptFriendRequest(friendshipId);
-      fetchAll();
+      await fetchAll();
     } catch (err) { console.error(err); }
   };
 
   const handleReject = async (friendshipId) => {
     try {
       await rejectFriendRequest(friendshipId);
-      fetchAll();
+      await fetchAll();
     } catch (err) { console.error(err); }
   };
 
   const handleCancel = async (friendshipId) => {
     try {
       await cancelFriendRequest(friendshipId);
-      fetchAll();
+      await fetchAll();
     } catch (err) { console.error(err); }
   };
 

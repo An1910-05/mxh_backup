@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useChat } from '../contexts/ChatContext';
 import useNotificationUnread from '../hooks/useNotificationUnread';
+import usePendingFriendRequestsCount from '../hooks/usePendingFriendRequestsCount';
 import { API_ORIGIN } from '../config';
 import searchIcon from '../assets/sf-symbols/magnifyingglass.png';
 
@@ -22,6 +23,7 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
   const { user, logout } = useAuth();
   const { totalUnread } = useChat();
   const { count: notifUnread } = useNotificationUnread();
+  const { count: pendingFriendRequests } = usePendingFriendRequestsCount();
   const location = useLocation();
   const containerRef = useRef(null);
   const linkRefs = useRef([]);
@@ -134,7 +136,7 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
               <div className="nav-container" ref={containerRef}>
                 <div className="moving-bg" style={{ left: pill.left, width: pill.width, opacity: pill.visible ? 1 : 0 }} />
                 <Link ref={setLinkRef(0)} to="/" className={linkClass(0)}>Trang chủ</Link>
-                <Link ref={setLinkRef(1)} to="/notifications" className={`${linkClass(1)} chat-nav-link`}>
+                <Link ref={setLinkRef(1)} to="/notifications" className={`${linkClass(1)} nav-link-with-badge`}>
                   Thông báo
                   {notifUnread > 0 && <span className="nav-badge">{notifUnread > 99 ? '99+' : notifUnread}</span>}
                 </Link>
@@ -151,8 +153,11 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
                     aria-hidden="true"
                   />
                 </Link>
-                <Link ref={setLinkRef(3)} to="/friends" className={linkClass(3)}>Bạn bè</Link>
-                <Link ref={setLinkRef(4)} to="/chat" className={`${linkClass(4)} chat-nav-link`}>
+                <Link ref={setLinkRef(3)} to="/friends" className={`${linkClass(3)} nav-link-with-badge`}>
+                  Bạn bè
+                  {pendingFriendRequests > 0 && <span className="nav-badge">{pendingFriendRequests > 99 ? '99+' : pendingFriendRequests}</span>}
+                </Link>
+                <Link ref={setLinkRef(4)} to="/chat" className={`${linkClass(4)} nav-link-with-badge`}>
                   Tin nhắn
                   {totalUnread > 0 && <span className="nav-badge">{totalUnread > 99 ? '99+' : totalUnread}</span>}
                 </Link>

@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useChat } from '../../contexts/ChatContext';
 import useNotificationUnread from '../../hooks/useNotificationUnread';
+import usePendingFriendRequestsCount from '../../hooks/usePendingFriendRequestsCount';
 
 function profileLink(user) {
   if (user.custom_url) return `/${user.custom_url}`;
@@ -12,6 +13,7 @@ export default function MobileTabBar() {
   const { user } = useAuth();
   const { totalUnread } = useChat();
   const { count: notifUnread } = useNotificationUnread();
+  const { count: pendingFriendRequests } = usePendingFriendRequestsCount();
   const location = useLocation();
 
   if (!user) return null;
@@ -44,6 +46,7 @@ export default function MobileTabBar() {
       path: '/friends',
       label: 'Bạn bè',
       match: (p) => p.startsWith('/friends'),
+      badge: pendingFriendRequests,
       icon: (active) => (
         <svg viewBox="0 0 24 24" width="24" height="24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>

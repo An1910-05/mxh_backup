@@ -10,6 +10,7 @@ use App\Controllers\UploadController;
 use App\Controllers\ChatController;
 use App\Controllers\LinkPreviewController;
 use App\Controllers\PaymentController;
+use App\Controllers\AIController;
 use App\Helpers\Response;
 use GraphQL\GraphQL;
 use GraphQL\Error\DebugFlag;
@@ -166,6 +167,11 @@ try {
         // Link preview
         case $uri === '/link-preview' && $method === 'GET':
             (new LinkPreviewController())->getPreview();
+            break;
+
+        // AI chat (Gemini proxy)
+        case $uri === '/ai/chat' && $method === 'POST':
+            (new AIController())->chat();
             break;
 
         // GraphQL endpoint
