@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useChat } from '../contexts/ChatContext';
 import useNotificationUnread from '../hooks/useNotificationUnread';
 import usePendingFriendRequestsCount from '../hooks/usePendingFriendRequestsCount';
+import useWeather from '../hooks/useWeather';
 import { API_ORIGIN } from '../config';
 import searchIcon from '../assets/sf-symbols/magnifyingglass.png';
 
@@ -24,6 +25,7 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
   const { totalUnread } = useChat();
   const { count: notifUnread } = useNotificationUnread();
   const { count: pendingFriendRequests } = usePendingFriendRequestsCount();
+  const weather = useWeather();
   const location = useLocation();
   const containerRef = useRef(null);
   const linkRefs = useRef([]);
@@ -128,6 +130,13 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
 
   return (
     <nav className="apple-nav">
+      {weather && (
+        <div className="nav-weather" title={weather.city || ''}>
+          <span className="nav-weather-icon">{weather.icon}</span>
+          <span className="nav-weather-temp">{weather.temp}°C</span>
+          {weather.city && <span className="nav-weather-city">{weather.city}</span>}
+        </div>
+      )}
       <div className="apple-nav-inner">
         <Link to="/" className="apple-nav-brand">iPock</Link>
         <div className="apple-nav-links">

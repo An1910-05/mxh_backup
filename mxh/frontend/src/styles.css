@@ -160,10 +160,95 @@ body.post-lightbox-open .apple-nav {
     transform: scale(0.98);
 }
 
+.lsb-weather {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,122,255,0.07);
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #1d1d1f;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.lsb-weather-icon {
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.lsb-weather-temp {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+    flex-shrink: 0;
+}
+.lsb-weather-city {
+    color: #6e6e73;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+body[data-theme='dark'] .lsb-weather {
+    background: rgba(10,132,255,0.12);
+    color: #f5f5f7;
+}
+body[data-theme='dark'] .lsb-weather-city {
+    color: #a1a1a6;
+}
+
 .apple-nav-links {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.nav-left-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Weather widget — absolute top-left of navbar, aligned with left sidebar */
+.nav-weather {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    -webkit-user-select: none;
+    user-select: none;
+    pointer-events: none;
+    z-index: 1;
+}
+.nav-weather-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+.nav-weather-temp {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+.nav-weather-city {
+    font-size: 12px;
+    color: var(--text-secondary);
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body[data-theme='dark'] .nav-weather-temp {
+    color: #f5f5f7;
+}
+body[data-theme='dark'] .nav-weather-city {
+    color: #a1a1a6;
 }
 
 /* Liên kết navbar (ngoài khung pill — ví dụ không còn) */

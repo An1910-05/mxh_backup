@@ -10,6 +10,12 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **[Fix] Thêm `leaflet` vào `package.json`:** `LocationPicker.jsx` import `leaflet` nhưng gói này chưa có trong `dependencies` → vite build lỗi. Đã thêm `"leaflet": "^1.9.4"` vào `frontend/package.json`. Cần chạy `npm install` hoặc rebuild Docker image frontend để áp dụng.
+
+- **Widget thời tiết trên Navbar:** Hiển thị thời tiết hiện tại (icon + nhiệt độ + tên thành phố) ngay trên thanh điều hướng, bên phải logo "iPock". Dùng Open-Meteo API (miễn phí, không cần API key) + Nominatim geocoding ngược sang tiếng Việt. Tự động xin quyền vị trí GPS, ẩn nếu người dùng từ chối.
+  - File mới: `frontend/src/hooks/useWeather.js`
+  - File sửa: `frontend/src/components/Navbar.jsx` (thêm import hook + JSX `.nav-weather`), `frontend/src/styles.css` (classes `.nav-weather`, `.nav-weather-icon`, `.nav-weather-temp`, `.nav-weather-city`)
+
 - **FCW header kiểu Facebook:** Redesign header cửa sổ chat nổi giống Facebook — avatar lớn hơn (36px), tên + trạng thái, thêm nút gọi điện thoại và video call (visual), nút thu nhỏ dùng icon `─` (dash), nút đóng `×`. Hiển thị "Ngoại tuyến" khi user offline.
   - File sửa: `frontend/src/components/FloatingChatWindow.jsx`, `frontend/src/styles.css` (`.fcw-avatar`, `.fcw-status--offline`)
 
@@ -105,107 +111,134 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ---
 
-## Phân tích lỗi: Tính năng thông báo không hoạt động
+## Kiểm tra chức năng (2026-04-14)
 
-> Kiểm tra toàn bộ code ngày 2026-04-03. Tính năng thông báo có hạ tầng đầy đủ (bảng DB, service, GraphQL, frontend) nhưng tồn tại nhiều lỗi khiến người dùng không thấy thông báo.
+> Kiểm tra tĩnh toàn bộ code — đọc từng module frontend (JSX, hooks, services) và backend (Controllers, Repositories, GraphQL schema). Không cần server đang chạy.
 
-### Lỗi 1 — Thiếu thông báo khi like bài (lỗi chức năng)
+### Tóm tắt nhanh
 
-**Vị trí:** `backend/src/Services/LikeService.php` — method `likePost()`
-
-**Vấn đề:** `LikeService::likePost()` chỉ tạo bản ghi like trong bảng `likes`, **không gọi `NotificationRepository::insert()`** để tạo thông báo cho chủ bài viết. Hậu quả: người dùng không bao giờ nhận được thông báo khi ai đó like bài của mình.
-
-Frontend `NotificationsPage.jsx` (mảng `TYPE_LABEL`) cũng không khai báo loại `like`, xác nhận đây là tính năng chưa được triển khai.
-
-**Cách sửa:**
-```php
-// Trong LikeService::likePost(), sau $this->likeRepo->create($postId, $userId):
-$postOwnerId = (int)$post['user_id'];
-if ($postOwnerId !== $userId) {
-    (new NotificationRepository())->insert($postOwnerId, 'like', $userId, $postId, null);
-}
-```
-Đồng thời thêm vào `TYPE_LABEL` trong `NotificationsPage.jsx`:
-```js
-like: 'đã thích bài viết của bạn',
-```
+| Trạng thái | Số lượng |
+|------------|----------|
+| ✅ Hoạt động bình thường | 28 chức năng |
+| ⚠️ Có vấn đề nhỏ / cần lưu ý | 3 vấn đề |
+| ❌ Bug nghiêm trọng (đã fix) | 1 bug |
 
 ---
 
-### Lỗi 2 — Lỗi bị nuốt im lặng, không hiển thị trạng thái lỗi (lỗi UX/debug)
+### Kết quả kiểm tra từng chức năng
 
-**Vị trí 1:** `frontend/src/hooks/useNotificationUnread.js` — dòng 11
+#### Xác thực (Auth)
 
-```js
-} catch { /* ignore */ }
-```
+| Chức năng | File chính | Trạng thái | Ghi chú |
+|-----------|-----------|------------|---------|
+| Đăng ký (username, email, mật khẩu, ngày sinh, giới tính) | `RegisterPage.jsx`, `AuthController.php` | ✅ OK | Validation đầy đủ cả frontend + backend |
+| Đăng nhập email/mật khẩu | `LoginPage.jsx`, `AuthController.php` | ✅ OK | JWT trả về, lưu vào `AuthContext` |
+| Đăng nhập Google OAuth | `LoginPage.jsx`, `AuthController.php::googleLogin()` | ✅ OK | Cần `VITE_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_ID` trong `.env` |
+| Đăng xuất | `Navbar.jsx`, `AuthController.php::logout()` | ✅ OK | |
+| Quên mật khẩu | `ForgotPasswordPage.jsx`, `AuthController.php::forgotPassword()` | ✅ OK | Token hiện trong response (dev mode) |
+| Đặt lại mật khẩu | `ResetPasswordPage.jsx`, `AuthController.php::resetPassword()` | ✅ OK | Token hết hạn sau 1 giờ |
+| Cài đặt tài khoản (username, ngày sinh, giới tính) | `SettingsPage.jsx`, `AuthController.php::updateProfile()` | ✅ OK | |
+| Đổi mật khẩu | `SettingsPage.jsx`, `AuthController.php::changePassword()` | ✅ OK | User Google lần đầu đổi mật khẩu để login bằng email |
 
-**Vị trí 2:** `frontend/src/pages/NotificationsPage.jsx` — dòng 40
+#### Bài viết & Feed
 
-```js
-.catch(() => setItems([]))
-```
+| Chức năng | File chính | Trạng thái | Ghi chú |
+|-----------|-----------|------------|---------|
+| Tạo bài viết (text + ảnh/video + vị trí + @mention) | `CreatePostForm.jsx`, `MutationType.php::createPost` | ✅ OK | Hỗ trợ đầy đủ media, tọa độ GPS, mention |
+| Sửa bài viết | `PostCard.jsx`, `MutationType.php::editPost` | ✅ OK | Chỉ sửa nội dung text |
+| Xóa bài viết | `PostCard.jsx`, `MutationType.php::deletePost` | ✅ OK | |
+| Feed cá nhân hóa (bạn bè + following) | `HomePage.jsx`, `QueryType.php::feed` | ✅ OK | Phân trang |
+| Xem bài viết chi tiết | `PostDetailPage.jsx` | ✅ OK | Route `/post/:postId` |
+| Chia sẻ bài viết (copy link) | `SharePopup.jsx` | ✅ OK | Copy URL vào clipboard |
+| Chọn vị trí bản đồ (Leaflet + OSM) | `LocationPicker.jsx` | ✅ OK (sau fix) | **Bug đã fix:** `leaflet` thiếu trong `package.json` — đã thêm `"leaflet": "^1.9.4"` |
 
-**Vấn đề:** Mọi lỗi (token hết hạn, bảng DB chưa tồn tại, lỗi mạng, lỗi GraphQL) đều bị nuốt hoàn toàn. Người dùng chỉ thấy badge = 0 và danh sách trống, **không thể phân biệt "chưa có thông báo" với "đang lỗi"**. Đây là nguyên nhân chính khiến tính năng trông như "không hoạt động" dù lỗi thực sự có thể đến từ nhiều nguồn khác nhau.
+#### Tương tác bài viết
 
-**Cách tạm thời debug:** Mở DevTools → tab Network → lọc `/graphql` → xem request `notificationUnreadCount` và `notifications` trả về gì. Nếu thấy lỗi `Unauthorized`, token đã hết hạn hoặc không được gửi. Nếu thấy lỗi DB, migration 011 có thể chưa được áp dụng.
+| Chức năng | File chính | Trạng thái | Ghi chú |
+|-----------|-----------|------------|---------|
+| Reaction (6 loại: Thích, Yêu thích, Haha, Wow, Buồn, Phẫn nộ) | `PostCard.jsx`, `FacebookEmoji.jsx` | ✅ OK | CSS emoji đồng nhất mọi thiết bị |
+| Xem ai đã thả reaction (tooltip + popup chi tiết) | `ReactionDetailsPopup.jsx`, `QueryType.php::postLikers` | ✅ OK | Lọc theo loại reaction |
+| Bình luận (text + ảnh/video) | `CommentPopup.jsx`, `CommentList.jsx` | ✅ OK | |
+| Bình luận dạng thread (trả lời nested 2 cấp) | `CommentPopup.jsx`, `CommentList.jsx` | ✅ OK | Flatten chuỗi sâu về 2 cấp |
+| Xóa bình luận (chủ bài + tác giả bình luận) | `CommentList.jsx`, `MutationType.php::deleteComment` | ✅ OK | |
+| @mention trong bài viết và bình luận | `useMentionInput.js`, `MentionHelper.php` | ✅ OK | Dropdown tìm kiếm, highlight màu xanh |
+| Xem ảnh lightbox | `PostImageLightbox.jsx` | ✅ OK | |
+| Phát video (VideoPlayer) | `VideoPlayer.jsx` | ✅ OK | Touch-friendly, Safari inline, mute/unmute |
 
-**Cách sửa đề xuất:** Thêm state lỗi vào `NotificationsPage.jsx` và hiển thị thông báo lỗi thay vì danh sách trống:
-```jsx
-const [error, setError] = useState(null);
-// ...
-.catch((err) => { setError(err.message); setItems([]); })
-// ...
-{error && <div className="apple-empty">Lỗi tải thông báo: {error}</div>}
-```
+#### Hồ sơ người dùng
+
+| Chức năng | File chính | Trạng thái | Ghi chú |
+|-----------|-----------|------------|---------|
+| Xem hồ sơ (bài viết, thống kê, bạn bè, following) | `ProfilePage.jsx`, `ProfileInfo.jsx` | ✅ OK | Hỗ trợ `profile_id=X` và `custom_url` |
+| Cập nhật bio, avatar, ảnh bìa | `ProfileInfo.jsx`, `UploadController.php` | ✅ OK | Upload lên `/upload`, `/upload/cover` |
+| Đặt URL tùy chỉnh (custom_url) | `ProfileInfo.jsx`, `MutationType.php::updateCustomUrl` | ✅ OK | |
+| Stories (tạo, xem, xóa) | `CreateStoryModal.jsx`, `StoryViewer.jsx` | ✅ OK | Hỗ trợ ảnh + video, hết hạn 24h |
+
+#### Kết nối người dùng
+
+| Chức năng | File chính | Trạng thái | Ghi chú |
+|-----------|-----------|------------|---------|
+| Kết bạn / lời mời kết bạn | `FriendsPage.jsx`, `FriendshipRepository.php` | ✅ OK | Gửi / chấp nhận / từ chối / hủy |
+| Danh sách bạn bè | `FriendsPage.jsx`, `QueryType.php::myFriends` | ✅ OK | |
+| Follow / Unfollow | `ProfileInfo.jsx`, `FollowRepository.php` | ✅ OK | |
+| Tìm kiếm người dùng | `SearchPage.jsx`, `QueryType.php::searchUsers` | ✅ OK | |
+| Thêm bạn từ trang tìm kiếm | `SearchPage.jsx` | ✅ OK | |
+
+#### Thông báo
+
+| Chức năng | File chính | Trạng thái | Ghi chú |
+|-----------|-----------|------------|---------|
+| Trang thông báo | `NotificationsPage.jsx` | ✅ OK | Các loại: `comment`, `mention_post`, `mention_comment`, `friend_request`, `friend_accept` |
+| Badge chưa đọc trên navbar / tab bar | `useNotificationUnread.js`, `Navbar.jsx` | ✅ OK | Refresh mỗi 45 giây |
+| Đánh dấu đã đọc (từng / tất cả) | `NotificationsPage.jsx`, `MutationType.php` | ✅ OK | |
+| Xóa thông báo (từng / tất cả) | `NotificationsPage.jsx`, `MutationType.php` | ✅ OK | |
+| Thông báo khi like | `LikeService.php` | ⚠️ Thiếu | `LikeService::likePost()` không gọi `NotificationRepository::insert()` — người dùng không nhận thông báo khi bài bị like |
+
+#### Chat & Tin nhắn
+
+| Chức năng | File chính | Trạng thái | Ghi chú |
+|-----------|-----------|------------|---------|
+| Danh sách hội thoại | `ConversationList.jsx`, `ChatController.php` | ✅ OK | Sorted theo tin nhắn mới nhất |
+| Gửi tin nhắn (text + ảnh/video) | `ChatWindow.jsx`, WebSocket | ✅ OK | Preview local ngay khi gửi |
+| Realtime nhận tin nhắn | `ChatContext.jsx`, `websocket.js` | ✅ OK | WebSocket + ACK |
+| Sửa / xóa / unsend / ẩn tin nhắn | `MessageBubble.jsx`, `ChatController.php` | ✅ OK | |
+| Floating chat window (Facebook-style) | `FloatingChatWindow.jsx` | ✅ OK | Nhiều cửa sổ, thu gọn / mở |
+| Read receipt (đã đọc đến tin nào) | `ChatController.php::getReadReceipt()` | ✅ OK | |
+| Tìm kiếm tin nhắn | `ChatController.php::searchMessages()` | ✅ OK | |
+| Typing indicator | WebSocket `messages.setTyping` | ✅ OK | |
+| Badge tổng tin nhắn chưa đọc | `ChatContext.jsx`, `Navbar.jsx` | ✅ OK | |
+
+#### Trò chơi & Ví tiền
+
+| Chức năng | File chính | Trạng thái | Ghi chú |
+|-----------|-----------|------------|---------|
+| Tài Xỉu server-round (30s/phiên) | `TaiXiuFloatingWidget.jsx`, `TaiXiuService.php` | ✅ OK | Jackpot pool, animation xúc xắc, countdown ring |
+| Nạp tiền VNPay | `PaymentController.php`, `SettingsPage.jsx` | ✅ OK | Sandbox; cần `VNP_TMN_CODE` + `VNP_HASH_SECRET` trong `.env` |
+| Lịch sử giao dịch | `SettingsPage.jsx`, `PaymentController.php::getTransactions()` | ✅ OK | |
+| Hiển thị số dư trong sidebar | `LeftSidebar.jsx` | ✅ OK | Cập nhật realtime qua event `mxh-wallet-refresh` |
+
+#### Tính năng khác
+
+| Chức năng | File chính | Trạng thái | Ghi chú |
+|-----------|-----------|------------|---------|
+| AI Chat (Gemini) | `AIFloatingChat.jsx`, `AIController.php` | ✅ OK | Cần `GEMINI_API_KEY` trong `.env` |
+| Link Preview | `LinkPreviewController.php` | ✅ OK | |
+| Widget thời tiết trên Navbar | `useWeather.js`, `Navbar.jsx` | ✅ OK | Open-Meteo + Nominatim, không cần API key |
+| Dark mode / Light mode | `App.jsx`, `Navbar.jsx`, `styles.css` | ✅ OK | Lưu vào localStorage |
+| Giao diện mobile (TabBar, MobileLayout) | `MobileLayout.jsx`, `MobileTabBar.jsx` | ✅ OK | Tabs: Trang chủ → Thông báo → Bạn bè → Tin nhắn → Cá nhân |
+| Sidebar trái (desktop) | `LeftSidebar.jsx` | ✅ OK | |
+| Sidebar phải — danh bạ online (desktop) | `RightSidebar.jsx` | ✅ OK | |
 
 ---
 
-### Lỗi 3 — Migration 011 có thể chưa được áp dụng (lỗi vận hành)
+### Vấn đề cần lưu ý
 
-**Vị trí:** `backend/database/migrations/011_notifications_mentions_location.sql`
-
-**Vấn đề:** Bảng `notifications` được tạo trong migration 011. Nếu lần đầu triển khai chỉ chạy migration đến 010, hoặc migration 011 bị lỗi giữa chừng (do câu `ALTER TABLE` lặp khi đã tồn tại cột), bảng `notifications` sẽ không tồn tại. Mọi query GraphQL sẽ ném exception, bị bắt im lặng ở frontend → biểu hiện giống hệt "không có thông báo nào".
-
-**Kiểm tra:**
-```bash
-docker compose exec backend php database/migrate.php
-# Hoặc kiểm tra trong MySQL:
-# SHOW TABLES LIKE 'notifications';
-# SELECT * FROM _migrations WHERE filename = '011_notifications_mentions_location.sql';
-```
-
-**Lưu ý:** Migration 011 có các câu `ALTER TABLE posts ADD COLUMN ...` và `ALTER TABLE comments ADD COLUMN ...`. Nếu chạy lại khi cột đã tồn tại, MySQL sẽ báo lỗi `Duplicate column name` → migration dừng giữa chừng và bảng `notifications` có thể không được tạo. Script `migrate.php` nên dùng `ADD COLUMN IF NOT EXISTS` (MySQL 8.0+) hoặc kiểm tra trước.
-
----
-
-### Lỗi 4 — README ghi sai các loại thông báo và tab mobile (lỗi tài liệu)
-
-**Vấn đề 1:** Mục **Chức năng chính** trong README chỉ liệt kê 3 loại thông báo:
-> `comment | mention_post | mention_comment`
-
-Nhưng thực tế `FriendshipService` còn tạo 2 loại nữa:
-- `friend_request` — khi gửi lời mời kết bạn
-- `friend_accept` — khi chấp nhận lời mời kết bạn
-
-**Vấn đề 2:** Mục **Giao diện mobile** ghi:
-> "5 tabs: Trang chủ, Bạn bè, Tìm kiếm, Tin nhắn (có badge), Cá nhân"
-
-Nhưng `MobileTabBar.jsx` thực tế có:
-> Trang chủ → **Thông báo (badge)** → Bạn bè → Tin nhắn (badge) → Cá nhân
-
-Không có tab Tìm kiếm trong tab bar (icon Tìm kiếm được đặt trên MobileHeader).
-
----
-
-### Tóm tắt ưu tiên sửa
-
-| Mức độ | Lỗi | File cần sửa |
-|--------|-----|--------------|
-| **Cao** | Migration 011 chưa chạy / lỗi khi chạy lại | `database/migrations/011_...sql`, `database/migrate.php` |
-| **Cao** | Lỗi bị nuốt im lặng — không thể debug | `useNotificationUnread.js`, `NotificationsPage.jsx` |
-| **Trung bình** | Thiếu thông báo khi like | `LikeService.php`, `NotificationsPage.jsx` |
-| **Thấp** | Tài liệu sai về loại thông báo và tab mobile | `README.md` (mục Chức năng chính, Giao diện mobile) |
+| Mức độ | Vấn đề | Vị trí | Cách xử lý |
+|--------|--------|--------|------------|
+| **Đã fix** | `leaflet` thiếu trong `package.json` → build lỗi khi mở LocationPicker | `frontend/package.json` | Đã thêm `"leaflet": "^1.9.4"`. Rebuild Docker frontend hoặc chạy `npm install` |
+| **Trung bình** | Thiếu thông báo khi like bài | `backend/src/Services/LikeService.php` | Thêm `NotificationRepository::insert()` sau khi like thành công; thêm `like: '...'` vào `TYPE_LABEL` trong `NotificationsPage.jsx` |
+| **Nhỏ** | Lỗi trong notification hook bị nuốt im lặng | `useNotificationUnread.js`, `NotificationsPage.jsx` | Thêm state lỗi để người dùng biết khi API lỗi; hỗ trợ debug dễ hơn |
+| **Vận hành** | Migration 011 (`notifications`, `mentions`) có thể lỗi nếu chạy lại khi cột đã tồn tại | `011_notifications_mentions_location.sql` | Kiểm tra bằng `docker compose exec backend php database/migrate.php`. MySQL 8.0+ hỗ trợ `ADD COLUMN IF NOT EXISTS` |
 
 ---
 
@@ -224,8 +257,8 @@ Không có tab Tìm kiếm trong tab bar (icon Tìm kiếm được đặt trên
 | **Hồ sơ** | Bio, avatar, ảnh bìa, URL tùy chỉnh (`custom_url`), thống kê (bài viết, follower, bạn bè, v.v.) |
 | **Bài viết & feed** | Tạo / sửa / xóa bài, feed cá nhân hóa; **media ảnh/video** (upload + kích thước hiển thị); **vị trí** (nhãn văn bản + tọa độ GPS qua Geolocation API); **gắn thẻ @username** trong nội dung (trích bằng `MentionHelper`, lưu `post_mentions`) |
 | **Tương tác** | Like / unlike; bình luận **chữ** hoặc **kèm ảnh/video** (upload riêng trong popup bình luận, cùng endpoint `/upload/media`); **gắn thẻ @username** trong bình luận (`comment_mentions`); chủ bài viết nhận thông báo khi có bình luận mới |
-| **Thông báo** | Bảng `notifications` trong DB (loại: `comment` \| `mention_post` \| `mention_comment`); GraphQL query `notifications` + `notificationUnreadCount`; mutations `markNotificationRead` + `markAllNotificationsRead`; **trang `/notifications`** hiển thị danh sách, đánh dấu đã đọc; **badge số chưa đọc** trên thanh Navbar (desktop) và TabBar (mobile); refresh badge tự động mỗi 45 giây + qua sự kiện `mxh-notif-refresh` |
-| **Điều hướng** | **Desktop — Navbar pill:** Trang chủ → Thông báo (badge) → Tìm bạn → Bạn bè → Tin nhắn (badge) → Hồ sơ. **Mobile — TabBar dưới:** Trang chủ → Thông báo (badge) → Bạn bè → Tin nhắn (badge) → Cá nhân; icon Tìm kiếm đặt trên Header sticky |
+| **Thông báo** | Bảng `notifications` trong DB (loại: `comment` \| `mention_post` \| `mention_comment` \| `friend_request` \| `friend_accept`); GraphQL query `notifications` + `notificationUnreadCount`; mutations `markNotificationRead` + `markAllNotificationsRead` + `deleteNotification` + `deleteAllNotifications`; **trang `/notifications`** hiển thị danh sách, đánh dấu đã đọc; **badge số chưa đọc** trên Navbar (desktop) và TabBar (mobile); refresh badge tự động mỗi 45 giây |
+| **Điều hướng** | **Desktop — Navbar pill:** Trang chủ → Thông báo (badge) → Tìm bạn (icon) → Bạn bè (badge lời mời) → Tin nhắn (badge) → Hồ sơ → Cài đặt. **Mobile — TabBar dưới:** Trang chủ → Thông báo (badge) → Bạn bè → Tin nhắn (badge) → Cá nhân; icon Tìm kiếm đặt trên MobileHeader sticky |
 | **Quan hệ** | Follow, kết bạn / lời mời kết bạn (friendship) |
 | **Tìm kiếm & khám phá** | Trang tìm kiếm người dùng; link `@username` trong bài/bình luận mở `/search?q=username` |
 | **Stories** | Luồng story (viewer, tạo story — theo module GraphQL / UI) |
@@ -327,13 +360,13 @@ docker compose exec backend composer show
 
 **Dependencies (runtime):**
 
-| Gói | Phiên bản đã khóa (`package-lock.json`) |
-|-----|----------------------------------------|
-| react | 18.3.1 |
-| react-dom | 18.3.1 |
-| react-router-dom | 6.30.3 |
-| react-router (phụ thuộc) | 6.30.3 |
-| @remix-run/router (phụ thuộc của react-router) | 1.23.2 |
+| Gói | Phiên bản khai báo | Ghi chú |
+|-----|-------------------|---------|
+| react | ^18.2.0 (lock: 18.3.1) | |
+| react-dom | ^18.2.0 (lock: 18.3.1) | |
+| react-router-dom | ^6.20.0 (lock: 6.30.3) | |
+| leaflet | ^1.9.4 | Bản đồ OpenStreetMap cho LocationPicker — **mới thêm** |
+| roll-a-die | ^2.0.1 | Animation xúc xắc cho Tài Xỉu |
 
 **DevDependencies:**
 
@@ -566,22 +599,32 @@ Chi tiết biến môi trường tham chiếu `docker-compose.yml` (`DB_*`, `JWT
 
 ### Đã triển khai (tổng quan)
 
-- [x] Đăng ký / đăng nhập JWT, middleware
-- [x] Hồ sơ, media bài viết, feed, like, comment
-- [x] Follow, kết bạn / lời mời
-- [x] Tìm kiếm, stories (module tương ứng)
-- [x] Chat REST + WebSocket
-- [x] Link preview, upload đa loại
-- [x] Migration / seed, Docker hóa đa service
+- [x] Đăng ký / đăng nhập JWT, Google OAuth, quên / đặt lại mật khẩu
+- [x] Hồ sơ (bio, avatar, ảnh bìa, custom URL), media bài viết (ảnh/video), feed cá nhân hóa
+- [x] Reaction 6 loại, xem ai đã reaction, bình luận dạng thread + media, @mention
+- [x] Follow, kết bạn / lời mời kết bạn (Gửi / Chấp nhận / Từ chối / Hủy)
+- [x] Tìm kiếm người dùng, Stories (ảnh/video, 24h)
+- [x] Chat realtime (REST + WebSocket): gửi/sửa/xóa/unsend/ẩn tin nhắn, media, typing, read receipt
+- [x] Floating chat windows (Facebook-style), floating Tài Xỉu widget
+- [x] Thông báo: bình luận, mention, kết bạn — badge + trang danh sách
+- [x] Nạp tiền VNPay, ví tiền, lịch sử giao dịch
+- [x] Tài Xỉu server-round (jackpot pool, animation, countdown)
+- [x] AI Chat (Gemini proxy), Link preview
+- [x] Widget thời tiết trên Navbar (Open-Meteo + Nominatim)
+- [x] Chọn vị trí bản đồ (Leaflet + OpenStreetMap)
+- [x] Dark mode / Light mode (lưu localStorage)
+- [x] Giao diện mobile-first (MobileLayout, bottom tab bar)
+- [x] Migration / seed, Docker hóa đa service (backend + websocket + frontend + MySQL)
+- [x] Script dọn media định kỳ (`bin/cleanup-media.php`)
 
 ### Có thể mở rộng sau
 
-- [ ] Thông báo đẩy (push) / notification center đầy đủ
-- [ ] Real-time toàn phần (feed, typing, …) ngoài chat
-- [ ] Panel quản trị, giới hạn tốc độ (rate limit), cache (Redis)
-- [ ] Test tự động (unit / integration), CI
-- [ ] Tối ưu UI responsive và accessibility
-- [x] Giao diện mobile-first (bottom tab bar, MobileLayout) — xem mục bên dưới
+- [ ] Thông báo khi like bài (backend `LikeService` chưa gọi `NotificationRepository`)
+- [ ] Thông báo đẩy (push notification / FCM)
+- [ ] Real-time feed (hiện tại chỉ chat là realtime)
+- [ ] Panel quản trị, rate limit, cache (Redis)
+- [ ] Test tự động (unit / integration), CI/CD
+- [ ] Tối ưu accessibility (aria, keyboard navigation)
 
 ---
 
@@ -605,7 +648,7 @@ Class `is-mobile` được gắn vào `<body>` khi ở chế độ mobile, cho p
 | `MobileLayout.jsx` | Wrapper bao gồm Header + Content + TabBar |
 | `mobile.css` | Toàn bộ style mobile: tab bar, header, override post/stories/chat/popup |
 | `components/MobileHeader.jsx` | Header sticky: logo "iPock" xanh Facebook + nút đăng xuất |
-| `components/MobileTabBar.jsx` | 5 tabs: Trang chủ, Bạn bè, Tìm kiếm, Tin nhắn (có badge), Cá nhân |
+| `components/MobileTabBar.jsx` | 5 tabs: Trang chủ, Thông báo (badge), Bạn bè, Tin nhắn (badge), Cá nhân |
 | `hooks/useIsMobile.js` | `matchMedia('(max-width: 768px)')` + userAgent fallback |
 
 ### Video trên mobile (Safari / Chrome)
