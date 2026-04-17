@@ -10,14 +10,9 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
-- **[Fix] Vị trí widget thời tiết — đặt absolute góc trái navbar:** Widget thời tiết nay nằm ngoài `apple-nav-inner` (vùng centered max-width 980px), được đặt `position: absolute; left: 16px; top: 50%` trong `.apple-nav` sticky — hiển thị đúng cột left sidebar, không chiếm chỗ trong flow navbar.
-  - File sửa: `frontend/src/components/Navbar.jsx` (weather div chuyển ra ngoài `apple-nav-inner`), `frontend/src/styles.css` (`.nav-weather` → `position: absolute`)
-
-- **[Fix] Thêm `leaflet` vào `package.json`:** `LocationPicker.jsx` import `leaflet` nhưng gói này chưa có trong `dependencies` → vite build lỗi. Đã thêm `"leaflet": "^1.9.4"` vào `frontend/package.json`. Cần chạy `npm install` hoặc rebuild Docker image frontend để áp dụng.
-
-- **Widget thời tiết trên Navbar:** Hiển thị thời tiết hiện tại (icon + nhiệt độ + tên thành phố) ngay trên thanh điều hướng. Dùng Open-Meteo API (miễn phí, không cần API key) + Nominatim geocoding ngược sang tiếng Việt. Tự động xin quyền vị trí GPS, ẩn nếu người dùng từ chối.
+- **Widget thời tiết trên Navbar:** Hiển thị thời tiết hiện tại (icon + nhiệt độ + tên thành phố) tại góc trái navbar, cùng cột với left sidebar. Dùng Open-Meteo API (miễn phí, không cần API key) + Nominatim geocoding ngược sang tiếng Việt. Tự động xin quyền vị trí GPS, ẩn nếu người dùng từ chối. Widget được đặt `position: absolute; left: 16px` ngoài vùng centered `apple-nav-inner`.
   - File mới: `frontend/src/hooks/useWeather.js`
-  - File sửa: `frontend/src/components/Navbar.jsx`, `frontend/src/styles.css` (classes `.nav-weather`, `.nav-weather-icon`, `.nav-weather-temp`, `.nav-weather-city`)
+  - File sửa: `frontend/src/components/Navbar.jsx`, `frontend/src/styles.css`
 
 - **FCW header kiểu Facebook:** Redesign header cửa sổ chat nổi giống Facebook — avatar lớn hơn (36px), tên + trạng thái, thêm nút gọi điện thoại và video call (visual), nút thu nhỏ dùng icon `─` (dash), nút đóng `×`. Hiển thị "Ngoại tuyến" khi user offline.
   - File sửa: `frontend/src/components/FloatingChatWindow.jsx`, `frontend/src/styles.css` (`.fcw-avatar`, `.fcw-status--offline`)
@@ -116,17 +111,7 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Kiểm tra chức năng (2026-04-14)
 
-> Kiểm tra tĩnh toàn bộ code — đọc từng module frontend (JSX, hooks, services) và backend (Controllers, Repositories, GraphQL schema). Không cần server đang chạy.
-
-### Tóm tắt nhanh
-
-| Trạng thái | Số lượng |
-|------------|----------|
-| ✅ Hoạt động bình thường | 28 chức năng |
-| ⚠️ Có vấn đề nhỏ / cần lưu ý | 3 vấn đề |
-| ❌ Bug nghiêm trọng (đã fix) | 1 bug |
-
----
+> Kiểm tra tĩnh toàn bộ code. Danh sách lỗi và vấn đề tồn đọng xem tại [`BUGS.md`](BUGS.md).
 
 ### Kết quả kiểm tra từng chức năng
 
@@ -153,7 +138,7 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 | Feed cá nhân hóa (bạn bè + following) | `HomePage.jsx`, `QueryType.php::feed` | ✅ OK | Phân trang |
 | Xem bài viết chi tiết | `PostDetailPage.jsx` | ✅ OK | Route `/post/:postId` |
 | Chia sẻ bài viết (copy link) | `SharePopup.jsx` | ✅ OK | Copy URL vào clipboard |
-| Chọn vị trí bản đồ (Leaflet + OSM) | `LocationPicker.jsx` | ✅ OK (sau fix) | **Bug đã fix:** `leaflet` thiếu trong `package.json` — đã thêm `"leaflet": "^1.9.4"` |
+| Chọn vị trí bản đồ (Leaflet + OSM) | `LocationPicker.jsx` | ✅ OK | |
 
 #### Tương tác bài viết
 
@@ -195,7 +180,7 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 | Badge chưa đọc trên navbar / tab bar | `useNotificationUnread.js`, `Navbar.jsx` | ✅ OK | Refresh mỗi 45 giây |
 | Đánh dấu đã đọc (từng / tất cả) | `NotificationsPage.jsx`, `MutationType.php` | ✅ OK | |
 | Xóa thông báo (từng / tất cả) | `NotificationsPage.jsx`, `MutationType.php` | ✅ OK | |
-| Thông báo khi like | `LikeService.php` | ⚠️ Thiếu | `LikeService::likePost()` không gọi `NotificationRepository::insert()` — người dùng không nhận thông báo khi bài bị like |
+| Thông báo khi like | `LikeService.php` | — | Chưa triển khai, xem [BUGS.md](BUGS.md#bug-001) |
 
 #### Chat & Tin nhắn
 
@@ -231,17 +216,6 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 | Giao diện mobile (TabBar, MobileLayout) | `MobileLayout.jsx`, `MobileTabBar.jsx` | ✅ OK | Tabs: Trang chủ → Thông báo → Bạn bè → Tin nhắn → Cá nhân |
 | Sidebar trái (desktop) | `LeftSidebar.jsx` | ✅ OK | |
 | Sidebar phải — danh bạ online (desktop) | `RightSidebar.jsx` | ✅ OK | |
-
----
-
-### Vấn đề cần lưu ý
-
-| Mức độ | Vấn đề | Vị trí | Cách xử lý |
-|--------|--------|--------|------------|
-| **Đã fix** | `leaflet` thiếu trong `package.json` → build lỗi khi mở LocationPicker | `frontend/package.json` | Đã thêm `"leaflet": "^1.9.4"`. Rebuild Docker frontend hoặc chạy `npm install` |
-| **Trung bình** | Thiếu thông báo khi like bài | `backend/src/Services/LikeService.php` | Thêm `NotificationRepository::insert()` sau khi like thành công; thêm `like: '...'` vào `TYPE_LABEL` trong `NotificationsPage.jsx` |
-| **Nhỏ** | Lỗi trong notification hook bị nuốt im lặng | `useNotificationUnread.js`, `NotificationsPage.jsx` | Thêm state lỗi để người dùng biết khi API lỗi; hỗ trợ debug dễ hơn |
-| **Vận hành** | Migration 011 (`notifications`, `mentions`) có thể lỗi nếu chạy lại khi cột đã tồn tại | `011_notifications_mentions_location.sql` | Kiểm tra bằng `docker compose exec backend php database/migrate.php`. MySQL 8.0+ hỗ trợ `ADD COLUMN IF NOT EXISTS` |
 
 ---
 
