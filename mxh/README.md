@@ -10,11 +10,14 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **[Fix] Vị trí widget thời tiết — đặt absolute góc trái navbar:** Widget thời tiết nay nằm ngoài `apple-nav-inner` (vùng centered max-width 980px), được đặt `position: absolute; left: 16px; top: 50%` trong `.apple-nav` sticky — hiển thị đúng cột left sidebar, không chiếm chỗ trong flow navbar.
+  - File sửa: `frontend/src/components/Navbar.jsx` (weather div chuyển ra ngoài `apple-nav-inner`), `frontend/src/styles.css` (`.nav-weather` → `position: absolute`)
+
 - **[Fix] Thêm `leaflet` vào `package.json`:** `LocationPicker.jsx` import `leaflet` nhưng gói này chưa có trong `dependencies` → vite build lỗi. Đã thêm `"leaflet": "^1.9.4"` vào `frontend/package.json`. Cần chạy `npm install` hoặc rebuild Docker image frontend để áp dụng.
 
-- **Widget thời tiết trên Navbar:** Hiển thị thời tiết hiện tại (icon + nhiệt độ + tên thành phố) ngay trên thanh điều hướng, bên phải logo "iPock". Dùng Open-Meteo API (miễn phí, không cần API key) + Nominatim geocoding ngược sang tiếng Việt. Tự động xin quyền vị trí GPS, ẩn nếu người dùng từ chối.
+- **Widget thời tiết trên Navbar:** Hiển thị thời tiết hiện tại (icon + nhiệt độ + tên thành phố) ngay trên thanh điều hướng. Dùng Open-Meteo API (miễn phí, không cần API key) + Nominatim geocoding ngược sang tiếng Việt. Tự động xin quyền vị trí GPS, ẩn nếu người dùng từ chối.
   - File mới: `frontend/src/hooks/useWeather.js`
-  - File sửa: `frontend/src/components/Navbar.jsx` (thêm import hook + JSX `.nav-weather`), `frontend/src/styles.css` (classes `.nav-weather`, `.nav-weather-icon`, `.nav-weather-temp`, `.nav-weather-city`)
+  - File sửa: `frontend/src/components/Navbar.jsx`, `frontend/src/styles.css` (classes `.nav-weather`, `.nav-weather-icon`, `.nav-weather-temp`, `.nav-weather-city`)
 
 - **FCW header kiểu Facebook:** Redesign header cửa sổ chat nổi giống Facebook — avatar lớn hơn (36px), tên + trạng thái, thêm nút gọi điện thoại và video call (visual), nút thu nhỏ dùng icon `─` (dash), nút đóng `×`. Hiển thị "Ngoại tuyến" khi user offline.
   - File sửa: `frontend/src/components/FloatingChatWindow.jsx`, `frontend/src/styles.css` (`.fcw-avatar`, `.fcw-status--offline`)
@@ -223,7 +226,7 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 |-----------|-----------|------------|---------|
 | AI Chat (Gemini) | `AIFloatingChat.jsx`, `AIController.php` | ✅ OK | Cần `GEMINI_API_KEY` trong `.env` |
 | Link Preview | `LinkPreviewController.php` | ✅ OK | |
-| Widget thời tiết trên Navbar | `useWeather.js`, `Navbar.jsx` | ✅ OK | Open-Meteo + Nominatim, không cần API key |
+| Widget thời tiết trên Navbar | `useWeather.js`, `Navbar.jsx` | ✅ OK | Absolute-positioned góc trái navbar (ngoài vùng centered); Open-Meteo + Nominatim, không cần API key |
 | Dark mode / Light mode | `App.jsx`, `Navbar.jsx`, `styles.css` | ✅ OK | Lưu vào localStorage |
 | Giao diện mobile (TabBar, MobileLayout) | `MobileLayout.jsx`, `MobileTabBar.jsx` | ✅ OK | Tabs: Trang chủ → Thông báo → Bạn bè → Tin nhắn → Cá nhân |
 | Sidebar trái (desktop) | `LeftSidebar.jsx` | ✅ OK | |
