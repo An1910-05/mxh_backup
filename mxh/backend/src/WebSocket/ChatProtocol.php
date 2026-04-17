@@ -35,6 +35,13 @@ class ChatProtocol
     public const METHOD_GET_HISTORY = 'messages.getHistory';
     public const METHOD_PING = 'ping';
 
+    // WebRTC call signaling (client <-> server <-> client relay)
+    public const METHOD_CALL_OFFER  = 'call.offer';
+    public const METHOD_CALL_ANSWER = 'call.answer';
+    public const METHOD_CALL_REJECT = 'call.reject';
+    public const METHOD_CALL_END    = 'call.end';
+    public const METHOD_CALL_ICE    = 'call.ice';
+
     // Server -> Client updates
     public const UPDATE_NEW_MESSAGE = 'updateNewMessage';
     public const UPDATE_EDIT_MESSAGE = 'updateEditMessage';

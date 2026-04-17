@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
+import { CallProvider } from './contexts/CallContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import { BlobSvgFilter } from './components/BlobButton';
@@ -23,8 +24,16 @@ import TaiXiuFloatingWidget from './components/TaiXiuFloatingWidget';
 import LeftSidebar from './components/LeftSidebar';
 import FloatingChatManager from './components/FloatingChatWindow';
 import RightSidebar from './components/RightSidebar';
+import IncomingCallToast from './components/IncomingCallToast';
+import CallWindow from './components/CallWindow';
 import useIsMobile from './mobile/hooks/useIsMobile';
 import MobileLayout from './mobile/MobileLayout';
+import AdminRoute from './pages/admin/AdminRoute';
+import AdminLayout from './pages/admin/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminPosts from './pages/admin/AdminPosts';
+import AdminTransactions from './pages/admin/AdminTransactions';
 
 const THEME_STORAGE_KEY = 'mxh-theme-mode';
 
@@ -86,27 +95,44 @@ export default function App() {
       <ScrollToTop />
       <AuthProvider>
         <ChatProvider>
+          <CallProvider>
           <BlobSvgFilter />
           <TaiXiuFloatingWidget />
           <FloatingChatManager />
-          <AppShell>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-              <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
-              <Route path="/friends" element={<ProtectedRoute><FriendsPage /></ProtectedRoute>} />
-              <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-              <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-              <Route path="/games" element={<ProtectedRoute><GamesPage /></ProtectedRoute>} />
-              <Route path="/payment/result" element={<ProtectedRoute><PaymentResultPage /></ProtectedRoute>} />
-              <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />
-              <Route path="/:customUrl" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            </Routes>
-          </AppShell>
+          <IncomingCallToast />
+          <CallWindow />
+          <Routes>
+            {/* Admin — own layout, no AppShell */}
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="posts" element={<AdminPosts />} />
+              <Route path="transactions" element={<AdminTransactions />} />
+            </Route>
+
+            {/* Main app — wrapped in AppShell */}
+            <Route path="*" element={
+              <AppShell>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+                  <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+                  <Route path="/friends" element={<ProtectedRoute><FriendsPage /></ProtectedRoute>} />
+                  <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+                  <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+                  <Route path="/games" element={<ProtectedRoute><GamesPage /></ProtectedRoute>} />
+                  <Route path="/payment/result" element={<ProtectedRoute><PaymentResultPage /></ProtectedRoute>} />
+                  <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />
+                  <Route path="/:customUrl" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                </Routes>
+              </AppShell>
+            } />
+          </Routes>
+          </CallProvider>
         </ChatProvider>
       </AuthProvider>
     </BrowserRouter>

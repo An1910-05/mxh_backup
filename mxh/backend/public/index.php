@@ -11,6 +11,7 @@ use App\Controllers\ChatController;
 use App\Controllers\LinkPreviewController;
 use App\Controllers\PaymentController;
 use App\Controllers\AIController;
+use App\Controllers\AdminController;
 use App\Helpers\Response;
 use GraphQL\GraphQL;
 use GraphQL\Error\DebugFlag;
@@ -172,6 +173,39 @@ try {
         // AI chat (Gemini proxy)
         case $uri === '/ai/chat' && $method === 'POST':
             (new AIController())->chat();
+            break;
+
+        // ── Admin routes (require role=admin) ────────────────────────────────
+        case $uri === '/admin/stats' && $method === 'GET':
+            (new AdminController())->getStats();
+            break;
+
+        case $uri === '/admin/users' && $method === 'GET':
+            (new AdminController())->getUsers();
+            break;
+
+        case $uri === '/admin/users/block' && $method === 'POST':
+            (new AdminController())->blockUser();
+            break;
+
+        case $uri === '/admin/users/delete' && $method === 'POST':
+            (new AdminController())->deleteUser();
+            break;
+
+        case $uri === '/admin/users/role' && $method === 'POST':
+            (new AdminController())->setRole();
+            break;
+
+        case $uri === '/admin/posts' && $method === 'GET':
+            (new AdminController())->getPosts();
+            break;
+
+        case $uri === '/admin/posts/delete' && $method === 'POST':
+            (new AdminController())->deletePost();
+            break;
+
+        case $uri === '/admin/transactions' && $method === 'GET':
+            (new AdminController())->getTransactions();
             break;
 
         // GraphQL endpoint

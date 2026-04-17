@@ -1,0 +1,102 @@
+/* =============================================
+   ADMIN PANEL
+   ============================================= */
+
+.adm-shell { display: flex; height: 100vh; background: #f0f2f5; font-family: inherit; }
+
+.adm-sidebar { width: 220px; flex-shrink: 0; background: #1a1a2e; display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; }
+.adm-sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 20px 20px 16px; font-size: 1rem; font-weight: 700; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.adm-sidebar-brand svg { color: #0a84ff; flex-shrink: 0; }
+.adm-nav { flex: 1; padding: 12px 0; display: flex; flex-direction: column; gap: 2px; }
+.adm-nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.6); font-size: 0.9375rem; text-decoration: none; transition: background 0.15s, color 0.15s; }
+.adm-nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.adm-nav-item--active { background: rgba(10,132,255,0.18) !important; color: #0a84ff !important; border-right: 3px solid #0a84ff; }
+.adm-nav-icon { flex-shrink: 0; opacity: 0.85; }
+.adm-sidebar-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.adm-sidebar-user { display: flex; flex-direction: column; gap: 2px; }
+.adm-sidebar-username { font-size: 0.875rem; font-weight: 600; color: #fff; }
+.adm-sidebar-role { font-size: 0.75rem; color: #0a84ff; }
+.adm-logout-btn { width: 32px; height: 32px; border-radius: 8px; border: none; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s, color 0.15s; flex-shrink: 0; }
+.adm-logout-btn:hover { background: rgba(255,59,48,0.2); color: #ff3b30; }
+
+.adm-main { flex: 1; overflow-y: auto; min-width: 0; }
+.adm-page { padding: 28px 32px; max-width: 1200px; }
+.adm-page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.adm-page-title { font-size: 1.375rem; font-weight: 700; color: #050505; margin: 0; display: flex; align-items: center; gap: 8px; }
+.adm-badge { font-size: 0.8125rem; font-weight: 600; background: #e4e6eb; color: #65676b; padding: 2px 8px; border-radius: 12px; }
+.adm-toolbar { display: flex; gap: 8px; align-items: center; }
+.adm-search { padding: 8px 12px; border: 1px solid #e4e6eb; border-radius: 8px; font-size: 0.875rem; background: #fff; outline: none; width: 220px; transition: border-color 0.15s; }
+.adm-search:focus { border-color: #0a84ff; }
+.adm-select { padding: 8px 10px; border: 1px solid #e4e6eb; border-radius: 8px; font-size: 0.875rem; background: #fff; outline: none; cursor: pointer; }
+
+.adm-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.adm-stat-card { background: #fff; border-radius: 14px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.adm-stat-value { font-size: 1.875rem; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+.adm-stat-label { font-size: 0.875rem; color: #65676b; font-weight: 500; }
+.adm-stat-sub { font-size: 0.8125rem; color: #34c759; margin-top: 4px; }
+
+.adm-chart-card { background: #fff; border-radius: 14px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 24px; }
+.adm-chart-title { font-size: 0.9375rem; font-weight: 600; color: #050505; margin-bottom: 16px; }
+.adm-bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
+.adm-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.adm-bar-val { font-size: 0.75rem; color: #65676b; font-weight: 600; }
+.adm-bar { width: 100%; background: #0a84ff; border-radius: 4px 4px 0 0; min-height: 4px; }
+.adm-bar-label { font-size: 0.6875rem; color: #65676b; }
+
+.adm-table-wrap { background: #fff; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 16px; overflow-x: auto; }
+.adm-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.adm-table th { background: #f7f8fa; padding: 12px 16px; text-align: left; font-weight: 600; color: #65676b; font-size: 0.8125rem; border-bottom: 1px solid #e4e6eb; white-space: nowrap; }
+.adm-table td { padding: 12px 16px; border-bottom: 1px solid #f0f2f5; color: #050505; vertical-align: middle; }
+.adm-table tr:last-child td { border-bottom: none; }
+.adm-table tr:hover td { background: #f7f8fa; }
+.adm-table-empty { text-align: center; color: #65676b; padding: 32px !important; }
+.adm-td-id { color: #65676b; font-size: 0.8125rem; white-space: nowrap; }
+.adm-td-email { color: #65676b; font-size: 0.8125rem; }
+.adm-td-date { color: #65676b; font-size: 0.8125rem; white-space: nowrap; }
+.adm-td-num { text-align: center; font-weight: 600; }
+.adm-td-amount { font-weight: 700; color: #050505; white-space: nowrap; }
+.adm-td-ref { font-size: 0.75rem; color: #65676b; font-family: monospace; }
+.adm-td-content { max-width: 280px; }
+.adm-post-excerpt { color: #050505; }
+.adm-post-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
+.adm-user-cell { display: flex; align-items: center; gap: 8px; }
+.adm-user-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.adm-user-name { font-weight: 600; white-space: nowrap; }
+
+.adm-status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+.adm-status-badge--active  { background: #e8f5e9; color: #2e7d32; }
+.adm-status-badge--blocked { background: #ffebee; color: #c62828; }
+.adm-status-badge--pending { background: #fff8e1; color: #f57f17; }
+
+.adm-tx-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+.adm-tx--deposit  { background: #e3f2fd; color: #1565c0; }
+.adm-tx--withdraw { background: #fce4ec; color: #880e4f; }
+.adm-tx--bet      { background: #f3e5f5; color: #6a1b9a; }
+.adm-tx--win      { background: #e8f5e9; color: #2e7d32; }
+.adm-tx--refund   { background: #fff8e1; color: #f57f17; }
+
+.adm-role-select { padding: 4px 8px; border: 1px solid #e4e6eb; border-radius: 6px; font-size: 0.8125rem; background: #fff; cursor: pointer; outline: none; }
+.adm-role-select--admin { border-color: #0a84ff; color: #0a84ff; font-weight: 600; }
+
+.adm-actions-cell { display: flex; gap: 6px; }
+.adm-action-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #e4e6eb; background: #fff; font-size: 0.8125rem; cursor: pointer; font-weight: 500; transition: background 0.15s, border-color 0.15s; white-space: nowrap; }
+.adm-action-btn:hover { background: #f0f2f5; }
+.adm-action-btn--danger  { background: #ffebee; border-color: #ffcdd2; color: #c62828; }
+.adm-action-btn--danger:hover { background: #ffcdd2; }
+.adm-action-btn--warn    { background: #fff8e1; border-color: #ffe082; color: #f57f17; }
+.adm-action-btn--warn:hover { background: #ffe082; }
+.adm-action-btn--success { background: #e8f5e9; border-color: #c8e6c9; color: #2e7d32; }
+.adm-action-btn--success:hover { background: #c8e6c9; }
+
+.adm-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; }
+.adm-page-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e4e6eb; background: #fff; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+.adm-page-btn:hover:not(:disabled) { background: #f0f2f5; }
+.adm-page-btn:disabled { opacity: 0.4; cursor: default; }
+.adm-page-info { font-size: 0.875rem; color: #65676b; }
+
+.adm-confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+.adm-confirm-box { background: #fff; border-radius: 16px; padding: 24px 28px; max-width: 360px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+.adm-confirm-text { font-size: 0.9375rem; color: #050505; margin: 0 0 20px; line-height: 1.5; }
+.adm-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.adm-loading { color: #65676b; padding: 40px; text-align: center; }

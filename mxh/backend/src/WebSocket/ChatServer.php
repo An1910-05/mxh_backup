@@ -78,6 +78,12 @@ class ChatServer implements MessageComponentInterface
                 ChatProtocol::METHOD_READ_HISTORY => $this->handleReadHistory($conn, $userId, $msgId, $data),
                 ChatProtocol::METHOD_TYPING => $this->handleTyping($conn, $userId, $msgId, $data),
                 ChatProtocol::METHOD_GET_HISTORY => $this->handleGetHistory($conn, $userId, $msgId, $data),
+                // WebRTC call signaling — server chỉ relay, không xử lý media
+                ChatProtocol::METHOD_CALL_OFFER,
+                ChatProtocol::METHOD_CALL_ANSWER,
+                ChatProtocol::METHOD_CALL_REJECT,
+                ChatProtocol::METHOD_CALL_END,
+                ChatProtocol::METHOD_CALL_ICE => $this->handleCallSignal($conn, $userId, $msgId, $type, $data),
                 default => $conn->send(ChatProtocol::createError($msgId, 400, "Unknown method: {$type}")),
             };
         } catch (\Throwable $e) {
@@ -285,6 +291,25 @@ class ChatServer implements MessageComponentInterface
             'messages' => $messages,
             'conversation_id' => $conversationId,
         ]));
+    }
+
+    /**
+     * Relay WebRTC call signaling messages between users.
+     * Server does NOT process media — only forwards the frame to the target user.
+     */
+    private function handleCallSignal(ConnectionInterface $conn, int $userId, int $msgId, string $type, array $data): void
+    {
+        $toUserId = (int)($data['to_user_id'] ?? 0);
+        if ($toUserId === 0) {
+            $conn->send(ChatProtocol::createError($msgId, 400, 'to_user_id required'));
+            return;
+        }
+
+        $payload = array_merge($data, ['from_user_id' => $userId]);
+        $this->sendToUser($toUserId, ChatProtocol::createUpdate($type, $payload));
+
+        // ACK to sender
+        $conn->send(ChatProtocol::createResponse('result', $msgId, ['ok' => true]));
     }
 
     private function broadcastPresence(int $userId, bool $isOnline): void
