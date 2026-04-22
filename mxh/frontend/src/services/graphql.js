@@ -202,9 +202,9 @@ export async function deleteStory(storyId) {
   return data.deleteStory;
 }
 
-// === Tài Xỉu (server-round) ===
+// === Tỉu Xài (server-round) ===
 
-const CURRENT_ROUND_FIELDS = `id round_code status seconds_left betting_deadline tai_total tai_count xiu_total xiu_count dice total result_key result_label my_bet_side my_bet_amount my_did_win jackpot_payout`;
+const CURRENT_ROUND_FIELDS = `id round_code md5_hash status phase phase_seconds_left seconds_left betting_deadline tai_total tai_count xiu_total xiu_count dice total result_key result_label my_bet_side my_bet_amount my_did_win jackpot_payout`;
 const ROUND_FIELDS_TX = `id round_code md5_hash dice total result_key result_label jackpot_side jackpot_payout tai_pool_snapshot xiu_pool_snapshot created_at`;
 const BET_FIELDS_TX   = `id round_id round_code bet_side bet_label bet_amount result_key result_label dice total did_win net_amount balance_after jackpot_hit jackpot_payout created_at`;
 

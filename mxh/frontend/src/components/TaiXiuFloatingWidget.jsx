@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getTaiXiuOverview, getTaiXiuCurrentRound, taiXiuPlaceBet } from '../services/graphql';
-import rollADie from 'roll-a-die';
 
 const BET_OPTIONS = [10000, 100000, 500000, 1000000, 5000000, 10000000];
 const DEFAULT_POS = { right: 20, bottom: 80 };
@@ -60,93 +59,100 @@ function clampPage(page, totalPages) {
   return Math.max(0, Math.min(page, totalPages - 1));
 }
 
-/* Static 3D-style die SVG (red casino dice) */
+/* Vị trí chấm trên mỗi mặt (viewBox 100x100) */
 const DIE_DOTS = {
   1: [[50, 50]],
-  2: [[30, 30], [70, 70]],
-  3: [[25, 25], [50, 50], [75, 75]],
+  2: [[28, 28], [72, 72]],
+  3: [[24, 24], [50, 50], [76, 76]],
   4: [[28, 28], [72, 28], [28, 72], [72, 72]],
-  5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
-  6: [[28, 24], [72, 24], [28, 50], [72, 50], [28, 76], [72, 76]],
+  5: [[26, 26], [74, 26], [50, 50], [26, 74], [74, 74]],
+  6: [[28, 22], [72, 22], [28, 50], [72, 50], [28, 78], [72, 78]],
 };
 
-function StaticDie({ value, size = 62 }) {
-  const v = Math.max(1, Math.min(6, value || 1));
-  const dots = DIE_DOTS[v] || DIE_DOTS[1];
-  const id = `dg${v}s${size}`;
+/* Rotation để "đưa mặt N ra phía user" (+Z).
+   Cube được setup: face1=front (+Z), face2=right (+X), face3=top (+Y),
+   face4=bottom (-Y), face5=left (-X), face6=back (-Z). Đối diện cộng=7. */
+const FACE_SHOW_ROT = {
+  1: { rx: 0,   ry: 0 },
+  2: { rx: 0,   ry: -90 },
+  3: { rx: -90, ry: 0 },
+  4: { rx: 90,  ry: 0 },
+  5: { rx: 0,   ry: 90 },
+  6: { rx: 0,   ry: 180 },
+};
 
+function DieFaceSVG({ value }) {
+  const v = Math.max(1, Math.min(6, value || 1));
+  const dots = DIE_DOTS[v];
+  const id = `mxhdf${v}`;
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" className="tx-static-die">
+    <svg viewBox="0 0 100 100" className="mxh-die-svg" preserveAspectRatio="xMidYMid meet">
       <defs>
-        <linearGradient id={`${id}f`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#ff4422" />
+        <linearGradient id={`${id}a`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#ff5030" />
           <stop offset="55%" stopColor="#cc1100" />
           <stop offset="100%" stopColor="#7a0000" />
         </linearGradient>
-        <linearGradient id={`${id}s`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#550000" />
-          <stop offset="100%" stopColor="#330000" />
-        </linearGradient>
       </defs>
-      <rect x="10" y="12" width="83" height="83" rx="14" fill="rgba(0,0,0,0.45)" />
-      <rect x="6" y="6" width="83" height="83" rx="14" fill={`url(#${id}s)`} />
-      <rect x="2" y="2" width="83" height="83" rx="14" fill={`url(#${id}f)`} />
-      <rect x="6" y="4" width="38" height="18" rx="8" fill="rgba(255,180,160,0.22)" />
+      <rect x="2" y="2" width="96" height="96" rx="16" fill={`url(#${id}a)`} stroke="#3a0000" strokeWidth="2" />
+      <rect x="6" y="5" width="55" height="14" rx="7" fill="rgba(255,200,180,0.28)" />
       {dots.map(([cx, cy], i) => (
-        <circle key={i} cx={cx} cy={cy} r="7.5" fill="white" opacity="0.95" />
+        <g key={i}>
+          <circle cx={cx + 1.5} cy={cy + 1.5} r="9" fill="rgba(0,0,0,0.35)" />
+          <circle cx={cx} cy={cy} r="9" fill="#fff" />
+        </g>
       ))}
     </svg>
   );
 }
 
-/* Triangle Dice: roll-a-die animation -> static SVG result */
-function TriangleDice({ values, rolling, onRollEnd }) {
-  const topRef = useRef(null);
-  const blRef = useRef(null);
-  const brRef = useRef(null);
-  const doneRef = useRef(0);
-  const initRef = useRef(false);
-
-  useEffect(() => {
-    if (!rolling || !values || values.length < 3) return;
-    if (initRef.current) return;
-    initRef.current = true;
-    doneRef.current = 0;
-
-    [topRef, blRef, brRef].forEach((ref, i) => {
-      if (!ref.current) return;
-      ref.current.innerHTML = '';
-      rollADie({
-        element: ref.current,
-        numberOfDice: 1,
-        values: [values[i]],
-        soundVolume: 0,
-        delay: 1800,
-        callback: () => {
-          doneRef.current += 1;
-          if (doneRef.current >= 3 && onRollEnd) onRollEnd();
-        },
-      });
-    });
-
-    return () => {
-      initRef.current = false;
-    };
-  }, [rolling, values, onRollEnd]);
-
-  const v = values && values.length === 3 ? values : [1, 4, 6];
-
+/* 3D cube die tự viết (không dùng roll-a-die). Khi rolling=true dùng keyframe
+   mxhDieSpin quay nhiều vòng rồi dừng đúng mặt cần hiện. Khi rolling=false cube
+   transition mượt về rotation đích. Mỗi viên có delaySec khác nhau để tam giác
+   lăn so le. */
+function AnimatedDie({ value, rolling, delaySec = 0 }) {
+  const v = Math.max(1, Math.min(6, value || 1));
+  const rot = FACE_SHOW_ROT[v];
+  const cubeStyle = {
+    '--mxh-final-rx': `${rot.rx}deg`,
+    '--mxh-final-ry': `${rot.ry}deg`,
+    '--mxh-die-delay': `${delaySec}s`,
+  };
+  const cubeKey = rolling ? `r-${v}-${delaySec}` : `s-${v}`;
   return (
-    <div className="tx-triangle-dice">
+    <div className="mxh-die">
+      <div
+        className={`mxh-die-cube${rolling ? ' mxh-die-cube--rolling' : ''}`}
+        style={cubeStyle}
+        key={cubeKey}
+      >
+        <div className="mxh-die-face mxh-die-face--front"><DieFaceSVG value={1} /></div>
+        <div className="mxh-die-face mxh-die-face--right"><DieFaceSVG value={2} /></div>
+        <div className="mxh-die-face mxh-die-face--top"><DieFaceSVG value={3} /></div>
+        <div className="mxh-die-face mxh-die-face--bottom"><DieFaceSVG value={4} /></div>
+        <div className="mxh-die-face mxh-die-face--left"><DieFaceSVG value={5} /></div>
+        <div className="mxh-die-face mxh-die-face--back"><DieFaceSVG value={6} /></div>
+      </div>
+    </div>
+  );
+}
+
+function TriangleDice({ values, rolling, idle }) {
+  const v = values && values.length === 3 ? values : [1, 4, 6];
+  return (
+    <div className={`tx-triangle-dice${idle ? ' tx-triangle-dice--idle' : ''}`}>
       <div className="tx-die-row-top">
-        <div className="tx-die-canvas" ref={topRef} style={{ display: rolling ? 'block' : 'none' }} />
-        {!rolling && <StaticDie value={v[0]} />}
+        <div className="tx-die-slot">
+          <AnimatedDie value={v[0]} rolling={rolling} delaySec={0} />
+        </div>
       </div>
       <div className="tx-die-row-bot">
-        <div className="tx-die-canvas" ref={blRef} style={{ display: rolling ? 'block' : 'none' }} />
-        {!rolling && <StaticDie value={v[1]} />}
-        <div className="tx-die-canvas" ref={brRef} style={{ display: rolling ? 'block' : 'none' }} />
-        {!rolling && <StaticDie value={v[2]} />}
+        <div className="tx-die-slot">
+          <AnimatedDie value={v[1]} rolling={rolling} delaySec={0.18} />
+        </div>
+        <div className="tx-die-slot">
+          <AnimatedDie value={v[2]} rolling={rolling} delaySec={0.36} />
+        </div>
       </div>
     </div>
   );
@@ -207,7 +213,8 @@ export default function TaiXiuFloatingWidget() {
 
   const pollRef = useRef(null);
   const prevId = useRef(null);
-  const prevStatus = useRef(null);
+  const prevPhase = useRef(null);
+  const resultFlashTimerRef = useRef(null);
 
   useEffect(() => {
     const handler = () => {
@@ -275,26 +282,43 @@ export default function TaiXiuFloatingWidget() {
 
   const applyRound = useCallback((r, bal) => {
     if (!r) return;
-    setSecsLeft(r.seconds_left ?? 0);
-    if (r.status === 'finished' && r.dice?.length === 3) {
-      const alreadyShown = prevStatus.current === 'finished' && prevId.current === r.id;
-      if (!alreadyShown) {
-        setRolling(true);
-        setDisplayDice(r.dice);
+    const phase = r.phase || (r.status === 'betting' ? 'betting' : (r.dice?.length === 3 ? 'result' : 'betting'));
+    setSecsLeft(r.phase_seconds_left ?? r.seconds_left ?? 0);
+
+    const sameRound = prevId.current === r.id;
+    const phaseChanged = !sameRound || prevPhase.current !== phase;
+
+    if (phaseChanged) {
+      if (phase === 'betting') {
+        setRolling(false);
+        setShowResult(false);
+        setDisplayDice([]);
         setSelectedSide(null);
-      } else {
-        setDisplayDice(r.dice);
+      } else if (phase === 'rolling') {
+        if (r.dice?.length === 3) {
+          setRolling(true);
+          setDisplayDice(r.dice);
+          setShowResult(false);
+        }
+      } else if (phase === 'result') {
+        setRolling(false);
+        if (r.dice?.length === 3) setDisplayDice(r.dice);
+        setShowResult(true);
+        if (resultFlashTimerRef.current) clearTimeout(resultFlashTimerRef.current);
+        const flashMs = Math.max(1000, (r.phase_seconds_left ?? 5) * 1000);
+        resultFlashTimerRef.current = setTimeout(() => setShowResult(false), flashMs);
       }
-    } else if (r.status === 'betting') {
-      setRolling(false);
-      setShowResult(false);
-      setDisplayDice([]);
+    } else if (phase === 'rolling' && r.dice?.length === 3 && displayDice.length !== 3) {
+      setDisplayDice(r.dice);
+    } else if (phase === 'result' && r.dice?.length === 3 && displayDice.length !== 3) {
+      setDisplayDice(r.dice);
     }
+
     prevId.current = r.id;
-    prevStatus.current = r.status;
+    prevPhase.current = phase;
     setRound(r);
     if (bal !== undefined) setBalance(bal);
-  }, []);
+  }, [displayDice.length]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -327,10 +351,8 @@ export default function TaiXiuFloatingWidget() {
     return () => clearInterval(t);
   }, [open]);
 
-  const handleRollEnd = useCallback(() => {
-    setRolling(false);
-    setShowResult(true);
-    setTimeout(() => setShowResult(false), 3500);
+  useEffect(() => () => {
+    if (resultFlashTimerRef.current) clearTimeout(resultFlashTimerRef.current);
   }, []);
 
   const handleSelectSide = (side) => {
@@ -350,7 +372,7 @@ export default function TaiXiuFloatingWidget() {
       setError('Chọn Tài hoặc Xỉu trước.');
       return;
     }
-    if (placing || !round || round.status !== 'betting' || round.my_bet_amount > 0) return;
+    if (placing || !round || (round.phase ?? round.status) !== 'betting' || round.my_bet_amount > 0) return;
     if (stake < 10000) {
       setError('Tối thiểu 10.000đ.');
       return;
@@ -417,10 +439,17 @@ export default function TaiXiuFloatingWidget() {
   if (!user) return null;
 
   const alreadyBet = (round?.my_bet_amount || 0) > 0;
-  const isBetting = round?.status === 'betting';
+  const phase = round?.phase || (round?.status === 'betting' ? 'betting' : 'result');
+  const isBetting = phase === 'betting';
+  const isRolling = phase === 'rolling';
+  const isResult = phase === 'result';
   const canPlace = isBetting && !alreadyBet && !!selectedSide && stake >= 10000 && stake <= balance && !placing;
   const jackpotTotal = (overview?.jackpot_tai_pool || 0) + (overview?.jackpot_xiu_pool || 0);
-  const showActions = isBetting && !alreadyBet;
+  // Stakes chips (các mức tiền) hiện trong suốt phase betting để người dùng có thể
+  // chọn mức trước. Riêng thanh X2 / ĐẶT CƯỢC / HỦY chỉ hiện sau khi bấm nút CƯỢC
+  // (selectedSide đã set). Bấm HỦY sẽ reset selectedSide → thanh hành động ẩn đi.
+  const showStakes  = isBetting && !alreadyBet;
+  const showActions = showStakes && !!selectedSide;
   const menuBetRows = overview?.my_recent_bets || [];
   const menuRoundRows = overview?.recent_rounds || [];
   const menuJackpotRows = overview?.jackpot_history || [];
@@ -454,11 +483,14 @@ export default function TaiXiuFloatingWidget() {
         onTouchEnd={onTouchEnd}
       >
         <span className="tx-mini-icon">🎲</span>
-        <span className="tx-mini-label">TÀI XỈU</span>
+        <span className="tx-mini-label">TỈU XÀI</span>
         {isBetting && (
           <span className={`tx-mini-count${secsLeft <= 5 ? ' tx-mini-count--urgent' : ''}`}>{secsLeft}s</span>
         )}
-        {!isBetting && round?.result_key && (
+        {isRolling && (
+          <span className="tx-mini-count tx-mini-count--urgent">🎲 {secsLeft}s</span>
+        )}
+        {isResult && round?.result_key && (
           <span className={`tx-mini-result tx-mini-result--${round.result_key}`}>{round.result_label}</span>
         )}
         <button className="tx-mini-btn" onClick={handleExpand} title="Mở rộng">▲</button>
@@ -504,8 +536,8 @@ export default function TaiXiuFloatingWidget() {
               {menuTab === 'guide' && (
                 <div className="tx-menu-section tx-menu-section--guide">
                   <p>Các kết quả được tạo bởi hệ thống RNG cam kết ngẫu nhiên và công bằng, người chơi sẽ đặt cược kết quả 3 viên xí ngầu có thể ra.</p>
-                  <p><strong className="tx-menu-strong tx-menu-strong--tai">TÀI</strong>: tổng số điểm của 3 viên xí ngầu là 11 - 18.</p>
-                  <p><strong className="tx-menu-strong">XỈU</strong>: tổng số điểm của 3 viên xí ngầu là 3 - 10.</p>
+                  <p><strong className="tx-menu-strong tx-menu-strong--tai">TỈU</strong>: tổng số điểm của 3 viên xí ngầu là 11 - 18.</p>
+                  <p><strong className="tx-menu-strong">XÀI</strong>: tổng số điểm của 3 viên xí ngầu là 3 - 10.</p>
                   <p>Jackpot được tính khi ra <span className="tx-menu-hot">18 điểm Tài</span> hoặc <span className="tx-menu-hot">3 điểm Xỉu</span>.</p>
                   <div className="tx-menu-formula">
                     <span>Tiền chia thưởng Jackpot</span>
@@ -576,11 +608,11 @@ export default function TaiXiuFloatingWidget() {
                 <div className="tx-menu-section tx-menu-section--rounds">
                   <div className="tx-menu-stats tx-menu-stats--rounds">
                     <div className="tx-menu-stat-card tx-menu-stat-card--rounds">
-                      <span>TÀI</span>
+                      <span>TỈU</span>
                       <strong>{overview?.tai_result_rate ?? 50}%</strong>
                     </div>
                     <div className="tx-menu-stat-card tx-menu-stat-card--rounds">
-                      <span>XỈU</span>
+                      <span>XÀI</span>
                       <strong>{overview?.xiu_result_rate ?? 50}%</strong>
                     </div>
                   </div>
@@ -597,7 +629,7 @@ export default function TaiXiuFloatingWidget() {
                         </div>
                         <div className="tx-menu-col tx-menu-round-col tx-menu-round-col--right">
                           <strong className="tx-menu-round-total">Tổng {item.total}</strong>
-                          <span>{item.jackpot_side ? `Nổ ${item.jackpot_side === 'tai' ? 'Tài' : 'Xỉu'}` : 'Phiên thường'}</span>
+                          <span>{item.jackpot_side ? `Nổ ${item.jackpot_side === 'tai' ? 'Tỉu' : 'Xài'}` : 'Phiên thường'}</span>
                         </div>
                       </div>
                     )) : <div className="tx-menu-empty">Chưa có lịch sử phiên.</div>}
@@ -615,11 +647,11 @@ export default function TaiXiuFloatingWidget() {
                 <div className="tx-menu-section tx-menu-section--jackpot">
                   <div className="tx-menu-stats tx-menu-stats--jackpot">
                     <div className="tx-menu-stat-card tx-menu-stat-card--jackpot">
-                      <span className="tx-menu-strong tx-menu-strong--tai">NỔ TÀI</span>
+                      <span className="tx-menu-strong tx-menu-strong--tai">NỔ TỈU</span>
                       <strong>{Math.round((jackpotTaiHits / jackpotHitTotal) * 100)}%</strong>
                     </div>
                     <div className="tx-menu-stat-card tx-menu-stat-card--jackpot">
-                      <span className="tx-menu-strong">NỔ XỈU</span>
+                      <span className="tx-menu-strong">NỔ XÀI</span>
                       <strong>{Math.round((jackpotXiuHits / jackpotHitTotal) * 100)}%</strong>
                     </div>
                   </div>
@@ -641,7 +673,7 @@ export default function TaiXiuFloatingWidget() {
                         </div>
                         <div className="tx-menu-col tx-menu-col--result tx-menu-jackpot-col tx-menu-jackpot-col--right">
                           <strong className={item.jackpot_side === 'tai' ? 'tx-menu-jackpot-label tx-menu-jackpot-label--tai tx-menu-jackpot-result' : 'tx-menu-jackpot-label tx-menu-jackpot-result'}>
-                            {item.jackpot_side === 'tai' ? 'NỔ TÀI' : 'NỔ XỈU'}
+                            {item.jackpot_side === 'tai' ? 'NỔ TỈU' : 'NỔ XÀI'}
                           </strong>
                           <span>{item.total} điểm</span>
                         </div>
@@ -663,7 +695,12 @@ export default function TaiXiuFloatingWidget() {
     );
   }
 
-  const showDice = rolling || displayDice.length === 3;
+  const hasResultDice = displayDice.length === 3;
+  const lastRoundDice = overview?.recent_rounds?.find?.((r) => Array.isArray(r.dice) && r.dice.length === 3)?.dice;
+  const idleDiceValues = hasResultDice
+    ? displayDice
+    : (lastRoundDice && lastRoundDice.length === 3 ? lastRoundDice : [1, 4, 6]);
+  const diceInIdleMode = !rolling && !hasResultDice;
   const secs2 = `${String(Math.floor(secsLeft / 60)).padStart(2, '0')}:${String(secsLeft % 60).padStart(2, '0')}`;
 
   return (
@@ -706,7 +743,7 @@ export default function TaiXiuFloatingWidget() {
 
         <div className="tx-play-area">
           <div className="tx-side-col tx-side-col--tai">
-            <div className="tx-side-title tx-title-tai">TÀI</div>
+            <div className="tx-side-title tx-title-tai">TỈU</div>
             <div className="tx-players"><span>👤</span>{round?.tai_count || 0}</div>
             <div className="tx-side-amount">{fmt(round?.tai_total || 0)}</div>
             {!alreadyBet && isBetting ? (
@@ -720,20 +757,28 @@ export default function TaiXiuFloatingWidget() {
 
           <div className="tx-center-wrap">
             <div className={`tx-center-circle${rolling ? ' tx-center-circle--rolling' : ''}`}>
-              {showDice
-                ? <TriangleDice values={displayDice} rolling={rolling} onRollEnd={handleRollEnd} />
-                : <div className="tx-total-num">{round?.total ?? '?'}</div>}
+              <TriangleDice
+                values={rolling ? displayDice : idleDiceValues}
+                rolling={rolling}
+                idle={diceInIdleMode}
+              />
+              {hasResultDice && !rolling && (
+                <div className="tx-total-badge">{round?.total ?? '?'}</div>
+              )}
             </div>
             {!rolling && isBetting && (
               <div className="tx-countdown-text">{secs2}</div>
             )}
-            {!rolling && !isBetting && round?.status === 'finished' && (
-              <div className="tx-result-label">Kết quả!</div>
+            {isRolling && (
+              <div className="tx-rolling-text">Đang lắc... {secsLeft}s</div>
+            )}
+            {isResult && (
+              <div className="tx-result-label">Kết quả! {secsLeft}s</div>
             )}
           </div>
 
           <div className="tx-side-col tx-side-col--xiu">
-            <div className="tx-side-title tx-title-xiu">XỈU</div>
+            <div className="tx-side-title tx-title-xiu">XÀI</div>
             <div className="tx-players"><span>👤</span>{round?.xiu_count || 0}</div>
             <div className="tx-side-amount">{fmt(round?.xiu_total || 0)}</div>
             {!alreadyBet && isBetting ? (
@@ -748,7 +793,7 @@ export default function TaiXiuFloatingWidget() {
 
         {alreadyBet && (
           <div className="tx-bet-placed">
-            Đã đặt <strong>{round.my_bet_side === 'tai' ? 'Tài' : 'Xỉu'}</strong> —&nbsp;{fmtFull(round.my_bet_amount)}
+            Đã đặt <strong>{round.my_bet_side === 'tai' ? 'Tỉu' : 'Xài'}</strong> —&nbsp;{fmtFull(round.my_bet_amount)}
             {isBetting && <span className="tx-waiting"> · Chờ kết quả...</span>}
           </div>
         )}
@@ -769,16 +814,35 @@ export default function TaiXiuFloatingWidget() {
         </div>
 
         <div className="tx-footer">
-          <span className="tx-wallet-label">Ví : {fmt(balance)}</span>
-          <span className="tx-md5-label">MD5 {(round?.round_code || '').slice(0, 20)}...</span>
-          <button
-            className="tx-copy-btn"
-            onClick={() => navigator.clipboard?.writeText(round?.round_code || '')}
-          >Copy</button>
+          <div className="tx-footer-row">
+            <span className="tx-wallet-label">Ví&nbsp;<strong>{fmt(balance)}</strong></span>
+            <button
+              type="button"
+              className="tx-copy-btn"
+              disabled={!round?.md5_hash}
+              onClick={() => {
+                const md5 = round?.md5_hash || '';
+                if (md5) navigator.clipboard?.writeText(md5);
+              }}
+              title="Copy MD5 phiên hiện tại"
+            >
+              <span aria-hidden="true">📋</span>
+              <span>COPY MD5</span>
+            </button>
+          </div>
+          <div
+            className="tx-md5-line"
+            title={`MD5 phiên #${round?.round_code || '...'}\nHash 32 ký tự định danh duy nhất cho phiên, công bố ngay khi phiên mở.`}
+          >
+            <span className="tx-md5-prefix">MD5</span>
+            {round?.md5_hash
+              ? <code className="tx-md5-value">{round.md5_hash}</code>
+              : <span className="tx-md5-placeholder">—</span>}
+          </div>
         </div>
       </div>
 
-      {showActions && (
+      {showStakes && (
         <div className="tx-below-oval">
           <div className="tx-stakes-row">
             {BET_OPTIONS.map((opt) => (
@@ -790,13 +854,15 @@ export default function TaiXiuFloatingWidget() {
             ))}
           </div>
 
-          <div className="tx-actions-row">
-            <button className="tx-x2-btn" onClick={handleDouble} disabled={!selectedSide}>X2</button>
-            <button className="tx-place-btn" onClick={handlePlaceBet} disabled={!canPlace}>
-              {placing ? 'Đang đặt...' : 'ĐẶT CƯỢC'}
-            </button>
-            <button className="tx-cancel-btn" onClick={handleCancel}>HỦY</button>
-          </div>
+          {showActions && (
+            <div className="tx-actions-row">
+              <button className="tx-x2-btn" onClick={handleDouble} disabled={!selectedSide}>X2</button>
+              <button className="tx-place-btn" onClick={handlePlaceBet} disabled={!canPlace}>
+                {placing ? 'Đang đặt...' : 'ĐẶT CƯỢC'}
+              </button>
+              <button className="tx-cancel-btn" onClick={handleCancel}>HỦY</button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -10,7 +10,10 @@ class TaiXiuService
 {
     private const BASE_JACKPOT_POOL = 50000;
     private const MIN_BET           = 10000;
-    private const BET_WINDOW        = 30; // giây mỗi phiên
+    private const BET_WINDOW        = 20; // 20s đặt cược
+    private const ROLLING_WINDOW    = 6;  // 6s lắc xúc xắc (đã khóa cược)
+    private const RESULT_WINDOW     = 5;  // 5s hiển thị kết quả
+    private const REVEAL_WINDOW     = 11; // ROLLING_WINDOW + RESULT_WINDOW
 
     private TaiXiuRepository  $repo;
     private TransactionRepository $transactionRepo;
@@ -31,8 +34,8 @@ class TaiXiuService
             // Resolve bất kỳ phiên nào đã hết giờ trước
             $this->resolveExpiredRound($db);
 
-            // Lấy hoặc tạo phiên betting mới
-            $round = $this->repo->getOrCreateCurrentRound(self::BET_WINDOW, true);
+            // Lấy hoặc tạo phiên: nếu phiên mới nhất đang trong reveal window (rolling/result) thì giữ lại
+            $round = $this->repo->getOrCreateCurrentRound(self::BET_WINDOW, self::REVEAL_WINDOW, true);
 
             $db->commit();
 
@@ -61,9 +64,14 @@ class TaiXiuService
             // Resolve phiên hết giờ trước
             $this->resolveExpiredRound($db);
 
-            $round = $this->repo->getOrCreateCurrentRound(self::BET_WINDOW, true);
+            $round = $this->repo->getOrCreateCurrentRound(self::BET_WINDOW, self::REVEAL_WINDOW, true);
             if ($round['status'] !== 'betting') {
-                throw new \RuntimeException('Phiên đã kết thúc, vui lòng đợi phiên mới.');
+                throw new \RuntimeException('Phiên đã khóa cược, vui lòng đợi phiên mới.');
+            }
+            // Từ chối cược nếu đã vào reveal window dù status vẫn là 'betting' (race condition)
+            $deadlineTs = $round['betting_deadline'] ? strtotime($round['betting_deadline']) : 0;
+            if ($deadlineTs > 0 && $deadlineTs <= time()) {
+                throw new \RuntimeException('Phiên đã khóa cược, vui lòng đợi phiên mới.');
             }
 
             // Kiểm tra user chưa cược phiên này
@@ -111,7 +119,7 @@ class TaiXiuService
         $db->beginTransaction();
         try {
             $this->resolveExpiredRound($db);
-            $round = $this->repo->getOrCreateCurrentRound(self::BET_WINDOW, true);
+            $round = $this->repo->getOrCreateCurrentRound(self::BET_WINDOW, self::REVEAL_WINDOW, true);
             $db->commit();
 
             $balance       = $this->transactionRepo->getBalance($userId);
@@ -182,10 +190,8 @@ class TaiXiuService
                 $xiuPool       = self::BASE_JACKPOT_POOL;
             }
 
-            $md5Hash = md5(implode('|', [(int)$expired['round_code'], ...$dice, microtime(true), bin2hex(random_bytes(4))]));
-
-            // Update round — nếu trả false (rowCount=0) tức là request khác đã resolve rồi, bỏ qua
-            $resolved = $this->repo->resolveRound($roundId, $dice, $total, $resultKey, $jackpotSide, $jackpotPayout, $taiPool, $xiuPool, $md5Hash);
+            // md5_hash đã được set tại getOrCreateCurrentRound, không cần tính lại
+            $resolved = $this->repo->resolveRound($roundId, $dice, $total, $resultKey, $jackpotSide, $jackpotPayout, $taiPool, $xiuPool);
             if (!$resolved) continue;
 
             $this->repo->updateJackpotState($taiPool, $xiuPool);
@@ -238,51 +244,73 @@ class TaiXiuService
     {
         if (!$round) {
             return [
-                'id'              => 0,
-                'round_code'      => '',
-                'status'          => 'finished',
-                'seconds_left'    => 0,
-                'betting_deadline'=> '',
-                'tai_total'       => 0,
-                'tai_count'       => 0,
-                'xiu_total'       => 0,
-                'xiu_count'       => 0,
-                'dice'            => [],
-                'total'           => 0,
-                'result_key'      => '',
-                'result_label'    => '',
-                'my_bet_side'     => '',
-                'my_bet_amount'   => 0,
-                'my_did_win'      => null,
-                'jackpot_payout'  => 0,
+                'id'               => 0,
+                'round_code'       => '',
+                'md5_hash'         => '',
+                'status'           => 'finished',
+                'phase'            => 'betting',
+                'phase_seconds_left' => 0,
+                'seconds_left'     => 0,
+                'betting_deadline' => '',
+                'tai_total'        => 0,
+                'tai_count'        => 0,
+                'xiu_total'        => 0,
+                'xiu_count'        => 0,
+                'dice'             => [],
+                'total'            => 0,
+                'result_key'       => '',
+                'result_label'     => '',
+                'my_bet_side'      => '',
+                'my_bet_amount'    => 0,
+                'my_did_win'       => null,
+                'jackpot_payout'   => 0,
             ];
         }
 
         $stats    = $this->repo->getRoundBetStats((int)$round['id']);
         $myBet    = $this->repo->getUserBetForRound((int)$round['id'], $userId);
         $deadline = $round['betting_deadline'] ? strtotime($round['betting_deadline']) : 0;
-        $secsLeft = max(0, $deadline - time());
+        $now      = time();
+        $secsLeft = max(0, $deadline - $now);
+
+        // Tính phase & phase_seconds_left
+        if (($round['status'] ?? '') === 'betting' && $deadline > $now) {
+            $phase         = 'betting';
+            $phaseSecsLeft = $deadline - $now;
+        } else {
+            $elapsed = max(0, $now - $deadline);
+            if ($elapsed < self::ROLLING_WINDOW) {
+                $phase         = 'rolling';
+                $phaseSecsLeft = self::ROLLING_WINDOW - $elapsed;
+            } else {
+                $phase         = 'result';
+                $phaseSecsLeft = max(0, self::REVEAL_WINDOW - $elapsed);
+            }
+        }
 
         return [
-            'id'               => (int)$round['id'],
-            'round_code'       => (string)$round['round_code'],
-            'status'           => (string)$round['status'],
-            'seconds_left'     => (int)$secsLeft,
-            'betting_deadline' => (string)($round['betting_deadline'] ?? ''),
-            'tai_total'        => (int)$stats['tai_total'],
-            'tai_count'        => (int)$stats['tai_count'],
-            'xiu_total'        => (int)$stats['xiu_total'],
-            'xiu_count'        => (int)$stats['xiu_count'],
-            'dice'             => $round['dice_1'] !== null
+            'id'                 => (int)$round['id'],
+            'round_code'         => (string)$round['round_code'],
+            'md5_hash'           => (string)($round['md5_hash'] ?? ''),
+            'status'             => (string)$round['status'],
+            'phase'              => $phase,
+            'phase_seconds_left' => (int)$phaseSecsLeft,
+            'seconds_left'       => (int)$secsLeft,
+            'betting_deadline'   => (string)($round['betting_deadline'] ?? ''),
+            'tai_total'          => (int)$stats['tai_total'],
+            'tai_count'          => (int)$stats['tai_count'],
+            'xiu_total'          => (int)$stats['xiu_total'],
+            'xiu_count'          => (int)$stats['xiu_count'],
+            'dice'               => $round['dice_1'] !== null
                                     ? [(int)$round['dice_1'], (int)$round['dice_2'], (int)$round['dice_3']]
                                     : [],
-            'total'            => $round['total'] !== null ? (int)$round['total'] : 0,
-            'result_key'       => (string)($round['result_key'] ?? ''),
-            'result_label'     => $round['result_key'] ? $this->labelForSide((string)$round['result_key']) : '',
-            'my_bet_side'      => $myBet ? (string)$myBet['bet_side'] : '',
-            'my_bet_amount'    => $myBet ? (int)$myBet['bet_amount'] : 0,
-            'my_did_win'       => $myBet && $myBet['did_win'] !== null ? (bool)$myBet['did_win'] : null,
-            'jackpot_payout'   => $round['jackpot_payout'] !== null ? (int)$round['jackpot_payout'] : 0,
+            'total'              => $round['total'] !== null ? (int)$round['total'] : 0,
+            'result_key'         => (string)($round['result_key'] ?? ''),
+            'result_label'       => $round['result_key'] ? $this->labelForSide((string)$round['result_key']) : '',
+            'my_bet_side'        => $myBet ? (string)$myBet['bet_side'] : '',
+            'my_bet_amount'      => $myBet ? (int)$myBet['bet_amount'] : 0,
+            'my_did_win'         => $myBet && $myBet['did_win'] !== null ? (bool)$myBet['did_win'] : null,
+            'jackpot_payout'     => $round['jackpot_payout'] !== null ? (int)$round['jackpot_payout'] : 0,
         ];
     }
 
@@ -356,13 +384,13 @@ class TaiXiuService
 
     private function labelForSide(string $side): string
     {
-        return $side === 'xiu' ? 'Xỉu' : 'Tài';
+        return $side === 'xiu' ? 'Xài' : 'Tỉu';
     }
 
     private function buildTxnDesc(int $roundCode, string $betSide, string $resultKey, int $netAmount, int $jackpotPayout): string
     {
         $status = $netAmount >= 0 ? 'thắng' : 'thua';
-        $parts  = ['Tài Xỉu #' . $roundCode, 'Cược ' . $this->labelForSide($betSide), 'ra ' . $this->labelForSide($resultKey), $status];
+        $parts  = ['Tỉu Xài #' . $roundCode, 'Cược ' . $this->labelForSide($betSide), 'ra ' . $this->labelForSide($resultKey), $status];
         if ($jackpotPayout > 0) $parts[] = 'nổ hũ +' . number_format($jackpotPayout, 0, ',', '.');
         return implode(' • ', $parts);
     }

@@ -12,11 +12,14 @@ class TaiXiuCurrentRoundType extends ObjectType
         parent::__construct([
             'name' => 'TaiXiuCurrentRound',
             'fields' => fn() => [
-                'id'               => Type::nonNull(Type::int()),
-                'round_code'       => Type::nonNull(Type::string()),
-                'status'           => Type::nonNull(Type::string()),   // 'betting' | 'finished'
-                'seconds_left'     => Type::nonNull(Type::int()),
-                'betting_deadline' => Type::string(),
+                'id'                 => Type::nonNull(Type::int()),
+                'round_code'         => Type::nonNull(Type::string()),
+                'md5_hash'           => Type::nonNull(Type::string()),
+                'status'             => Type::nonNull(Type::string()),   // 'betting' | 'finished'
+                'phase'              => Type::nonNull(Type::string()),   // 'betting' | 'rolling' | 'result'
+                'phase_seconds_left' => Type::nonNull(Type::int()),
+                'seconds_left'       => Type::nonNull(Type::int()),
+                'betting_deadline'   => Type::string(),
                 'tai_total'        => Type::nonNull(Type::int()),
                 'tai_count'        => Type::nonNull(Type::int()),
                 'xiu_total'        => Type::nonNull(Type::int()),

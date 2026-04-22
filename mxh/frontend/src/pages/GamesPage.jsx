@@ -13,7 +13,7 @@ export default function GamesPage() {
           <button className="game-card" onClick={openTaiXiu}>
             <div className="game-card-icon">🎲</div>
             <div className="game-card-info">
-              <strong>Tài Xỉu</strong>
+              <strong>Tỉu Xài</strong>
               <span>Server-round · 30 giây / phiên</span>
             </div>
             <div className="game-card-play">Chơi</div>

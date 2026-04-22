@@ -45,35 +45,55 @@ class TaiXiuRepository
     // ── Server-round: get or create current betting round ───────────────
 
     /**
-     * Returns the active betting round (status='betting', deadline in future).
-     * If none exists or deadline passed, creates a new one.
-     * Must be called inside a transaction with FOR UPDATE to avoid races.
+     * Lấy phiên hiện tại (betting/rolling/result) hoặc tạo phiên mới.
+     *
+     * Thứ tự ưu tiên:
+     *   1) Phiên betting còn deadline  → trả về (phase betting)
+     *   2) Phiên finished nhưng nằm trong reveal window ($revealWindow giây sau deadline)
+     *      → trả về (phase rolling hoặc result, tính phía service)
+     *   3) Ngược lại → tạo phiên betting mới
+     *
+     * Gọi trong transaction kèm FOR UPDATE để tránh race.
      */
-    public function getOrCreateCurrentRound(int $betSeconds = 30, bool $forUpdate = false): array
+    public function getOrCreateCurrentRound(int $betSeconds = 20, int $revealWindow = 11, bool $forUpdate = false): array
     {
         $lock = $forUpdate ? ' FOR UPDATE' : '';
 
-        // Find current open round
+        // Phiên mới nhất
         $stmt = $this->db->prepare(
-            "SELECT * FROM tai_xiu_rounds
-             WHERE status = 'betting' AND betting_deadline > NOW()
-             ORDER BY id DESC LIMIT 1" . $lock
+            "SELECT * FROM tai_xiu_rounds ORDER BY id DESC LIMIT 1" . $lock
         );
         $stmt->execute();
         $row = $stmt->fetch();
-        if ($row) return $row;
 
-        // No open round — create one
+        if ($row) {
+            $deadlineTs = $row['betting_deadline'] ? strtotime($row['betting_deadline']) : 0;
+            $now        = time();
+
+            // Case 1: phiên betting còn hiệu lực
+            if ($row['status'] === 'betting' && $deadlineTs > $now) {
+                return $row;
+            }
+            // Case 2: phiên finished và vẫn còn trong reveal window
+            if ($row['status'] === 'finished' && ($now - $deadlineTs) < $revealWindow) {
+                return $row;
+            }
+        }
+
+        // Case 3: tạo phiên mới
         $roundCode = $this->getNextRoundCode($forUpdate);
         $deadline  = date('Y-m-d H:i:s', time() + $betSeconds);
+        // Sinh md5 NGAY khi mở phiên để hiển thị liền (không đợi dice).
+        // Chuỗi nguồn có round_code + timestamp + random bytes → luôn unique 32 hex.
+        $md5 = md5($roundCode . ':' . microtime(true) . ':' . bin2hex(random_bytes(16)));
         $stmt = $this->db->prepare(
             "INSERT INTO tai_xiu_rounds
                 (status, betting_deadline, round_code, md5_hash,
                  dice_1, dice_2, dice_3, total, result_key,
                  jackpot_side, jackpot_payout, tai_pool_snapshot, xiu_pool_snapshot)
-             VALUES ('betting', ?, ?, '', NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0)"
+             VALUES ('betting', ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0)"
         );
-        $stmt->execute([$deadline, $roundCode]);
+        $stmt->execute([$deadline, $roundCode, $md5]);
         $newId = (int) $this->db->lastInsertId();
         return $this->getRoundById($newId);
     }
@@ -97,17 +117,17 @@ class TaiXiuRepository
 
     // ── Round resolution ─────────────────────────────────────────────────
 
-    public function resolveRound(int $roundId, array $dice, int $total, string $resultKey, ?string $jackpotSide, int $jackpotPayout, int $taiPool, int $xiuPool, string $md5Hash): bool
+    public function resolveRound(int $roundId, array $dice, int $total, string $resultKey, ?string $jackpotSide, int $jackpotPayout, int $taiPool, int $xiuPool, string $md5Hash = ''): bool
     {
-        // WHERE status = 'betting' đảm bảo chỉ resolve 1 lần dù có race condition
+        // md5_hash KHÔNG được update ở đây — nó đã được sinh lúc tạo phiên (getOrCreateCurrentRound)
+        // để hiển thị ngay từ đầu phase betting. Param $md5Hash giữ để tương thích ngược, không dùng.
         $stmt = $this->db->prepare(
             "UPDATE tai_xiu_rounds SET
                 status = 'finished',
                 dice_1 = ?, dice_2 = ?, dice_3 = ?,
                 total = ?, result_key = ?,
                 jackpot_side = ?, jackpot_payout = ?,
-                tai_pool_snapshot = ?, xiu_pool_snapshot = ?,
-                md5_hash = ?
+                tai_pool_snapshot = ?, xiu_pool_snapshot = ?
              WHERE id = ? AND status = 'betting'"
         );
         $stmt->execute([
@@ -115,7 +135,6 @@ class TaiXiuRepository
             $total, $resultKey,
             $jackpotSide, $jackpotPayout,
             $taiPool, $xiuPool,
-            $md5Hash,
             $roundId,
         ]);
         return $stmt->rowCount() > 0;

@@ -1,4 +1,4 @@
--- Chuyển Tài Xỉu sang server-driven rounds
+-- Chuyển Tỉu Xài sang server-driven rounds
 -- Mỗi phiên server chạy 30 giây, mọi người đặt cược, hết giờ server lăn xúc xắc 1 lần
 
 -- 1. Thêm status + betting_deadline vào tai_xiu_rounds
