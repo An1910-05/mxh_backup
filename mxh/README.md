@@ -10,6 +10,12 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **Chat nhóm trong cửa sổ chat nổi (FCW) — Fix lỗi chữ bị xuống dòng bất thường:** Khi mở chat nhóm trong `FloatingChatWindow`, phần wrapper `.msg-other-stack` có thể bị co theo min-content làm bubble quá hẹp → chữ wrap từng ký tự. Đã chỉnh CSS để stack “other” có thể co giãn đúng và tăng max-width cho bubble trong FCW.
+  - File liên quan: `mxh/frontend/src/styles.css`, `mxh/frontend/src/components/FloatingChatWindow.jsx`, `mxh/frontend/src/components/chat/MessageBubble.jsx`
+- **Gọi thoại — Nút “Cúp máy” hoạt động đúng khi đang gọi ra:** Sửa lỗi peer object của cuộc gọi đi dùng `{id,...}` nhưng logic end/reject lại đọc `peer.userId` → bấm gác máy không gửi được `call.end` sang bên kia (bên kia vẫn thấy “đang gọi”).
+  - File liên quan: `mxh/frontend/src/contexts/CallContext.jsx`, `mxh/frontend/src/components/CallWindow.jsx`, `mxh/frontend/src/components/IncomingCallToast.jsx`
+- **Chat — Hiển thị “Đã gửi lúc …” ngay sau khi bấm gửi (kể cả tin nhắn local trong chuỗi/group):** Trước đây nhãn này chỉ hiện khi tin nhắn “own” đã được server xác nhận (`ack`), nên lúc vừa gửi sẽ không thấy ngay.
+  - File liên quan: `mxh/frontend/src/components/chat/ChatWindow.jsx`, `mxh/frontend/src/components/chat/MessageBubble.jsx`
 - **Chat nhóm Phase 1 + 2 — Tạo nhóm, quản lý thành viên, đổi vai trò, giải tán nhóm (Facebook-style):** User yêu cầu nâng cấp tính năng chat 1-1 hiện tại lên thành **chat nhóm full-feature** giống Messenger: tạo nhóm, đặt tên + ảnh đại diện, mời bạn bè (≥ 2 người), gửi tin nhắn group thấy tên người gửi, xem danh sách thành viên, thêm/xoá member, phong/hạ admin, rời nhóm, giải tán nhóm. Triển khai chia 2 phase đầu (Phase 3 reply/mention/multi-read-receipt làm sau khi user verify Phase 1+2 chạy đúng).
   - **Quy tắc nghiệp vụ — phân quyền 3 cấp**:
     - `owner` (chủ nhóm): tạo nhóm tự động được role này; toàn quyền (đổi info, thêm/xoá thành viên kể cả admin, phong/hạ admin, giải tán nhóm).

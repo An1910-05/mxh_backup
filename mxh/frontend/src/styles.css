@@ -12887,6 +12887,11 @@ body.theme-dark .rsb-no-result {
   max-width: 100%;
 }
 
+/* FCW hẹp hơn: cho bubble người khác rộng hơn để tránh wrap quá sớm */
+.fcw-body .msg-inline-actions--other {
+  max-width: 85%;
+}
+
 /* Dark mode */
 body.theme-dark .fcw {
   background: #242526;
@@ -13934,6 +13939,7 @@ body.theme-dark .loc-picker-search-result-item:hover {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1;
 }
 .msg-sender-name {
   font-size: 12px;

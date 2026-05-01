@@ -122,7 +122,14 @@ export function CallProvider({ children }) {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      setPeer(targetUser);
+      // Normalize peer shape across outgoing/incoming flows:
+      // incoming peer uses { userId, username, avatar }
+      // outgoing targetUser often uses { id, username, avatar }
+      setPeer({
+        userId: targetUser.id,
+        username: targetUser.username,
+        avatar: targetUser.avatar || null,
+      });
       setCallState('calling_out');
 
       send('call.offer', {
@@ -186,7 +193,13 @@ export function CallProvider({ children }) {
 
   const endCall = useCallback(() => {
     if (!peer) return;
-    send('call.end', { to_user_id: peer.userId });
+    const toUserId = peer.userId ?? peer.id;
+    if (!toUserId) {
+      // Fallback: if we don't know who to notify, at least reset locally.
+      reset();
+      return;
+    }
+    send('call.end', { to_user_id: toUserId });
     reset();
   }, [peer, reset]);
 

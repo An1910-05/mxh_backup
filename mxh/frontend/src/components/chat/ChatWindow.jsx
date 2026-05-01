@@ -500,11 +500,26 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0, onCon
   const displayAvatar = conversation.display_avatar;
   const otherUserId = conversation.other_user_id;
 
-  // Index of the last confirmed (non-local) own message — for "Đã gửi" label
+  const toDateSafe = (s) => {
+    if (!s) return null;
+    return new Date(s && !String(s).includes('T') && !String(s).includes('Z') ? s + 'Z' : s);
+  };
+
+  // Index of the last own message by created_at (stable across ack/order changes)
   const lastOwnIdx = (() => {
-    for (let k = messages.length - 1; k >= 0; k--) {
-      if (Number(messages[k].sender_id) === Number(user?.id) && !messages[k]._local) return k;
+    let bestIdx = -1;
+    let bestTime = -Infinity;
+    for (let k = 0; k < messages.length; k++) {
+      const m = messages[k];
+      if (Number(m.sender_id) !== Number(user?.id)) continue;
+      const d = toDateSafe(m.created_at);
+      const t = d ? d.getTime() : -Infinity;
+      if (t > bestTime || (t === bestTime && k > bestIdx)) {
+        bestTime = t;
+        bestIdx = k;
+      }
     }
+    if (bestIdx !== -1) return bestIdx;
     return -1;
   })();
 
@@ -602,7 +617,7 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0, onCon
                 seenAvatar={!isGroup && isSeenHere ? (otherReadInfo?.avatar?.trim() || displayAvatar?.trim() || DEFAULT_AVATAR) : null}
                 seenName={!isGroup && isSeenHere ? (otherReadInfo?.username || displayName) : null}
                 seenAt={!isGroup && isSeenHere ? otherReadInfo?.read_at : null}
-                showSentTime={isOwn && i === lastOwnIdx && !isSeenHere}
+                showSentTime={isOwn && (msg._local || i === lastOwnIdx) && (isGroup || !isSeenHere)}
                 isNew={newMsgIds.current.has(String(msg.id)) || newMsgIds.current.has(msg.client_msg_id)}
                 onUnsend={handleUnsend}
                 onHide={handleHide}
