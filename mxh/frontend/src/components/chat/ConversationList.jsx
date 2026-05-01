@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import { timeAgo } from '../../utils/time';
 import { API_ORIGIN } from '../../config';
 import { clearConversation, hideAllMessagesForMe } from '../../services/chat';
@@ -11,7 +12,9 @@ export default function ConversationList({
   onSelect,
   onConversationCleared,
   onMessagesHiddenForMe,
+  onCreateGroup,
 }) {
+  const { user } = useAuth();
   const [menuId, setMenuId] = useState(null);
   const [confirmClear, setConfirmClear] = useState(null);
   const [confirmHide, setConfirmHide] = useState(null);
@@ -80,6 +83,25 @@ export default function ConversationList({
 
   return (
     <div className="conv-list">
+      {/* Tạo nhóm chat mới — luôn đứng đầu */}
+      {onCreateGroup && (
+        <button type="button" className="conv-create-row" onClick={onCreateGroup}>
+          <div className="conv-avatar conv-avatar--create">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden>
+              <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+          </div>
+          <div className="conv-info">
+            <div className="conv-name-row">
+              <span className="conv-name">Tạo nhóm chat mới</span>
+            </div>
+            <div className="conv-preview-row">
+              <span className="conv-preview">Trò chuyện với nhiều bạn bè cùng lúc</span>
+            </div>
+          </div>
+        </button>
+      )}
+
       {/* Gemini AI entry — luôn đứng đầu */}
       <button
         type="button"
@@ -118,11 +140,24 @@ export default function ConversationList({
       {(conversations || []).map((conv) => {
         const isActive = conv.id == activeId;
         const unread = parseInt(conv.unread_count) || 0;
+        const isGroup = conv.type === 'group';
 
         let preview = conv.last_message || '';
         if (conv.last_message_type === 'image') preview = 'Hình ảnh';
-        if (conv.last_message_type === 'video') preview = 'Video';
-        if (preview.length > 40) preview = preview.substring(0, 40) + '...';
+        else if (conv.last_message_type === 'video') preview = 'Video';
+        else if (conv.last_message_type === 'system') preview = preview;
+
+        // Trong group: prefix tên người gửi (Facebook style: "Tên: nội dung")
+        if (isGroup && preview && conv.last_message_type !== 'system') {
+          const senderId = Number(conv.last_message_sender_id || 0);
+          const senderName = senderId === Number(user?.id)
+            ? 'Bạn'
+            : (conv.last_message_sender_username || '');
+          if (senderName) {
+            preview = `${senderName}: ${preview}`;
+          }
+        }
+        if (preview.length > 48) preview = preview.substring(0, 48) + '...';
 
         return (
           <div
@@ -137,13 +172,22 @@ export default function ConversationList({
                 onSelect(conv);
               }}
             >
-              <div className="conv-avatar">
+              <div className={`conv-avatar ${isGroup ? 'conv-avatar--group' : ''}`}>
                 {conv.display_avatar ? (
                   <img src={`${API_ORIGIN}${conv.display_avatar}`} alt="" />
+                ) : isGroup ? (
+                  <span className="conv-group-placeholder" aria-label="Nhóm">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                  </span>
                 ) : (
                   <img src={DEFAULT_AVATAR} alt="" />
                 )}
-                {conv.is_online && <span className="conv-online-dot" />}
+                {!isGroup && conv.is_online && <span className="conv-online-dot" />}
+                {isGroup && conv.online_member_count > 0 && (
+                  <span className="conv-group-badge" title={`${conv.online_member_count} đang hoạt động`}>
+                    {conv.online_member_count}
+                  </span>
+                )}
               </div>
               <div className="conv-info">
                 <div className="conv-name-row">

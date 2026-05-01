@@ -11,6 +11,7 @@ class ConversationRepository
 
     /** @var bool|null null = not checked yet */
     private ?bool $hasHiddenAtColumn = null;
+    private ?bool $hasDissolvedAtColumn = null;
 
     public function __construct()
     {
@@ -34,9 +35,31 @@ class ConversationRepository
         return $this->hasHiddenAtColumn;
     }
 
+    /**
+     * Migration 020 adds conversations.dissolved_at. Nếu chưa migrate, fallback bỏ qua filter.
+     */
+    public function conversationHasDissolvedAtColumn(): bool
+    {
+        if ($this->hasDissolvedAtColumn !== null) {
+            return $this->hasDissolvedAtColumn;
+        }
+        try {
+            $stmt = $this->db->query("SHOW COLUMNS FROM conversations LIKE 'dissolved_at'");
+            $this->hasDissolvedAtColumn = (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            $this->hasDissolvedAtColumn = false;
+        }
+        return $this->hasDissolvedAtColumn;
+    }
+
     public function supportsHiddenConversations(): bool
     {
         return $this->participantHasHiddenAtColumn();
+    }
+
+    public function supportsGroupDissolve(): bool
+    {
+        return $this->conversationHasDissolvedAtColumn();
     }
 
     public function findPrivateConversation(int $userId1, int $userId2): ?array
@@ -84,8 +107,11 @@ class ConversationRepository
         $hiddenClause = $this->participantHasHiddenAtColumn()
             ? 'AND cp.hidden_at IS NULL'
             : '';
+        $dissolvedClause = $this->conversationHasDissolvedAtColumn()
+            ? 'AND c.dissolved_at IS NULL'
+            : '';
         $stmt = $this->db->prepare("
-            SELECT c.*, cp.last_read_msg_id,
+            SELECT c.*, cp.last_read_msg_id, cp.role AS my_role,
                 (SELECT COUNT(*) FROM messages m
                  WHERE m.conversation_id = c.id
                  AND m.id > COALESCE(cp.last_read_msg_id, 0)
@@ -116,6 +142,14 @@ class ConversationRepository
                      WHERE mh4.message_id = m4.id AND mh4.user_id = ?
                  )
                  ORDER BY m4.id DESC LIMIT 1) AS last_message_sender_id,
+                (SELECT u4.username FROM messages m4b
+                 JOIN users u4 ON u4.id = m4b.sender_id
+                 WHERE m4b.conversation_id = c.id AND m4b.is_deleted = 0
+                 AND NOT EXISTS (
+                     SELECT 1 FROM message_hidden mh4b
+                     WHERE mh4b.message_id = m4b.id AND mh4b.user_id = ?
+                 )
+                 ORDER BY m4b.id DESC LIMIT 1) AS last_message_sender_username,
                 (SELECT m5.created_at FROM messages m5
                  WHERE m5.conversation_id = c.id AND m5.is_deleted = 0
                  AND NOT EXISTS (
@@ -125,11 +159,12 @@ class ConversationRepository
                  ORDER BY m5.id DESC LIMIT 1) AS last_message_at
             FROM conversations c
             JOIN conversation_participants cp ON c.id = cp.conversation_id AND cp.user_id = ?
-            WHERE 1=1 {$hiddenClause}
+            WHERE 1=1 {$hiddenClause} {$dissolvedClause}
             ORDER BY last_message_at DESC, c.updated_at DESC
             LIMIT ? OFFSET ?
         ");
         $stmt->execute([
+            $userId,
             $userId,
             $userId,
             $userId,
@@ -244,6 +279,158 @@ class ConversationRepository
             $stmt->execute([$conversationId, $currentUserId]);
         }
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    // ===== Group chat helpers (Phase 1 + 2) =====
+
+    /** Tạo group conversation, trả conversation id. Caller cần addParticipant cho creator + members. */
+    public function createGroup(int $createdBy, string $title, ?string $avatar = null): int
+    {
+        $stmt = $this->db->prepare('
+            INSERT INTO conversations (type, title, avatar, created_by)
+            VALUES ("group", ?, ?, ?)
+        ');
+        $stmt->execute([$title, $avatar, $createdBy]);
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function getMemberCount(int $conversationId): int
+    {
+        $stmt = $this->db->prepare('
+            SELECT COUNT(*) FROM conversation_participants WHERE conversation_id = ?
+        ');
+        $stmt->execute([$conversationId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /** Số member đang online (qua user_presence). Không tính chính user gọi. */
+    public function getOnlineMemberCount(int $conversationId, int $excludeUserId): int
+    {
+        $stmt = $this->db->prepare('
+            SELECT COUNT(*)
+            FROM conversation_participants cp
+            JOIN user_presence up ON up.user_id = cp.user_id
+            WHERE cp.conversation_id = ? AND cp.user_id != ? AND up.is_online = 1
+        ');
+        $stmt->execute([$conversationId, $excludeUserId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function getRoleInConversation(int $conversationId, int $userId): ?string
+    {
+        $stmt = $this->db->prepare('
+            SELECT role FROM conversation_participants
+            WHERE conversation_id = ? AND user_id = ? LIMIT 1
+        ');
+        $stmt->execute([$conversationId, $userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (string) $row['role'] : null;
+    }
+
+    public function countByRole(int $conversationId, string $role): int
+    {
+        $stmt = $this->db->prepare('
+            SELECT COUNT(*) FROM conversation_participants
+            WHERE conversation_id = ? AND role = ?
+        ');
+        $stmt->execute([$conversationId, $role]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function removeParticipant(int $conversationId, int $userId): bool
+    {
+        $stmt = $this->db->prepare('
+            DELETE FROM conversation_participants WHERE conversation_id = ? AND user_id = ?
+        ');
+        return $stmt->execute([$conversationId, $userId]);
+    }
+
+    public function setRole(int $conversationId, int $userId, string $role): bool
+    {
+        $stmt = $this->db->prepare('
+            UPDATE conversation_participants SET role = ?
+            WHERE conversation_id = ? AND user_id = ?
+        ');
+        return $stmt->execute([$role, $conversationId, $userId]);
+    }
+
+    /** Cập nhật title/avatar nhóm. Truyền null = giữ nguyên. */
+    public function updateConversationInfo(int $conversationId, ?string $title, ?string $avatar): bool
+    {
+        $sets = [];
+        $params = [];
+        if ($title !== null) {
+            $sets[] = 'title = ?';
+            $params[] = $title;
+        }
+        if ($avatar !== null) {
+            $sets[] = 'avatar = ?';
+            $params[] = $avatar;
+        }
+        if (empty($sets)) return true;
+        $sets[] = 'updated_at = CURRENT_TIMESTAMP';
+        $params[] = $conversationId;
+        $sql = 'UPDATE conversations SET ' . implode(', ', $sets) . ' WHERE id = ?';
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($params);
+    }
+
+    public function setDissolvedAt(int $conversationId): bool
+    {
+        if (!$this->conversationHasDissolvedAtColumn()) {
+            return false;
+        }
+        $stmt = $this->db->prepare('
+            UPDATE conversations SET dissolved_at = NOW() WHERE id = ? AND dissolved_at IS NULL
+        ');
+        return $stmt->execute([$conversationId]);
+    }
+
+    /**
+     * Trả về danh sách read state của tất cả member khác user hiện tại trong group.
+     * Mỗi item: { user_id, username, avatar, role, last_read_msg_id, last_read_at }
+     */
+    public function getReadStatusForGroup(int $conversationId, int $excludeUserId): array
+    {
+        try {
+            $stmt = $this->db->prepare('
+                SELECT cp.user_id, cp.role, cp.last_read_msg_id, cp.last_read_at,
+                       u.username, p.avatar
+                FROM conversation_participants cp
+                JOIN users u ON u.id = cp.user_id
+                LEFT JOIN profiles p ON p.user_id = u.id
+                WHERE cp.conversation_id = ? AND cp.user_id != ?
+                ORDER BY cp.last_read_msg_id DESC
+            ');
+            $stmt->execute([$conversationId, $excludeUserId]);
+        } catch (\PDOException $e) {
+            $stmt = $this->db->prepare('
+                SELECT cp.user_id, cp.role, cp.last_read_msg_id,
+                       u.username, p.avatar
+                FROM conversation_participants cp
+                JOIN users u ON u.id = cp.user_id
+                LEFT JOIN profiles p ON p.user_id = u.id
+                WHERE cp.conversation_id = ? AND cp.user_id != ?
+                ORDER BY cp.last_read_msg_id DESC
+            ');
+            $stmt->execute([$conversationId, $excludeUserId]);
+        }
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Tìm member có role cao nhất (sau owner) để promote khi owner rời nhóm. */
+    public function findNextOwnerCandidate(int $conversationId, int $excludeUserId): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT cp.user_id, cp.role, cp.joined_at
+            FROM conversation_participants cp
+            WHERE cp.conversation_id = ? AND cp.user_id != ?
+            ORDER BY FIELD(cp.role, 'admin', 'member') ASC, cp.joined_at ASC
+            LIMIT 1
+        ");
+        $stmt->execute([$conversationId, $excludeUserId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
 }

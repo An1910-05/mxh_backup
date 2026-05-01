@@ -41,6 +41,17 @@ class ChatService
         return array_map(fn($c) => $this->enrichConversation($c, $userId), $convs);
     }
 
+    /** Lấy 1 conversation theo id, enrich đầy đủ (dùng cho GroupChatService trả về sau khi tạo/sửa). */
+    public function getConversationForUser(int $conversationId, int $userId): ?array
+    {
+        $conv = $this->convRepo->findById($conversationId);
+        if (!$conv) return null;
+        if (!$this->convRepo->isParticipant($conversationId, $userId)) return null;
+        $cp = $this->convRepo->getRoleInConversation($conversationId, $userId);
+        $conv['my_role'] = $cp;
+        return $this->enrichConversation($conv, $userId);
+    }
+
     public function sendMessage(int $senderId, int $conversationId, string $content, string $contentType = 'text', ?string $mediaUrl = null, ?int $mediaWidth = null, ?int $mediaHeight = null, ?int $replyToMsgId = null): array
     {
         if (!$this->convRepo->isParticipant($conversationId, $senderId)) {
@@ -193,11 +204,21 @@ class ChatService
                 $conv['is_online'] = $presence ? (bool)$presence['is_online'] : false;
                 $conv['last_seen'] = $presence ? $presence['last_seen'] : null;
             }
+            $conv['member_count'] = 2;
+            $conv['online_member_count'] = !empty($conv['is_online']) ? 1 : 0;
         } else {
-            $conv['display_name'] = $conv['title'] ?? 'Group';
+            $conv['display_name'] = $conv['title'] ?? 'Nhóm';
             $conv['display_avatar'] = $conv['avatar'];
             $conv['is_online'] = false;
             $conv['last_seen'] = null;
+            $conv['member_count'] = $this->convRepo->getMemberCount((int)$conv['id']);
+            $conv['online_member_count'] = $this->convRepo->getOnlineMemberCount(
+                (int)$conv['id'],
+                $currentUserId
+            );
+            if (!isset($conv['my_role'])) {
+                $conv['my_role'] = $this->convRepo->getRoleInConversation((int)$conv['id'], $currentUserId);
+            }
         }
 
         return $conv;

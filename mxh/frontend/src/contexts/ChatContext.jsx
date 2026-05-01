@@ -41,6 +41,7 @@ export function ChatProvider({ children }) {
                 last_message: msg.content,
                 last_message_type: msg.content_type,
                 last_message_sender_id: msg.sender_id,
+                last_message_sender_username: msg.username || c.last_message_sender_username,
                 last_message_at: msg.created_at,
                 unread_count: activeConversation?.id == msg.conversation_id
                   ? c.unread_count
@@ -61,9 +62,12 @@ export function ChatProvider({ children }) {
       on('updateUserStatus', (data) => {
         setOnlineUsers(prev => ({ ...prev, [data.user_id]: data.is_online }));
         setConversations(prev => prev.map(c => {
-          if (c.other_user_id === data.user_id) {
+          if (c.type === 'private' && c.other_user_id === data.user_id) {
             return { ...c, is_online: data.is_online };
           }
+          // Group: online_member_count được cập nhật chính xác khi loadConversations() chạy lại.
+          // Tránh optimistic bump vì WS presence broadcast cho mọi user, client không biết
+          // user đó có trong group này không.
           return c;
         }));
       }),
@@ -97,6 +101,7 @@ export function ChatProvider({ children }) {
                 last_message: msg.content,
                 last_message_type: msg.content_type,
                 last_message_sender_id: msg.sender_id,
+                last_message_sender_username: msg.username || c.last_message_sender_username,
                 last_message_at: msg.created_at,
               };
             }

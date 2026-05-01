@@ -5,14 +5,21 @@ namespace App\Controllers;
 use App\Helpers\Response;
 use App\Middleware\AuthMiddleware;
 use App\Services\ChatService;
+use App\Services\GroupChatService;
 
 class ChatController
 {
     private ChatService $chatService;
+    private ?GroupChatService $groupService = null;
 
     public function __construct()
     {
         $this->chatService = new ChatService();
+    }
+
+    private function group(): GroupChatService
+    {
+        return $this->groupService ??= new GroupChatService();
     }
 
     public function getConversations(): void
@@ -217,5 +224,158 @@ class ChatController
         }
         $this->chatService->hideAllMessagesForMe($user['id'], $conversationId);
         Response::success(null, 'Đã xóa (ẩn) toàn bộ tin nhắn phía bạn');
+    }
+
+    // ===== Group chat (Phase 1 + 2) =====
+
+    public function createGroup(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $title = trim((string)($body['title'] ?? ''));
+        $avatar = $body['avatar_url'] ?? null;
+        $memberIds = is_array($body['member_ids'] ?? null) ? $body['member_ids'] : [];
+
+        try {
+            $conv = $this->group()->createGroup($user['id'], $title, $avatar ?: null, $memberIds);
+            Response::success($conv, 'Đã tạo nhóm chat');
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            Response::error($e->getMessage(), $code >= 400 && $code < 600 ? $code : 400);
+        }
+    }
+
+    public function addGroupMembers(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $conversationId = (int)($body['conversation_id'] ?? 0);
+        $memberIds = is_array($body['member_ids'] ?? null) ? $body['member_ids'] : [];
+        if ($conversationId <= 0) Response::error('Invalid conversation', 400);
+
+        try {
+            $result = $this->group()->addMembers($user['id'], $conversationId, $memberIds);
+            Response::success($result, 'Đã thêm thành viên');
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            Response::error($e->getMessage(), $code >= 400 && $code < 600 ? $code : 400);
+        }
+    }
+
+    public function removeGroupMember(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $conversationId = (int)($body['conversation_id'] ?? 0);
+        $targetUserId = (int)($body['user_id'] ?? 0);
+        if ($conversationId <= 0 || $targetUserId <= 0) Response::error('Invalid params', 400);
+
+        try {
+            $result = $this->group()->removeMember($user['id'], $conversationId, $targetUserId);
+            Response::success($result, 'Đã xoá thành viên');
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            Response::error($e->getMessage(), $code >= 400 && $code < 600 ? $code : 400);
+        }
+    }
+
+    public function updateGroupInfo(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $conversationId = (int)($body['conversation_id'] ?? 0);
+        $title = array_key_exists('title', $body) ? (string) $body['title'] : null;
+        $avatar = array_key_exists('avatar_url', $body) ? (string) $body['avatar_url'] : null;
+        if ($conversationId <= 0) Response::error('Invalid conversation', 400);
+
+        try {
+            $conv = $this->group()->updateGroupInfo($user['id'], $conversationId, $title, $avatar);
+            Response::success($conv, 'Đã cập nhật nhóm');
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            Response::error($e->getMessage(), $code >= 400 && $code < 600 ? $code : 400);
+        }
+    }
+
+    public function leaveGroup(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $conversationId = (int)($body['conversation_id'] ?? 0);
+        if ($conversationId <= 0) Response::error('Invalid conversation', 400);
+
+        try {
+            $result = $this->group()->leaveGroup($user['id'], $conversationId);
+            Response::success($result, 'Đã rời nhóm');
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            Response::error($e->getMessage(), $code >= 400 && $code < 600 ? $code : 400);
+        }
+    }
+
+    public function changeGroupRole(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $conversationId = (int)($body['conversation_id'] ?? 0);
+        $targetUserId = (int)($body['user_id'] ?? 0);
+        $newRole = (string)($body['role'] ?? '');
+        if ($conversationId <= 0 || $targetUserId <= 0 || !in_array($newRole, ['admin', 'member'], true)) {
+            Response::error('Invalid params', 400);
+        }
+
+        try {
+            $result = $this->group()->changeRole($user['id'], $conversationId, $targetUserId, $newRole);
+            Response::success($result, 'Đã cập nhật vai trò');
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            Response::error($e->getMessage(), $code >= 400 && $code < 600 ? $code : 400);
+        }
+    }
+
+    public function dissolveGroup(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $conversationId = (int)($body['conversation_id'] ?? 0);
+        if ($conversationId <= 0) Response::error('Invalid conversation', 400);
+
+        try {
+            $result = $this->group()->dissolveGroup($user['id'], $conversationId);
+            Response::success($result, 'Đã giải tán nhóm');
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            Response::error($e->getMessage(), $code >= 400 && $code < 600 ? $code : 400);
+        }
+    }
+
+    public function getGroupMembers(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        $conversationId = (int)($_GET['conversation_id'] ?? 0);
+        if ($conversationId <= 0) Response::error('Invalid conversation', 400);
+
+        try {
+            $members = $this->group()->getGroupMembers($user['id'], $conversationId);
+            Response::success($members);
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            Response::error($e->getMessage(), $code >= 400 && $code < 600 ? $code : 400);
+        }
+    }
+
+    public function getGroupReadStatus(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        $conversationId = (int)($_GET['conversation_id'] ?? 0);
+        if ($conversationId <= 0) Response::error('Invalid conversation', 400);
+
+        try {
+            $status = $this->group()->getGroupReadStatus($user['id'], $conversationId);
+            Response::success($status);
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            Response::error($e->getMessage(), $code >= 400 && $code < 600 ? $code : 400);
+        }
     }
 }

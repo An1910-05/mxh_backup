@@ -6,6 +6,7 @@ import { getMessages, sendMessageRest, getReadReceipt, unsendMessageRest, hideMe
 import { sendMessage, sendTyping, on, isWsConnected, unsendMessage as wsUnsend, hideMessage as wsHide } from '../../services/websocket';
 import { timeAgo } from '../../utils/time';
 import MessageBubble from './MessageBubble';
+import GroupInfoDrawer from './GroupInfoDrawer';
 import { uploadFile } from '../../services/api';
 import { API_ORIGIN } from '../../config';
 const DEFAULT_AVATAR = '/default-avatar.png';
@@ -76,7 +77,7 @@ function InputLinkPreview({ url, onDismiss }) {
   );
 }
 
-export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
+export default function ChatWindow({ conversation, onBack, refreshKey = 0, onConversationChanged, onGroupLeft }) {
   const { user } = useAuth();
   const { markConversationRead, typingUsers } = useChat();
   const [messages, setMessages] = useState([]);
@@ -91,6 +92,8 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
   const [mediaUploading, setMediaUploading] = useState(false);
+  const [showGroupDrawer, setShowGroupDrawer] = useState(false);
+  const isGroup = conversation?.type === 'group';
   const containerRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -115,6 +118,7 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
   }, [convId, refreshKey]);
 
   const loadReadReceipt = async () => {
+    if (isGroup) return; // Phase 3 sẽ cài read receipt avatar list cho group
     try {
       const info = await getReadReceipt(convId);
       if (info) {
@@ -463,9 +467,27 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
     }
   };
 
-  const isOtherTyping = Object.keys(typingUsers).some(
-    key => key.startsWith(`${convId}_`) && !key.endsWith(`_${user?.id}`)
-  );
+  const typingUserIds = Object.keys(typingUsers)
+    .filter(key => key.startsWith(`${convId}_`))
+    .map(key => Number(key.split('_')[1]))
+    .filter(id => !!id && id !== Number(user?.id));
+  const isOtherTyping = typingUserIds.length > 0;
+  const typingNames = (() => {
+    if (!isOtherTyping) return '';
+    if (!isGroup) return 'đang nhập...';
+    const nameMap = new Map();
+    messages.forEach(m => {
+      if (m.username && Number(m.sender_id)) nameMap.set(Number(m.sender_id), m.username);
+    });
+    const names = typingUserIds
+      .map(id => nameMap.get(id))
+      .filter(Boolean)
+      .slice(0, 3);
+    if (names.length === 0) return 'có người đang nhập...';
+    if (names.length === 1) return `${names[0]} đang nhập...`;
+    if (names.length === 2) return `${names[0]} và ${names[1]} đang nhập...`;
+    return `${names[0]}, ${names[1]} và ${typingUserIds.length - 2} người khác đang nhập...`;
+  })();
 
   const handleScroll = () => {
     const el = containerRef.current;
@@ -490,22 +512,52 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
     <div className="chat-window">
       <div className="chat-window-header">
         <button className="chat-back-btn" onClick={onBack}>←</button>
-        <Link to={otherUserId ? `/profile_id=${otherUserId}` : '#'} className="chat-header-user">
-          <div className="chat-header-avatar">
-            {displayAvatar ? (
-              <img src={`${API_ORIGIN}${displayAvatar}`} alt="" />
-            ) : (
-              <img src={DEFAULT_AVATAR} alt="" />
-            )}
-            {conversation.is_online && <span className="conv-online-dot" />}
-          </div>
-          <div className="chat-header-info">
-            <span className="chat-header-name">{displayName}</span>
-            <span className="chat-header-status">
-              {isOtherTyping ? 'đang nhập...' : conversation.is_online ? 'Đang hoạt động' : conversation.last_seen ? `Hoạt động ${timeAgo(conversation.last_seen)}` : ''}
-            </span>
-          </div>
-        </Link>
+        {isGroup ? (
+          <button
+            type="button"
+            className="chat-header-user chat-header-user--group"
+            onClick={() => setShowGroupDrawer(true)}
+            aria-label="Mở thông tin nhóm"
+          >
+            <div className="chat-header-avatar">
+              {displayAvatar ? (
+                <img src={`${API_ORIGIN}${displayAvatar}`} alt="" />
+              ) : (
+                <img src={DEFAULT_AVATAR} alt="" />
+              )}
+            </div>
+            <div className="chat-header-info">
+              <span className="chat-header-name">{displayName}</span>
+              <span className="chat-header-status">
+                {isOtherTyping ? typingNames : (
+                  <>
+                    {conversation.member_count || 0} thành viên
+                    {conversation.online_member_count > 0 && (
+                      <> · {conversation.online_member_count} đang hoạt động</>
+                    )}
+                  </>
+                )}
+              </span>
+            </div>
+          </button>
+        ) : (
+          <Link to={otherUserId ? `/profile_id=${otherUserId}` : '#'} className="chat-header-user">
+            <div className="chat-header-avatar">
+              {displayAvatar ? (
+                <img src={`${API_ORIGIN}${displayAvatar}`} alt="" />
+              ) : (
+                <img src={DEFAULT_AVATAR} alt="" />
+              )}
+              {conversation.is_online && <span className="conv-online-dot" />}
+            </div>
+            <div className="chat-header-info">
+              <span className="chat-header-name">{displayName}</span>
+              <span className="chat-header-status">
+                {isOtherTyping ? typingNames : conversation.is_online ? 'Đang hoạt động' : conversation.last_seen ? `Hoạt động ${timeAgo(conversation.last_seen)}` : ''}
+              </span>
+            </div>
+          </Link>
+        )}
       </div>
 
       <div className="chat-messages-wrap">
@@ -542,13 +594,14 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
                 key={msg.id || msg.client_msg_id}
                 message={msg}
                 isOwn={isOwn}
+                isGroup={isGroup}
                 showAvatar={showAvatar}
                 showTime={showTime}
                 isFirst={isFirst}
                 isLast={isLast}
-                seenAvatar={isSeenHere ? (otherReadInfo?.avatar?.trim() || displayAvatar?.trim() || DEFAULT_AVATAR) : null}
-                seenName={isSeenHere ? (otherReadInfo?.username || displayName) : null}
-                seenAt={isSeenHere ? otherReadInfo?.read_at : null}
+                seenAvatar={!isGroup && isSeenHere ? (otherReadInfo?.avatar?.trim() || displayAvatar?.trim() || DEFAULT_AVATAR) : null}
+                seenName={!isGroup && isSeenHere ? (otherReadInfo?.username || displayName) : null}
+                seenAt={!isGroup && isSeenHere ? otherReadInfo?.read_at : null}
                 showSentTime={isOwn && i === lastOwnIdx && !isSeenHere}
                 isNew={newMsgIds.current.has(String(msg.id)) || newMsgIds.current.has(msg.client_msg_id)}
                 onUnsend={handleUnsend}
@@ -650,6 +703,16 @@ export default function ChatWindow({ conversation, onBack, refreshKey = 0 }) {
           </button>
         </div>
       </div>
+
+      {showGroupDrawer && isGroup && (
+        <GroupInfoDrawer
+          conversation={conversation}
+          onClose={() => setShowGroupDrawer(false)}
+          onChanged={() => onConversationChanged?.()}
+          onLeft={() => { setShowGroupDrawer(false); onGroupLeft?.(); }}
+          onDissolved={() => { setShowGroupDrawer(false); onGroupLeft?.(); }}
+        />
+      )}
     </div>
   );
 }

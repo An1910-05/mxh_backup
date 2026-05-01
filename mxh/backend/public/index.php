@@ -144,6 +144,43 @@ try {
             (new ChatController())->hideAllMessagesForMe();
             break;
 
+        // Group chat (Phase 1 + 2)
+        case $uri === '/chat/group/create' && $method === 'POST':
+            (new ChatController())->createGroup();
+            break;
+
+        case $uri === '/chat/group/members/add' && $method === 'POST':
+            (new ChatController())->addGroupMembers();
+            break;
+
+        case $uri === '/chat/group/members/remove' && $method === 'POST':
+            (new ChatController())->removeGroupMember();
+            break;
+
+        case $uri === '/chat/group/info' && $method === 'POST':
+            (new ChatController())->updateGroupInfo();
+            break;
+
+        case $uri === '/chat/group/leave' && $method === 'POST':
+            (new ChatController())->leaveGroup();
+            break;
+
+        case $uri === '/chat/group/role' && $method === 'POST':
+            (new ChatController())->changeGroupRole();
+            break;
+
+        case $uri === '/chat/group/dissolve' && $method === 'POST':
+            (new ChatController())->dissolveGroup();
+            break;
+
+        case $uri === '/chat/group/members' && $method === 'GET':
+            (new ChatController())->getGroupMembers();
+            break;
+
+        case $uri === '/chat/group/read-status' && $method === 'GET':
+            (new ChatController())->getGroupReadStatus();
+            break;
+
         // Payment
         case $uri === '/payment/create' && $method === 'POST':
             (new PaymentController())->createPayment();

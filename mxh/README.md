@@ -10,6 +10,47 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **Chat nhóm Phase 1 + 2 — Tạo nhóm, quản lý thành viên, đổi vai trò, giải tán nhóm (Facebook-style):** User yêu cầu nâng cấp tính năng chat 1-1 hiện tại lên thành **chat nhóm full-feature** giống Messenger: tạo nhóm, đặt tên + ảnh đại diện, mời bạn bè (≥ 2 người), gửi tin nhắn group thấy tên người gửi, xem danh sách thành viên, thêm/xoá member, phong/hạ admin, rời nhóm, giải tán nhóm. Triển khai chia 2 phase đầu (Phase 3 reply/mention/multi-read-receipt làm sau khi user verify Phase 1+2 chạy đúng).
+  - **Quy tắc nghiệp vụ — phân quyền 3 cấp**:
+    - `owner` (chủ nhóm): tạo nhóm tự động được role này; toàn quyền (đổi info, thêm/xoá thành viên kể cả admin, phong/hạ admin, giải tán nhóm).
+    - `admin` (quản trị): được owner phong; có thể đổi info nhóm, thêm/xoá thành viên thường (không xoá admin khác / không xoá owner).
+    - `member` (thành viên): chỉ gửi tin và rời nhóm.
+    - Khi `owner` rời nhóm: server tự động promote member kỳ cựu nhất (join sớm nhất) lên owner để nhóm không bao giờ "vô chủ"; nếu chỉ còn 1 mình owner thì server tự `dissolve`.
+  - **Yêu cầu tối thiểu khi tạo nhóm**: theo lựa chọn của user, **creator + ≥ 2 bạn bè** (tổng ≥ 3 người) — tránh nhóm "2 người mặc danh" trùng với chat private. Constant `GroupChatService::MIN_MEMBERS_TO_CREATE = 2` (không kể creator) + tên nhóm tối đa 100 ký tự.
+  - **Backend — 1 migration + 9 REST endpoints + 1 service + sửa 2 file hiện có**:
+    - Migration mới `020_group_chat_phase1.sql`: thêm cột `dissolved_at TIMESTAMP NULL` vào bảng `conversations` (cho phép soft-delete nhóm — vẫn giữ lịch sử nhưng filter khỏi danh sách hội thoại); thêm 2 index `idx_type_dissolved` và `idx_conv_role` để query group nhanh hơn. Migration tự `INSERT INTO _migrations` để track.
+    - Service mới `mxh/backend/src/Services/GroupChatService.php` (~420 dòng): toàn bộ business logic `createGroup`, `addMembers`, `removeMember`, `updateGroupInfo`, `leaveGroup`, `changeRole`, `dissolveGroup`, `getGroupMembers`, `getGroupReadStatus`. Mỗi action thay đổi nhóm tự động insert 1 message với `content_type='system'` (vd `"An đã thêm Bình vào nhóm"`, `"Cường đã rời nhóm. Dũng trở thành chủ nhóm mới."`, `"đã giải tán nhóm"`) — message này cũng counted là `last_message` trong sidebar list (giống Facebook). Tất cả method đều có `requireRole()` check phân quyền + `loadGroupOrThrow()` check group còn tồn tại / chưa dissolved.
+    - Sửa `ConversationRepository.php`: thêm flag `hasDissolvedAtColumn` để graceful degradation (chưa chạy migration thì backend vẫn boot được, các method liên quan throw error 503 với message hướng dẫn migrate); thêm 9 method mới (`createGroup`, `getMemberCount`, `getOnlineMemberCount`, `getRoleInConversation`, `countByRole`, `removeParticipant`, `setRole`, `updateConversationInfo`, `setDissolvedAt`, `getReadStatusForGroup`, `findNextOwnerCandidate`); update `getUserConversations()` filter `AND c.dissolved_at IS NULL` cho user, thêm `cp.role AS my_role` + subquery `last_message_sender_username` để frontend hiển thị "Bạn: nội dung" hoặc "Tên: nội dung" trong preview group.
+    - Sửa `ChatService.php`: thêm `getConversationForUser()` (helper để `GroupChatService` enrich conv sau khi tạo/update); update `enrichConversation()` populate `member_count` + `online_member_count` + `my_role` cho group.
+    - 9 routes mới trong `mxh/backend/public/index.php`: `POST /chat/group/create`, `POST /chat/group/members/add`, `POST /chat/group/members/remove`, `POST /chat/group/info`, `POST /chat/group/leave`, `POST /chat/group/role`, `POST /chat/group/dissolve`, `GET /chat/group/members?conversation_id=X`, `GET /chat/group/read-status?conversation_id=X`.
+    - Sửa `ChatController.php`: lazy-load `GroupChatService` qua method `group()`, thêm 9 public method controller match 9 route trên — mỗi method chỉ parse body/query → gọi `GroupChatService` → format response chuẩn `Response::success` / `Response::error`. Catch `\Throwable`, đọc HTTP code từ `$e->getCode()` nếu trong 400–599 thì dùng, không thì fallback 400.
+  - **Frontend — 4 component mới + sửa 6 file hiện có**:
+    - `CreateGroupModal.jsx`: Modal tạo nhóm với form (avatar + title + danh sách bạn bè có search), validate ≥ 2 bạn bè, auto-suggest title từ tên các thành viên đã chọn (vd `"An, Bình và 3 người khác"`), upload avatar qua `/upload/media`, gọi `createGroup()`. Khi thành công → callback `onCreated(conv)` → `ChatPage` set `activeConversation` và mở chat.
+    - `GroupInfoDrawer.jsx`: Drawer slide-in từ phải khi click header chat group, hero banner (avatar + tên + member count + online count) + nút "Sửa thông tin nhóm" (nếu owner/admin), section danh sách thành viên với role badge (Chủ nhóm / Quản trị / Thành viên), action button cho từng member (Phong admin / Hạ admin / Xoá khỏi nhóm) tuỳ role hiện tại của user, action chính ở footer (Rời nhóm / Giải tán nhóm). Mọi action xác nhận qua `ConfirmDialog`.
+    - `AddMembersModal.jsx`: Modal mời thêm bạn bè vào nhóm (filter ra những bạn đã trong nhóm), multi-select, gọi `addGroupMembers()`.
+    - `EditGroupInfoModal.jsx`: Modal sửa tên + ảnh nhóm; pre-fill data hiện tại; chỉ owner/admin mở được.
+    - Sửa `MessageBubble.jsx`: prop mới `isGroup`; render system message với layout giữa màn hình (`<div class="msg-system-row"><span class="msg-system">...</span></div>`); trong group, message của người khác có `msg.username` hiển thị phía trên bubble khi là tin đầu chuỗi (`isFirst`) — đúng kiểu Messenger.
+    - Sửa `ChatWindow.jsx`: detect `isGroup = conversation.type === 'group'`; header thành button click mở `GroupInfoDrawer` (không phải Link sang profile như private); status hiển thị `"X thành viên · Y đang hoạt động"` thay vì "Đang hoạt động"; multi-typing names (`"An và Bình đang nhập..."`, `"An, Bình và 3 người khác đang nhập..."`); skip `getReadReceipt` cho group (single-user read receipt sai model — Phase 3 sẽ làm avatar list).
+    - Sửa `ConversationList.jsx`: hàng đầu "Tạo nhóm chat mới" (nếu prop `onCreateGroup` được truyền); group preview prefix sender name (`"Bạn: ..."` hoặc `"An: ..."`); group avatar fallback sang icon group + badge online count nếu chưa upload ảnh; class `conv-avatar--group` để tạo border radius riêng.
+    - Sửa `ChatPage.jsx`: state `showCreateGroup`, render `CreateGroupModal` overlay, nút "+ tạo nhóm" trong sidebar header (desktop), Floating Action Button (FAB) ở góc dưới phải khi đang ở list view (mobile) — đáp ứng yêu cầu user "vừa nút trong header, vừa FAB". Callback `handleGroupCreated`, `handleConversationChanged`, `handleGroupLeft` xử lý reload conversations + clear active conv khi giải tán/rời.
+    - Sửa `ChatContext.jsx`: `updateNewMessage` + `ack` handler giờ propagate `last_message_sender_username` từ message để sidebar hiển thị đúng "Tên: nội dung" trong group; `updateUserStatus` (presence broadcast) chỉ optimistic update `is_online` cho **private** conv — không cố đoán `online_member_count` cho group (sai model: server broadcast presence cho mọi user, frontend không biết user đó có trong group không) → để group sync đúng khi `loadConversations()` chạy lại sau action REST.
+    - Thêm 9 hàm vào `services/chat.js`: `createGroup`, `addGroupMembers`, `removeGroupMember`, `updateGroupInfo`, `leaveGroup`, `changeGroupRole`, `dissolveGroup`, `getGroupMembers`, `getGroupReadStatus` — tất cả wrap `restFetch` POST/GET tương ứng.
+    - Thêm ~330 dòng CSS vào `styles.css` (section "Group chat (Phase 1 + 2)"): modal-backdrop / modal generic, `.cg-*` cho create/edit/add modal (avatar picker, title input, friend list, chip selected, error message, button primary/ghost), `.group-drawer-*` + `.group-member-list` + `.role-badge` + `.group-drawer-actions` cho info drawer, `.msg-other-stack` + `.msg-sender-name` cho tên người gửi trong group bubble, `.msg-system-row` + `.msg-system` cho system message (background pill xám nhạt giữa màn), `.conv-create-row` + `.conv-avatar--create` + `.conv-avatar--group` + `.conv-group-placeholder` + `.conv-group-badge` cho sidebar group, `.chat-create-group-btn` (sidebar header) + `.chat-fab-create-group` (FAB mobile, hidden desktop), `.chat-header-user--group` (button-style header thay cho Link).
+  - **Hạn chế known của Phase 1+2 (sẽ giải quyết Phase 3)**:
+    - **System message KHÔNG broadcast realtime qua WebSocket** vì `GroupChatService` insert message qua `MessageRepository::create()` từ REST process, không qua WS handler trong `ChatServer::handleSendMessage`. Người thực hiện action (creator/owner/admin) thấy ngay vì frontend gọi `loadConversations()` + `setChatRefreshKey(k+1)` sau khi REST trả thành công. **Member khác** chỉ thấy system message khi họ refresh trang hoặc mở conversation đó (REST `getMessages` sẽ trả message `content_type='system'`). Phase 3 sẽ xây IPC layer (Redis pub/sub hoặc DB-poll trong ChatServer) để broadcast realtime.
+    - Multi-user **read receipt avatar** trong group (như Messenger hiển thị 3-4 avatar nhỏ ở message cuối) chưa làm — endpoint `/chat/group/read-status` đã có sẵn data backend, chỉ thiếu UI render avatar list. Phase 3 sẽ làm.
+    - **Reply tin nhắn** + `@mention` highlight + **pin message** chưa làm — schema `messages.reply_to_msg_id` đã có sẵn (migration 006) nhưng UI chưa expose. Phase 3.
+    - "Thu hồi toàn bộ tin nhắn (cả hai bên)" trong context menu sidebar hiện vẫn cho phép member thường xoá hết history group (carry-over từ logic 1-1). Phase 3 sẽ restrict: chỉ owner mới có quyền clear all trong group.
+  - **Hướng dẫn deploy + verify**:
+    1. **Chạy migration** (bắt buộc, không có thì các action tạo/giải tán nhóm sẽ fail với HTTP 503): `docker exec mxh_backend php database/migrate.php` — script này tự đọc bảng `_migrations` và chạy file mới (`020_group_chat_phase1.sql`).
+    2. **Restart backend + websocket** để code mới được load: `docker compose restart backend websocket`. Frontend nếu dev mode (Vite HMR) thì auto reload, không thì `docker compose build frontend && up -d --force-recreate frontend`.
+    3. **Verify smoke test**: User A login → mở `/chat` → click nút "+" trong sidebar header (hoặc FAB mobile) → modal tạo nhóm hiện ra. Chọn 2 bạn bè (User B và User C), đặt tên nhóm, upload avatar → bấm "Tạo nhóm". Modal đóng, conversation mới xuất hiện ở đầu list với badge online + system message "Đã tạo nhóm 'Tên'" hiện trong khung chat. Gửi 1 tin "hello mọi người" → thấy bubble bình thường, sidebar list update preview "Bạn: hello mọi người". User B login (browser khác) → thấy nhóm mới (sau khi refresh hoặc do WS push tin nhắn `hello`), thấy tin của A có tên "A" phía trên bubble. B click header → drawer mở, thấy 3 thành viên (A=Chủ nhóm, B=Bạn (Thành viên), C=Thành viên), KHÔNG có button phong/xoá vì B là member. A bấm phong B làm admin → confirm → list refresh, B có badge "Quản trị". A bấm "Giải tán nhóm" → confirm → conv biến mất khỏi list của cả 3 người.
+    4. **Nếu lỗi 503 khi action**: chưa chạy migration. Nếu lỗi 403: sai role. Nếu modal tạo bị disable nút "Tạo nhóm": chưa chọn ≥ 2 bạn bè (validation `selected.size < 2`).
+  - **File summary** — tổng cộng **18 file** chạm:
+    - **Mới (5)**: `database/migrations/020_group_chat_phase1.sql`, `Services/GroupChatService.php`, `components/chat/CreateGroupModal.jsx`, `components/chat/GroupInfoDrawer.jsx`, `components/chat/AddMembersModal.jsx`, `components/chat/EditGroupInfoModal.jsx`.
+    - **Sửa backend (4)**: `Repositories/ConversationRepository.php`, `Services/ChatService.php`, `Controllers/ChatController.php`, `public/index.php`.
+    - **Sửa frontend (8)**: `services/chat.js`, `pages/ChatPage.jsx`, `contexts/ChatContext.jsx`, `components/chat/ChatWindow.jsx`, `components/chat/MessageBubble.jsx`, `components/chat/ConversationList.jsx`, `styles.css`, (re-share `hooks/useAuth.js` chỉ dùng readonly).
+
 - **Tỉu Xài — Prepend chấm `HistoryDots` ngay khi flash 5s tắt (không chờ polling bắt round mới); thêm animation flash vàng + log debug:** User tiếp tục feedback "vẫn hiện kết quả trước là sao" — pointed DOM element `<span class="tx-hdot tx-hdot--xiu" title="Xài 1-4-1">` là chấm ngoài cùng bên phải của `HistoryDots` nhưng vẫn giữ result phiên CŨ, không update sau khi phiên mới kết thúc. Nguyên nhân root cause: phiên bản trước prepend trong useEffect `[rolling, showResult, round?.id]` — trigger chỉ fire khi `applyRound(B)` chạy (tức lúc polling 3s/lần bắt được phiên B mới ở server). Trong khi đó, flash "TỈU! Tổng X" ở top widget đã tắt (~T=11s trong chu kỳ 31s), nhưng polling kế tiếp có thể cách T=11 tới 2-3s nữa mới bắt được B → suốt khoảng đó `HistoryDots` vẫn hiện chấm cũ, user cảm nhận là "chưa update".
   - **Refactor — 2 trigger cùng gọi 1 helper có dedupe**:
     - Thêm `prependFinishedDot = useCallback()` đọc `finishedRoundRef.current`, gọi `setOverview(ov => [dot, ...list])` với guard `list.some(x => String(x.id) === String(finished.id))` để dedupe. Tự clear `finishedRoundRef.current = null` sau khi commit. Gắn cờ `__justPrepended: true` trên object dot để HistoryDots render class `tx-hdot--fresh` (animation pulse vàng 1.6s).
@@ -862,6 +903,15 @@ Chi tiết biến môi trường tham chiếu `docker-compose.yml` (`DB_*`, `JWT
 | GET | `/auth/me` | Có | User hiện tại |
 | POST | `/upload`, `/upload/cover`, `/upload/media` | Có | Upload file |
 | GET/POST | `/chat/...` | Có | Hội thoại, tin nhắn, đọc, sửa, xóa, … |
+| POST | `/chat/group/create` | Có | Tạo nhóm chat (≥ 2 thành viên ngoài creator) |
+| POST | `/chat/group/members/add` | Có | Mời thêm thành viên (owner/admin) |
+| POST | `/chat/group/members/remove` | Có | Xoá thành viên (owner/admin, không xoá owner) |
+| POST | `/chat/group/info` | Có | Đổi tên + ảnh nhóm (owner/admin) |
+| POST | `/chat/group/leave` | Có | Rời nhóm (auto-promote owner nếu cần) |
+| POST | `/chat/group/role` | Có | Phong/hạ admin (owner only) |
+| POST | `/chat/group/dissolve` | Có | Giải tán nhóm (owner only, soft-delete) |
+| GET | `/chat/group/members?conversation_id=X` | Có | Danh sách thành viên + role |
+| GET | `/chat/group/read-status?conversation_id=X` | Có | Read status đa user (cho Phase 3 hiển thị avatar list) |
 | GET | `/link-preview` | Theo controller | Preview URL |
 
 ### GraphQL
@@ -881,6 +931,7 @@ Chi tiết biến môi trường tham chiếu `docker-compose.yml` (`DB_*`, `JWT
 - [x] Follow, kết bạn / lời mời kết bạn (Gửi / Chấp nhận / Từ chối / Hủy)
 - [x] Tìm kiếm người dùng, Stories (ảnh/video, 24h)
 - [x] Chat realtime (REST + WebSocket): gửi/sửa/xóa/unsend/ẩn tin nhắn, media, typing, read receipt
+- [x] **Chat nhóm Phase 1 + 2**: tạo nhóm (≥ 3 người), avatar + tên nhóm, system message ("X đã tạo nhóm"), sender name trên bubble, role 3 cấp (owner/admin/member), thêm/xoá member, phong/hạ admin, rời nhóm với auto-promote owner, giải tán nhóm soft-delete (`dissolved_at`), GroupInfoDrawer với danh sách thành viên + role badge, multi-typing names ("An và Bình đang nhập...")
 - [x] Floating chat windows (Facebook-style), floating Tỉu Xài widget
 - [x] Thông báo: bình luận, mention, kết bạn — badge + trang danh sách
 - [x] Nạp tiền VNPay, ví tiền, lịch sử giao dịch
@@ -898,6 +949,7 @@ Chi tiết biến môi trường tham chiếu `docker-compose.yml` (`DB_*`, `JWT
 - [ ] Thông báo khi like bài (backend `LikeService` chưa gọi `NotificationRepository`)
 - [ ] Thông báo đẩy (push notification / FCM)
 - [ ] Real-time feed (hiện tại chỉ chat là realtime)
+- [ ] **Chat nhóm Phase 3**: reply tin nhắn (`reply_to_msg_id` đã có schema, thiếu UI), `@mention` highlight, multi-user read receipt avatar list (Messenger-style), pin message, broadcast WS realtime cho system message group event (cần Redis pub/sub hoặc IPC layer giữa REST và WS process)
 - [ ] Panel quản trị, rate limit, cache (Redis)
 - [ ] Test tự động (unit / integration), CI/CD
 - [ ] Tối ưu accessibility (aria, keyboard navigation)
@@ -954,13 +1006,13 @@ CSS dùng `env(safe-area-inset-bottom)` và `env(safe-area-inset-top)` để tab
 
 | Bảng | Mô tả |
 |------|-------|
-| `conversations` | Hội thoại (type: private/group, created_by, timestamps) |
-| `conversation_participants` | Người tham gia (user_id, role, last_read_msg_id, last_read_at, hidden_at) |
-| `messages` | Tin nhắn (conversation_id, sender_id, msg_id, seq_no, content, content_type, media_url, reply_to_msg_id, is_edited, is_deleted, is_unsent) |
+| `conversations` | Hội thoại (type: private/group, **title**, **avatar**, created_by, **dissolved_at**, timestamps) — `title` + `avatar` chỉ dùng cho group, `dissolved_at` cho phép soft-delete nhóm |
+| `conversation_participants` | Người tham gia (user_id, **role: owner/admin/member**, last_read_msg_id, last_read_at, hidden_at) |
+| `messages` | Tin nhắn (conversation_id, sender_id, msg_id, seq_no, content, **content_type: text/image/video/file/system**, media_url, reply_to_msg_id, is_edited, is_deleted, is_unsent) — `content_type='system'` dùng cho thông báo group ("X đã tạo nhóm", "Y đã rời nhóm"...) |
 | `message_hidden` | Ẩn tin nhắn theo từng user (message_id, user_id) — KHÔNG xóa DB |
 | `user_presence` | Trạng thái online/offline (user_id, is_online, last_seen) |
 
-> **Migration quan trọng:** `006_create_chat_tables.sql` tạo schema cơ bản. `007_add_last_read_at.sql` thêm `last_read_at`. `009_add_unsend_and_hidden.sql` thêm `is_unsent` và bảng `message_hidden`. `010_add_conv_participant_hidden.sql` thêm `hidden_at`. Phải chạy **đủ** tất cả migration mới dùng được đầy đủ tính năng.
+> **Migration quan trọng** (chạy theo thứ tự, đã được track trong bảng `_migrations`): `006_create_chat_tables.sql` tạo schema cơ bản. `007_add_last_read_at.sql` thêm `last_read_at`. `009_add_unsend_and_hidden.sql` thêm `is_unsent` và bảng `message_hidden`. `010_add_conv_participant_hidden.sql` thêm `hidden_at`. **`020_group_chat_phase1.sql` thêm `dissolved_at` + index group** (bắt buộc cho tính năng giải tán nhóm). Phải chạy **đủ** tất cả migration mới dùng được đầy đủ tính năng.
 
 ### Protocol WebSocket (MTProto-inspired)
 
@@ -1052,12 +1104,16 @@ Client dùng `reply_to` để match ACK/error với pending request (Map `pendin
 | File | Vai trò |
 |------|---------|
 | `src/services/websocket.js` | WebSocket client: connect, send, event listeners, pendingAcks, offline queue, reconnect |
-| `src/services/chat.js` | REST fallback: getConversations, sendMessageRest, markAsRead, v.v. |
-| `src/contexts/ChatContext.jsx` | Global state: conversations, wsConnected, onlineUsers, typingUsers; mount WS connection |
-| `src/pages/ChatPage.jsx` | Layout: ConversationList (sidebar) + ChatWindow |
-| `src/components/chat/ChatWindow.jsx` | Hiển thị messages, input, gửi tin, ACK handling, read receipts, typing indicator |
-| `src/components/chat/ConversationList.jsx` | Danh sách hội thoại, unread count, online dot, context menu |
-| `src/components/chat/MessageBubble.jsx` | Render từng tin nhắn (text, media, link preview, read receipt, context menu) |
+| `src/services/chat.js` | REST fallback + group chat REST: getConversations, sendMessageRest, markAsRead, **createGroup, addGroupMembers, removeGroupMember, updateGroupInfo, leaveGroup, changeGroupRole, dissolveGroup, getGroupMembers, getGroupReadStatus** |
+| `src/contexts/ChatContext.jsx` | Global state: conversations, wsConnected, onlineUsers, typingUsers; mount WS connection; **propagate `last_message_sender_username` cho group preview** |
+| `src/pages/ChatPage.jsx` | Layout: ConversationList (sidebar) + ChatWindow + **CreateGroupModal + FAB tạo nhóm mobile** |
+| `src/components/chat/ChatWindow.jsx` | Hiển thị messages, input, gửi tin, ACK handling, read receipts, typing indicator, **group header click mở GroupInfoDrawer, multi-typing names, prop `isGroup` xuống MessageBubble** |
+| `src/components/chat/ConversationList.jsx` | Danh sách hội thoại, unread count, online dot, context menu, **hàng "Tạo nhóm chat mới", group avatar + badge online count, sender name prefix trong preview** |
+| `src/components/chat/MessageBubble.jsx` | Render từng tin nhắn (text, media, link preview, read receipt, context menu), **system message + sender name phía trên bubble khi `isGroup`** |
+| `src/components/chat/CreateGroupModal.jsx` | **(MỚI)** Modal tạo nhóm: avatar + title + danh sách bạn bè có search + multi-select (≥ 2) |
+| `src/components/chat/GroupInfoDrawer.jsx` | **(MỚI)** Drawer slide-in: hero info + danh sách thành viên + role badge + action button (phong/hạ/xoá/rời/giải tán) |
+| `src/components/chat/AddMembersModal.jsx` | **(MỚI)** Modal mời thêm thành viên cho nhóm hiện có |
+| `src/components/chat/EditGroupInfoModal.jsx` | **(MỚI)** Modal sửa tên + avatar nhóm |
 
 ### Cấu trúc file chat (backend)
 
@@ -1065,11 +1121,12 @@ Client dùng `reply_to` để match ACK/error với pending request (Map `pendin
 |------|---------|
 | `src/WebSocket/ChatServer.php` | `MessageComponentInterface` - xử lý các method WS, lưu `userConnections[]` in-memory |
 | `src/WebSocket/ChatProtocol.php` | Hằng số method/update, parse/createResponse/createUpdate/createError |
-| `src/Services/ChatService.php` | Business logic: sendMessage, getMessages, markAsRead, editMessage, unsendMessage, v.v. |
+| `src/Services/ChatService.php` | Business logic 1-1: sendMessage, getMessages, markAsRead, editMessage, unsendMessage, v.v. **+ getConversationForUser + enrichConversation populate group fields (member_count, online_member_count, my_role)** |
+| `src/Services/GroupChatService.php` | **(MỚI)** Business logic group: createGroup, addMembers, removeMember, updateGroupInfo, leaveGroup, changeRole, dissolveGroup, getGroupMembers, getGroupReadStatus + permission check + insert system message |
 | `src/Repositories/MessageRepository.php` | CRUD messages, getMessages (với filter hidden), findById |
-| `src/Repositories/ConversationRepository.php` | Conversations, participants, isParticipant, getUserConversations, getOtherParticipant |
+| `src/Repositories/ConversationRepository.php` | Conversations, participants, isParticipant, getUserConversations, getOtherParticipant **+ createGroup, getMemberCount, getOnlineMemberCount, getRoleInConversation, removeParticipant, setRole, updateConversationInfo, setDissolvedAt, getReadStatusForGroup, findNextOwnerCandidate** |
 | `src/Repositories/PresenceRepository.php` | setOnline, setOffline, getPresence |
-| `src/Controllers/ChatController.php` | REST endpoints cho chat (12 methods) |
+| `src/Controllers/ChatController.php` | REST endpoints cho chat (12 methods 1-1 + **9 methods group**: createGroup, addGroupMembers, removeGroupMember, updateGroupInfo, leaveGroup, changeGroupRole, dissolveGroup, getGroupMembers, getGroupReadStatus) |
 
 ---
 

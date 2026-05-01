@@ -91,3 +91,78 @@ export async function hideAllMessagesForMe(conversationId) {
     body: JSON.stringify({ conversation_id: conversationId }),
   });
 }
+
+// ===== Group chat (Phase 1 + 2) =====
+
+export async function createGroup(title, avatarUrl, memberIds) {
+  const data = await restFetch('/chat/group/create', {
+    method: 'POST',
+    body: JSON.stringify({
+      title,
+      avatar_url: avatarUrl || null,
+      member_ids: memberIds,
+    }),
+  });
+  return data.data;
+}
+
+export async function addGroupMembers(conversationId, memberIds) {
+  const data = await restFetch('/chat/group/members/add', {
+    method: 'POST',
+    body: JSON.stringify({ conversation_id: conversationId, member_ids: memberIds }),
+  });
+  return data.data;
+}
+
+export async function removeGroupMember(conversationId, userId) {
+  const data = await restFetch('/chat/group/members/remove', {
+    method: 'POST',
+    body: JSON.stringify({ conversation_id: conversationId, user_id: userId }),
+  });
+  return data.data;
+}
+
+export async function updateGroupInfo(conversationId, { title, avatarUrl } = {}) {
+  const body = { conversation_id: conversationId };
+  if (title !== undefined) body.title = title;
+  if (avatarUrl !== undefined) body.avatar_url = avatarUrl;
+  const data = await restFetch('/chat/group/info', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  return data.data;
+}
+
+export async function leaveGroup(conversationId) {
+  const data = await restFetch('/chat/group/leave', {
+    method: 'POST',
+    body: JSON.stringify({ conversation_id: conversationId }),
+  });
+  return data.data;
+}
+
+export async function changeGroupRole(conversationId, userId, role) {
+  const data = await restFetch('/chat/group/role', {
+    method: 'POST',
+    body: JSON.stringify({ conversation_id: conversationId, user_id: userId, role }),
+  });
+  return data.data;
+}
+
+export async function dissolveGroup(conversationId) {
+  const data = await restFetch('/chat/group/dissolve', {
+    method: 'POST',
+    body: JSON.stringify({ conversation_id: conversationId }),
+  });
+  return data.data;
+}
+
+export async function getGroupMembers(conversationId) {
+  const data = await restFetch(`/chat/group/members?conversation_id=${conversationId}`);
+  return data.data;
+}
+
+export async function getGroupReadStatus(conversationId) {
+  const data = await restFetch(`/chat/group/read-status?conversation_id=${conversationId}`);
+  return data.data;
+}

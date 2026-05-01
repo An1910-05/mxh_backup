@@ -226,14 +226,23 @@ function PostLinkPreview({ postId }) {
   );
 }
 
-export default function MessageBubble({ message, isOwn, showAvatar, showTime, isFirst, isLast, seenAvatar, seenName, seenAt, showSentTime, isNew, onUnsend, onHide }) {
+export default function MessageBubble({ message, isOwn, isGroup = false, showAvatar, showTime, isFirst, isLast, seenAvatar, seenName, seenAt, showSentTime, isNew, onUnsend, onHide }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [hoverRow, setHoverRow] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const menuRef = useRef(null);
   const msg = message;
+  const isSystem = msg.content_type === 'system';
   const isUnsent = msg.is_unsent === true || msg.is_unsent === 1 || msg.is_unsent === '1';
+
+  if (isSystem) {
+    return (
+      <div className="msg-system-row">
+        <span className="msg-system">{msg.content}</span>
+      </div>
+    );
+  }
   const hasMedia = !isUnsent && msg.media_url && (msg.content_type === 'image' || msg.content_type === 'video');
   const hasText = !isUnsent && !!msg.content;
   // Detect emoji-only message (no background bubble, large display)
@@ -434,7 +443,14 @@ export default function MessageBubble({ message, isOwn, showAvatar, showTime, is
             )}
           </div>
         ) : (
-          bubbleInlineEl
+          isGroup ? (
+            <div className="msg-other-stack">
+              {isFirst && msg.username && (
+                <span className="msg-sender-name">{msg.username}</span>
+              )}
+              {bubbleInlineEl}
+            </div>
+          ) : bubbleInlineEl
         )}
 
         {showTooltip && !showMenu && tipPos && (
