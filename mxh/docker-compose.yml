@@ -107,6 +107,12 @@ services:
     ports:
       - "${FRONTEND_PUBLISH_PORT:-5173}:5173"
     volumes:
+      # Mount toàn bộ source code để Vite HMR hot-reload mỗi khi sửa file
+      # trên host (dev trên máy cá nhân). `node_modules` dùng named volume
+      # để giữ version Linux đã cài trong image, tránh bị đè bởi folder
+      # Windows/macOS trên host.
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
       - ./frontend/uploads:/app/uploads:ro
       - ./frontend/dist:/app/dist:ro
     environment:
@@ -121,3 +127,4 @@ services:
 volumes:
   mysql_data:
   backend_vendor:
+  frontend_node_modules:

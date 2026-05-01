@@ -160,12 +160,15 @@ function TriangleDice({ values, rolling, idle }) {
 
 function HistoryDots({ rounds }) {
   if (!rounds?.length) return null;
+  // Backend trả recent_rounds theo thứ tự mới → cũ. Reverse để render
+  // cũ → mới (trái → phải) → chấm mới nhất luôn nằm ngoài cùng bên phải.
+  const ordered = rounds.slice(0, 15).slice().reverse();
   return (
     <div className="tx-history">
-      {rounds.slice(0, 15).map((r, i) => (
+      {ordered.map((r, i) => (
         <span
           key={r.id || i}
-          className={`tx-hdot tx-hdot--${r.result_key}`}
+          className={`tx-hdot tx-hdot--${r.result_key}${r.__justPrepended ? ' tx-hdot--fresh' : ''}`}
           title={`${r.result_label} ${r.dice?.join('-')}`}
         />
       ))}
@@ -212,9 +215,27 @@ export default function TaiXiuFloatingWidget() {
   const [jackpotPage, setJackpotPage] = useState(0);
 
   const pollRef = useRef(null);
+  const overviewPollRef = useRef(null);
   const prevId = useRef(null);
   const prevPhase = useRef(null);
   const resultFlashTimerRef = useRef(null);
+  const refreshingOverviewRef = useRef(false);
+  const historyRefreshTimerRef = useRef(null);
+  // Snapshot round vừa xử lý ở lần applyRound trước. Khi roundChanged,
+  // ref này chính là round vừa kết thúc (đã có result_key + dice + total).
+  const prevRoundSnapshotRef = useRef(null);
+  // Round vừa kết thúc đang chờ prepend vào HistoryDots. Set ngay khi
+  // `applyRound` detect phase=rolling/result (r.result_key đã populated).
+  // Tiêu thụ bởi 2 trigger (dedupe theo id):
+  //  (a) useEffect watch `showResult` true→false (flash 5s vừa tắt) — chạy
+  //      SỚM NHẤT, đúng khoảnh khắc UX mong muốn.
+  //  (b) applyRound khi `roundChanged` — fallback nếu client miss phase=result.
+  // `prependFinishedDot()` clear ref về null sau khi commit.
+  const finishedRoundRef = useRef(null);
+  // Đánh dấu "đang chờ refresh overview 1.8s sau round change" để đồng bộ
+  // jackpot pool / tỉ lệ / jackpot history từ server. Prepend chấm đã xử lý
+  // riêng qua `prependFinishedDot`, ref này chỉ dùng cho server refresh.
+  const pendingHistoryRefreshRef = useRef(false);
 
   useEffect(() => {
     const handler = () => {
@@ -248,8 +269,16 @@ export default function TaiXiuFloatingWidget() {
     window.removeEventListener('mouseup', onMouseUp);
   }, [onMouseMove]);
 
+  // Những element không được phép khởi tạo drag (buttons, links, input, text
+  // có thể select như MD5 hash, hoặc bất kỳ node nào gắn data-no-drag).
+  const isInteractiveTarget = (target) => {
+    if (!target || typeof target.closest !== 'function') return false;
+    return !!target.closest('button, a, input, select, textarea, label, code, [data-no-drag]');
+  };
+
   const onDragStart = useCallback((e) => {
     if (e.button !== 0) return;
+    if (isInteractiveTarget(e.target)) return;
     initPos();
     const rect = widgetRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
     dragState.current = { active: true, startX: e.clientX, startY: e.clientY, startLeft: rect.left, startTop: rect.top };
@@ -260,6 +289,7 @@ export default function TaiXiuFloatingWidget() {
 
   const onTouchStart = useCallback((e) => {
     if (e.touches.length !== 1) return;
+    if (isInteractiveTarget(e.target)) return;
     initPos();
     const t = e.touches[0];
     const rect = widgetRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
@@ -280,6 +310,57 @@ export default function TaiXiuFloatingWidget() {
     dragState.current.active = false;
   }, []);
 
+  const refreshOverview = useCallback(async () => {
+    if (refreshingOverviewRef.current) return;
+    refreshingOverviewRef.current = true;
+    try {
+      const ov = await getTaiXiuOverview();
+      setOverview(ov);
+      if (typeof ov?.balance === 'number') setBalance(ov.balance);
+    } catch (e) {
+      console.error('[TaiXiu] Lỗi refresh overview:', e);
+    } finally {
+      refreshingOverviewRef.current = false;
+    }
+  }, []);
+
+  // Prepend chấm Tỉu/Xài của phiên vừa kết thúc (đọc từ finishedRoundRef)
+  // vào overview.recent_rounds. Dedupe theo `id` để không bị double khi gọi
+  // từ nhiều trigger (flash tắt / round changed / overviewPoll). Gắn cờ
+  // `__justPrepended` để HistoryDots render class `tx-hdot--fresh` → animation
+  // pulse vàng ~1.6s giúp user nhận biết "chấm mới vừa xuất hiện".
+  const prependFinishedDot = useCallback(() => {
+    const finished = finishedRoundRef.current;
+    if (!finished?.id || !finished?.result_key) return;
+    finishedRoundRef.current = null;
+    console.log('[TaiXiu] ✅ HistoryDots prepend', {
+      id: finished.id,
+      round_code: finished.round_code,
+      result_key: finished.result_key,
+      dice: finished.dice,
+    });
+    setOverview((ov) => {
+      if (!ov) return ov;
+      const list = ov.recent_rounds || [];
+      if (list.some((x) => String(x.id) === String(finished.id))) {
+        console.log('[TaiXiu] 🚫 HistoryDots skip: id đã tồn tại', finished.id);
+        return ov;
+      }
+      const dot = {
+        id: finished.id,
+        round_code: finished.round_code,
+        result_key: finished.result_key,
+        result_label: finished.result_label,
+        dice: Array.isArray(finished.dice) ? finished.dice.slice() : [],
+        total: finished.total,
+        created_at: finished.ended_at || finished.created_at || new Date().toISOString(),
+        jackpot_side: finished.jackpot_side || null,
+        __justPrepended: true,
+      };
+      return { ...ov, recent_rounds: [dot, ...list].slice(0, 30) };
+    });
+  }, []);
+
   const applyRound = useCallback((r, bal) => {
     if (!r) return;
     const phase = r.phase || (r.status === 'betting' ? 'betting' : (r.dice?.length === 3 ? 'result' : 'betting'));
@@ -287,6 +368,7 @@ export default function TaiXiuFloatingWidget() {
 
     const sameRound = prevId.current === r.id;
     const phaseChanged = !sameRound || prevPhase.current !== phase;
+    const roundChanged = prevId.current !== null && !sameRound;
 
     if (phaseChanged) {
       if (phase === 'betting') {
@@ -314,11 +396,31 @@ export default function TaiXiuFloatingWidget() {
       setDisplayDice(r.dice);
     }
 
+    // LƯU snapshot round "đã có kết quả" vào finishedRoundRef ngay khi detect
+    // phase=rolling hoặc phase=result (server đã resolve, r.result_key được set).
+    // Ref này sẽ được tiêu thụ sớm nhất bởi useEffect watching `showResult`
+    // true→false (flash 5s tắt), hoặc fallback khi roundChanged nếu client
+    // miss phase=result. prependFinishedDot tự clear ref sau khi commit.
+    if ((phase === 'rolling' || phase === 'result') && r.result_key) {
+      finishedRoundRef.current = r;
+    }
+
+    // Khi round id ĐỔI (phiên cũ đã kết thúc, phiên mới bắt đầu):
+    //  (1) Gọi prependFinishedDot để prepend NGAY (có dedupe, không double nếu
+    //      trigger flash tắt đã chạy trước).
+    //  (2) Set cờ pending → useEffect dưới schedule refreshOverview 1.8s sau
+    //      (đồng bộ jackpot pool / tỉ lệ / data chuẩn từ server).
+    if (roundChanged) {
+      prependFinishedDot();
+      pendingHistoryRefreshRef.current = true;
+    }
+
     prevId.current = r.id;
     prevPhase.current = phase;
+    prevRoundSnapshotRef.current = r;
     setRound(r);
     if (bal !== undefined) setBalance(bal);
-  }, [displayDice.length]);
+  }, [displayDice.length, prependFinishedDot]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -340,10 +442,21 @@ export default function TaiXiuFloatingWidget() {
         console.error('[TaiXiu] Lỗi polling:', e);
       }
     }, 3000);
+    // Fallback: đồng bộ overview (jackpot pool, tỉ lệ, lịch sử) mỗi 15s
+    // phòng trường hợp phát hiện chuyển phiên bị trượt. Skip khi đang
+    // rolling / result để tránh hiếm gặp backend đã commit phiên trong
+    // recent_rounds trước khi client kết thúc animation, làm lộ kết quả
+    // xuống HistoryDots sớm.
+    overviewPollRef.current = setInterval(() => {
+      const ph = prevPhase.current;
+      if (ph === 'rolling' || ph === 'result') return;
+      refreshOverview();
+    }, 15000);
     return () => {
       clearInterval(pollRef.current);
+      clearInterval(overviewPollRef.current);
     };
-  }, [open, user, applyRound]);
+  }, [open, user, applyRound, refreshOverview]);
 
   useEffect(() => {
     if (!open) return;
@@ -351,8 +464,43 @@ export default function TaiXiuFloatingWidget() {
     return () => clearInterval(t);
   }, [open]);
 
+  // Trigger SỚM NHẤT prepend chấm mới: watch `showResult` true → false,
+  // tức là `resultFlashTimer` 5s vừa tắt (flash "TỈU! Tổng X" ở top biến mất).
+  // Tại thời điểm này client đã có đầy đủ dữ liệu phiên vừa kết thúc trong
+  // `finishedRoundRef` (được set trong applyRound phase=rolling/result từ
+  // trước đó). Prepend ngay → user thấy chấm mới ở HistoryDots đúng khoảnh
+  // khắc flash tắt, không phải chờ poll tiếp theo bắt được round B (~3s sau).
+  const showResultPrevRef = useRef(false);
+  useEffect(() => {
+    if (showResultPrevRef.current && !showResult) {
+      console.log('[TaiXiu] 🎯 Flash 5s tắt → thử prepend HistoryDots');
+      prependFinishedDot();
+    }
+    showResultPrevRef.current = showResult;
+  }, [showResult, prependFinishedDot]);
+
+  // Server sync 1.8s sau khi state settle: gọi refreshOverview để đồng bộ
+  // jackpot pool / tai_result_rate / xiu_result_rate / jackpot_history. Server
+  // refresh set lại toàn bộ overview (bao gồm recent_rounds chuẩn từ DB) —
+  // nếu optimistic prepend ở trên đã thêm dot thì server cũng đã có dot đó,
+  // không bị double (server replace thay vì merge). KHÔNG return cleanup để
+  // clear timer — timer phải chạy xuyên qua các re-render khác (secsLeft
+  // countdown mỗi giây). Timer clear khi unmount (useEffect `[]` dưới) hoặc
+  // guard bằng `historyRefreshTimerRef.current` để tránh double schedule.
+  useEffect(() => {
+    if (!pendingHistoryRefreshRef.current) return;
+    if (rolling || showResult) return;
+    if (historyRefreshTimerRef.current) return;
+    pendingHistoryRefreshRef.current = false;
+    historyRefreshTimerRef.current = setTimeout(() => {
+      refreshOverview();
+      historyRefreshTimerRef.current = null;
+    }, 1800);
+  }, [rolling, showResult, round?.id, refreshOverview]);
+
   useEffect(() => () => {
     if (resultFlashTimerRef.current) clearTimeout(resultFlashTimerRef.current);
+    if (historyRefreshTimerRef.current) clearTimeout(historyRefreshTimerRef.current);
   }, []);
 
   const handleSelectSide = (side) => {
@@ -501,7 +649,15 @@ export default function TaiXiuFloatingWidget() {
 
   if (menuOpen) {
     return (
-      <div ref={widgetRef} className="tx-casino-widget tx-casino-widget--menu" style={style}>
+      <div
+        ref={widgetRef}
+        className="tx-casino-widget tx-casino-widget--menu"
+        style={style}
+        onMouseDown={onDragStart}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         <div className="tx-menu-shell">
           <aside className="tx-menu-rail">
             {MENU_TABS.map((tab) => (
@@ -517,13 +673,7 @@ export default function TaiXiuFloatingWidget() {
           </aside>
 
           <section className="tx-menu-panel">
-            <div
-              className="tx-menu-header"
-              onMouseDown={onDragStart}
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-            >
+            <div className="tx-menu-header">
               <span className="tx-menu-round">#{round?.round_code || '...'}</span>
               <h3 className={`tx-menu-title${menuTab === 'rounds' ? ' tx-menu-title--stack' : ''}`}>{MENU_TABS[activeMenuIndex]?.label?.toUpperCase()}</h3>
               <div className="tx-menu-header-actions">
@@ -704,7 +854,15 @@ export default function TaiXiuFloatingWidget() {
   const secs2 = `${String(Math.floor(secsLeft / 60)).padStart(2, '0')}:${String(secsLeft % 60).padStart(2, '0')}`;
 
   return (
-    <div ref={widgetRef} className="tx-casino-widget" style={style}>
+    <div
+      ref={widgetRef}
+      className="tx-casino-widget"
+      style={style}
+      onMouseDown={onDragStart}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       <div className="tx-jackpot-wrap">
         <div className="tx-jackpot-label">JACKPOT</div>
         <div className="tx-jackpot-pill">
@@ -715,13 +873,7 @@ export default function TaiXiuFloatingWidget() {
       </div>
 
       <div className="tx-casino-body">
-        <div
-          className="tx-top-bar"
-          onMouseDown={onDragStart}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
+        <div className="tx-top-bar">
           <button className="tx-ctrl-btn" onClick={() => openMenu('guide')} title="Mở sảnh thông tin">≡</button>
           <span className="tx-round-code">#{round?.round_code || '...'}</span>
           <div className="tx-top-actions">
