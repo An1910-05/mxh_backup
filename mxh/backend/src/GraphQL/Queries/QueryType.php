@@ -12,6 +12,9 @@ use App\Services\StoryService;
 use App\Services\NotificationService;
 use App\Services\LikeService;
 use App\Services\TaiXiuService;
+use App\Services\ShopProductService;
+use App\Services\ShopOrderService;
+use App\Repositories\ShopCategoryRepository;
 use App\Repositories\UserRepository;
 
 class QueryType extends ObjectType
@@ -313,6 +316,170 @@ class QueryType extends ObjectType
                         if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
                         $service = new TaiXiuService();
                         return $service->getCurrentRound((int) $context['user']['id']);
+                    },
+                ],
+
+                // Shop Queries
+                'shopCategories' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopCategory()))),
+                    'resolve' => function ($root, $args) {
+                        $repo = new ShopCategoryRepository();
+                        return $repo->findAll();
+                    },
+                ],
+
+                'shopCategory' => [
+                    'type' => TypeRegistry::shopCategory(),
+                    'args' => ['id' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args) {
+                        $repo = new ShopCategoryRepository();
+                        $category = $repo->findById($args['id']);
+                        if (!$category) throw new \GraphQL\Error\Error('Category not found');
+                        return $category;
+                    },
+                ],
+
+                'shopProducts' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopProduct()))),
+                    'args' => [
+                        'categoryId' => Type::int(),
+                        'sellerId' => Type::int(),
+                        'status' => Type::string(),
+                        'productType' => Type::string(),
+                        'search' => Type::string(),
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 20],
+                        'page' => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args) {
+                        $service = new ShopProductService();
+                        $filters = [
+                            'category_id' => $args['categoryId'] ?? null,
+                            'seller_id' => $args['sellerId'] ?? null,
+                            'status' => $args['status'] ?? 'approved',
+                            'product_type' => $args['productType'] ?? null,
+                            'search' => $args['search'] ?? null,
+                        ];
+                        return $service->getProducts($filters, $args['limit'], $args['page']);
+                    },
+                ],
+
+                'shopProduct' => [
+                    'type' => TypeRegistry::shopProduct(),
+                    'args' => ['id' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args) {
+                        $service = new ShopProductService();
+                        $product = $service->getProductById($args['id'], true);
+                        if (!$product) throw new \GraphQL\Error\Error('Product not found');
+                        return $product;
+                    },
+                ],
+
+                'myShopProducts' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopProduct()))),
+                    'args' => [
+                        'status' => Type::string(),
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 20],
+                        'page' => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new ShopProductService();
+                        $filters = [
+                            'seller_id' => $context['user']['id'],
+                            'status' => $args['status'] ?? null,
+                        ];
+                        return $service->getProducts($filters, $args['limit'], $args['page']);
+                    },
+                ],
+
+                'myPurchases' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopOrder()))),
+                    'args' => [
+                        'status' => Type::string(),
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 20],
+                        'page' => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new ShopOrderService();
+                        $filters = [
+                            'buyer_id' => $context['user']['id'],
+                            'status' => $args['status'] ?? null,
+                        ];
+                        return $service->getOrders($filters, $args['limit'], $args['page']);
+                    },
+                ],
+
+                'mySales' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopOrder()))),
+                    'args' => [
+                        'status' => Type::string(),
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 20],
+                        'page' => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new ShopOrderService();
+                        $filters = [
+                            'seller_id' => $context['user']['id'],
+                            'status' => $args['status'] ?? null,
+                        ];
+                        return $service->getOrders($filters, $args['limit'], $args['page']);
+                    },
+                ],
+
+                'shopOrder' => [
+                    'type' => TypeRegistry::shopOrder(),
+                    'args' => ['id' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new ShopOrderService();
+                        $order = $service->getOrderById($args['id']);
+                        if (!$order) throw new \GraphQL\Error\Error('Order not found');
+
+                        $userId = $context['user']['id'];
+                        $isAdmin = ($context['user']['role'] ?? 'user') === 'admin';
+                        if ($order['buyer_id'] != $userId && $order['seller_id'] != $userId && !$isAdmin) {
+                            throw new \GraphQL\Error\Error('Unauthorized to view this order');
+                        }
+
+                        return $order;
+                    },
+                ],
+
+                'adminShopProducts' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopProduct()))),
+                    'args' => [
+                        'status' => Type::string(),
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 20],
+                        'page' => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        if (($context['user']['role'] ?? 'user') !== 'admin') {
+                            throw new \GraphQL\Error\Error('Admin access required');
+                        }
+                        $service = new ShopProductService();
+                        $filters = ['status' => $args['status'] ?? 'pending'];
+                        return $service->getProducts($filters, $args['limit'], $args['page']);
+                    },
+                ],
+
+                'adminShopOrders' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopOrder()))),
+                    'args' => [
+                        'status' => Type::string(),
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 20],
+                        'page' => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        if (($context['user']['role'] ?? 'user') !== 'admin') {
+                            throw new \GraphQL\Error\Error('Admin access required');
+                        }
+                        $service = new ShopOrderService();
+                        $filters = ['status' => $args['status'] ?? null];
+                        return $service->getOrders($filters, $args['limit'], $args['page']);
                     },
                 ],
 

@@ -19,6 +19,9 @@ use App\GraphQL\Types\TaiXiuOverviewType;
 use App\GraphQL\Types\TaiXiuPlayResultType;
 use App\GraphQL\Types\TaiXiuCurrentRoundType;
 use App\GraphQL\Types\TaiXiuPlaceBetResultType;
+use App\GraphQL\Types\ShopCategoryType;
+use App\GraphQL\Types\ShopProductType;
+use App\GraphQL\Types\ShopOrderType;
 
 class TypeRegistry
 {
@@ -39,6 +42,9 @@ class TypeRegistry
     private static ?TaiXiuPlayResultType $taiXiuPlayResult = null;
     private static ?TaiXiuCurrentRoundType $taiXiuCurrentRound = null;
     private static ?TaiXiuPlaceBetResultType $taiXiuPlaceBetResult = null;
+    private static ?ShopCategoryType $shopCategory = null;
+    private static ?ShopProductType $shopProduct = null;
+    private static ?ShopOrderType $shopOrder = null;
 
     public static function user(): UserType { return self::$user ??= new UserType(); }
     public static function profile(): ProfileType { return self::$profile ??= new ProfileType(); }
@@ -57,4 +63,7 @@ class TypeRegistry
     public static function taiXiuPlayResult(): TaiXiuPlayResultType { return self::$taiXiuPlayResult ??= new TaiXiuPlayResultType(); }
     public static function taiXiuCurrentRound(): TaiXiuCurrentRoundType { return self::$taiXiuCurrentRound ??= new TaiXiuCurrentRoundType(); }
     public static function taiXiuPlaceBetResult(): TaiXiuPlaceBetResultType { return self::$taiXiuPlaceBetResult ??= new TaiXiuPlaceBetResultType(); }
+    public static function shopCategory(): ShopCategoryType { return self::$shopCategory ??= new ShopCategoryType(); }
+    public static function shopProduct(): ShopProductType { return self::$shopProduct ??= new ShopProductType(); }
+    public static function shopOrder(): ShopOrderType { return self::$shopOrder ??= new ShopOrderType(); }
 }
