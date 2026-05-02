@@ -14,6 +14,9 @@ use App\Services\FriendshipService;
 use App\Services\StoryService;
 use App\Services\NotificationService;
 use App\Services\TaiXiuService;
+use App\Services\ShopProductService;
+use App\Services\ShopOrderService;
+use App\Repositories\ShopCategoryRepository;
 use App\Validators\PostValidator;
 use App\Validators\ProfileValidator;
 
@@ -357,6 +360,219 @@ class MutationType extends ObjectType
                             (string) $args['side'],
                             (int) $args['amount']
                         );
+                    },
+                ],
+
+                // Shop Mutations
+                'createShopProduct' => [
+                    'type' => TypeRegistry::shopProduct(),
+                    'args' => [
+                        'categoryId' => Type::nonNull(Type::int()),
+                        'title' => Type::nonNull(Type::string()),
+                        'description' => Type::nonNull(Type::string()),
+                        'productType' => Type::nonNull(Type::string()),
+                        'price' => Type::nonNull(Type::int()),
+                        'stockQuantity' => Type::int(),
+                        'images' => Type::nonNull(Type::listOf(Type::nonNull(Type::string()))),
+                        'digitalFileUrl' => Type::string(),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopProductService();
+                        return $service->createProduct($context['user']['id'], $args);
+                    },
+                ],
+
+                'updateShopProduct' => [
+                    'type' => TypeRegistry::shopProduct(),
+                    'args' => [
+                        'id' => Type::nonNull(Type::int()),
+                        'categoryId' => Type::int(),
+                        'title' => Type::string(),
+                        'description' => Type::string(),
+                        'price' => Type::int(),
+                        'stockQuantity' => Type::int(),
+                        'images' => Type::listOf(Type::nonNull(Type::string())),
+                        'digitalFileUrl' => Type::string(),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopProductService();
+                        $productId = $args['id'];
+                        unset($args['id']);
+                        return $service->updateProduct($productId, $context['user']['id'], $args);
+                    },
+                ],
+
+                'deleteShopProduct' => [
+                    'type' => Type::boolean(),
+                    'args' => ['id' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopProductService();
+                        return $service->deleteProduct($args['id'], $context['user']['id']);
+                    },
+                ],
+
+                'submitShopProductForApproval' => [
+                    'type' => TypeRegistry::shopProduct(),
+                    'args' => ['id' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopProductService();
+                        return $service->submitForApproval($args['id'], $context['user']['id']);
+                    },
+                ],
+
+                'createShopOrder' => [
+                    'type' => TypeRegistry::shopOrder(),
+                    'args' => [
+                        'productId' => Type::nonNull(Type::int()),
+                        'quantity' => Type::nonNull(Type::int()),
+                        'shippingAddress' => Type::string(),
+                        'buyerNotes' => Type::string(),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopOrderService();
+                        $data = [
+                            'product_id' => $args['productId'],
+                            'quantity' => $args['quantity'],
+                            'shipping_address' => isset($args['shippingAddress']) ? json_decode($args['shippingAddress'], true) : null,
+                            'buyer_notes' => $args['buyerNotes'] ?? null,
+                        ];
+                        return $service->createOrder($context['user']['id'], $data);
+                    },
+                ],
+
+                'confirmShopOrder' => [
+                    'type' => TypeRegistry::shopOrder(),
+                    'args' => ['orderId' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopOrderService();
+                        return $service->confirmOrder($args['orderId'], $context['user']['id']);
+                    },
+                ],
+
+                'shipShopOrder' => [
+                    'type' => TypeRegistry::shopOrder(),
+                    'args' => [
+                        'orderId' => Type::nonNull(Type::int()),
+                        'trackingNumber' => Type::string(),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopOrderService();
+                        return $service->shipOrder($args['orderId'], $context['user']['id'], $args['trackingNumber'] ?? null);
+                    },
+                ],
+
+                'confirmDelivery' => [
+                    'type' => TypeRegistry::shopOrder(),
+                    'args' => ['orderId' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopOrderService();
+                        return $service->confirmDelivery($args['orderId'], $context['user']['id']);
+                    },
+                ],
+
+                'cancelShopOrder' => [
+                    'type' => TypeRegistry::shopOrder(),
+                    'args' => [
+                        'orderId' => Type::nonNull(Type::int()),
+                        'reason' => Type::nonNull(Type::string()),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopOrderService();
+                        $order = $service->getOrderById($args['orderId']);
+                        if (!$order) throw new \GraphQL\Error\Error('Order not found');
+
+                        $userId = $context['user']['id'];
+                        $cancelledBy = ($order['buyer_id'] == $userId) ? 'buyer' : 'seller';
+
+                        return $service->cancelOrder($args['orderId'], $userId, $args['reason'], $cancelledBy);
+                    },
+                ],
+
+                'approveShopProduct' => [
+                    'type' => TypeRegistry::shopProduct(),
+                    'args' => ['id' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        if (($context['user']['role'] ?? 'user') !== 'admin') {
+                            throw new \GraphQL\Error\Error('Admin access required');
+                        }
+                        $service = new ShopProductService();
+                        return $service->approveProduct($args['id'], $context['user']['id']);
+                    },
+                ],
+
+                'rejectShopProduct' => [
+                    'type' => TypeRegistry::shopProduct(),
+                    'args' => [
+                        'id' => Type::nonNull(Type::int()),
+                        'reason' => Type::nonNull(Type::string()),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        if (($context['user']['role'] ?? 'user') !== 'admin') {
+                            throw new \GraphQL\Error\Error('Admin access required');
+                        }
+                        $service = new ShopProductService();
+                        return $service->rejectProduct($args['id'], $context['user']['id'], $args['reason']);
+                    },
+                ],
+
+                'createShopCategory' => [
+                    'type' => TypeRegistry::shopCategory(),
+                    'args' => [
+                        'name' => Type::nonNull(Type::string()),
+                        'slug' => Type::nonNull(Type::string()),
+                        'description' => Type::string(),
+                        'icon' => Type::string(),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        if (($context['user']['role'] ?? 'user') !== 'admin') {
+                            throw new \GraphQL\Error\Error('Admin access required');
+                        }
+                        $repo = new ShopCategoryRepository();
+                        $categoryId = $repo->create($args);
+                        return $repo->findById($categoryId);
+                    },
+                ],
+
+                'updateShopCategory' => [
+                    'type' => TypeRegistry::shopCategory(),
+                    'args' => [
+                        'id' => Type::nonNull(Type::int()),
+                        'name' => Type::string(),
+                        'description' => Type::string(),
+                        'icon' => Type::string(),
+                        'displayOrder' => Type::int(),
+                        'isActive' => Type::boolean(),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        if (($context['user']['role'] ?? 'user') !== 'admin') {
+                            throw new \GraphQL\Error\Error('Admin access required');
+                        }
+                        $repo = new ShopCategoryRepository();
+                        $categoryId = $args['id'];
+                        unset($args['id']);
+
+                        $updateData = [];
+                        if (isset($args['name'])) $updateData['name'] = $args['name'];
+                        if (isset($args['description'])) $updateData['description'] = $args['description'];
+                        if (isset($args['icon'])) $updateData['icon'] = $args['icon'];
+                        if (isset($args['displayOrder'])) $updateData['display_order'] = $args['displayOrder'];
+                        if (isset($args['isActive'])) $updateData['is_active'] = $args['isActive'];
+
+                        $repo->update($categoryId, $updateData);
+                        return $repo->findById($categoryId);
                     },
                 ],
 
