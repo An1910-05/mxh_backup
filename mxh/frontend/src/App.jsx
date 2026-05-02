@@ -19,6 +19,7 @@ import ChatPage from './pages/ChatPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import GamesPage from './pages/GamesPage';
+import ShopPage from './pages/ShopPage';
 import PaymentResultPage from './pages/PaymentResultPage';
 import TaiXiuFloatingWidget from './components/TaiXiuFloatingWidget';
 import LeftSidebar from './components/LeftSidebar';
@@ -124,6 +125,7 @@ export default function App() {
                   <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
                   <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+                  <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
                   <Route path="/games" element={<ProtectedRoute><GamesPage /></ProtectedRoute>} />
                   <Route path="/payment/result" element={<ProtectedRoute><PaymentResultPage /></ProtectedRoute>} />
                   <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />

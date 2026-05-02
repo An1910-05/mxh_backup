@@ -7,11 +7,13 @@
       "Bash(docker compose:*)",
       "Bash(ssh -i 'C:/Users/nguye/.ssh/id_ed25519' -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@203.145.47.2 \"echo OK && whoami\")",
       "Bash(ssh-keygen -y -f 'C:/Users/nguye/.ssh/id_ed25519')",
-      "Bash(curl -s https://raw.githubusercontent.com/asfand-dev/react-facebook-emoji/master/README.md)"
+      "Bash(curl -s https://raw.githubusercontent.com/asfand-dev/react-facebook-emoji/master/README.md)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -L -o \"mxh/frontend/src/assets/sf-symbols/bag.fill.png\" \"https://github.com/andrewtavis/sf-symbols-online/raw/master/glyphs/bag.fill.png\")"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "figma"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

@@ -7,6 +7,7 @@ import usePendingFriendRequestsCount from '../hooks/usePendingFriendRequestsCoun
 import useWeather from '../hooks/useWeather';
 import { API_ORIGIN } from '../config';
 import searchIcon from '../assets/sf-symbols/magnifyingglass.png';
+import shopIcon from '../assets/sf-symbols/bag.fill.png';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
@@ -43,7 +44,8 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
     if (p.startsWith('/notifications')) return 1;
     if (p.startsWith('/search')) return 2;
     if (p.startsWith('/friends')) return 3;
-    if (p.startsWith('/chat')) return 4;
+    if (p.startsWith('/shop')) return 4;
+    if (p.startsWith('/chat')) return 5;
     return -1;
   }, [user, location.pathname]);
 
@@ -166,7 +168,20 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
                   Bạn bè
                   {pendingFriendRequests > 0 && <span className="nav-badge">{pendingFriendRequests > 99 ? '99+' : pendingFriendRequests}</span>}
                 </Link>
-                <Link ref={setLinkRef(4)} to="/chat" className={`${linkClass(4)} nav-link-with-badge`}>
+                <Link
+                  ref={setLinkRef(4)}
+                  to="/shop"
+                  className={`${linkClass(4)} nav-item--icon`}
+                  aria-label="Cửa hàng"
+                  title="Cửa hàng"
+                >
+                  <span
+                    className="nav-symbol-icon"
+                    style={{ '--nav-symbol-icon': `url(${shopIcon})` }}
+                    aria-hidden="true"
+                  />
+                </Link>
+                <Link ref={setLinkRef(5)} to="/chat" className={`${linkClass(5)} nav-link-with-badge`}>
                   Tin nhắn
                   {totalUnread > 0 && <span className="nav-badge">{totalUnread > 99 ? '99+' : totalUnread}</span>}
                 </Link>

@@ -10,6 +10,8 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **Thêm danh mục “Cửa hàng” vào Navbar và MobileTabBar:** Thêm link “Cửa hàng” với biểu tượng túi mua sắm (bag.fill) từ SF Symbols vào thanh điều hướng. Tính năng hiển thị ở cả desktop (Navbar) và mobile (MobileTabBar), route `/shop` đã được thêm vào App.jsx với trang ShopPage placeholder.
+  - File liên quan: `frontend/src/components/Navbar.jsx`, `frontend/src/mobile/components/MobileTabBar.jsx`, `frontend/src/App.jsx`, `frontend/src/pages/ShopPage.jsx`, `frontend/src/assets/sf-symbols/bag.fill.png`
 - **Chat nhóm trong cửa sổ chat nổi (FCW) — Fix lỗi chữ bị xuống dòng bất thường:** Khi mở chat nhóm trong `FloatingChatWindow`, phần wrapper `.msg-other-stack` có thể bị co theo min-content làm bubble quá hẹp → chữ wrap từng ký tự. Đã chỉnh CSS để stack “other” có thể co giãn đúng và tăng max-width cho bubble trong FCW.
   - File liên quan: `mxh/frontend/src/styles.css`, `mxh/frontend/src/components/FloatingChatWindow.jsx`, `mxh/frontend/src/components/chat/MessageBubble.jsx`
 - **Gọi thoại — Nút “Cúp máy” hoạt động đúng khi đang gọi ra:** Sửa lỗi peer object của cuộc gọi đi dùng `{id,...}` nhưng logic end/reject lại đọc `peer.userId` → bấm gác máy không gửi được `call.end` sang bên kia (bên kia vẫn thấy “đang gọi”).
