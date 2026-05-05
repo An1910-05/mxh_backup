@@ -271,12 +271,25 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
                           <span className="nav-theme-swatch nav-theme-swatch--dark" aria-hidden="true" />
                         </button>
                       </div>
+
+                      <div className="nav-settings-divider" />
+
+                      <div className="nav-settings-menu">
+                        <button
+                          type="button"
+                          className="nav-settings-menu-item nav-settings-logout"
+                          onClick={handleLogout}
+                        >
+                          <span className="nav-settings-menu-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                          </span>
+                          <span>Đăng xuất</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
-
-              <button type="button" onClick={handleLogout} className="apple-nav-brand nav-logout">Đăng xuất</button>
             </div>
           </>
         ) : (

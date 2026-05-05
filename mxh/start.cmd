@@ -120,8 +120,8 @@ goto done
 echo.
 echo Kiem tra volume frontend da mount source tu host chua...
 echo.
-echo --- Line count file TaiXiuFloatingWidget.jsx trong container ---
-docker compose exec frontend wc -l /app/src/components/TaiXiuFloatingWidget.jsx 2>nul
+echo --- Line count file Navbar.jsx trong container ---
+docker compose exec frontend wc -l /app/src/components/Navbar.jsx 2>nul
 if errorlevel 1 (
     echo [LOI] Container frontend chua chay. Hay chon option 1 hoac 2 truoc.
     pause
@@ -129,7 +129,7 @@ if errorlevel 1 (
 )
 echo.
 echo --- Line count file tren host (Windows) ---
-find /c /v "" "frontend\src\components\TaiXiuFloatingWidget.jsx"
+find /c /v "" "frontend\src\components\Navbar.jsx"
 echo.
 echo Neu hai so KHOP -^> volume mount OK, HMR se hoat dong.
 echo Neu KHONG khop -^> chon option 3 de apply compose changes.

@@ -2,7 +2,19 @@ import { useState, useRef, useEffect } from 'react';
 import { API_ORIGIN } from '../config';
 
 const STORAGE_KEY = 'mxh_ai_chat_history';
-const MAX_HISTORY = 30; // giữ tối đa 30 tin nhắn
+const MAX_HISTORY = 10;
+
+const AI_AVATAR_SVG = (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+    <defs>
+      <linearGradient id="aiGradAvatar" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/>
+      </linearGradient>
+    </defs>
+    <circle cx="12" cy="12" r="12" fill="url(#aiGradAvatar)"/>
+    <path d="M12 6l1.2 3.7H17l-2.9 2.1 1.1 3.4L12 13.1l-3.2 2.1 1.1-3.4L7 9.7h3.8L12 6z" fill="white"/>
+  </svg>
+);
 
 function TypingDots() {
   return (
@@ -13,13 +25,9 @@ function TypingDots() {
 }
 
 function renderMarkdown(text) {
-  // Bold **text**
   let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  // Italic *text*
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  // Code `text`
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // Newlines
   html = html.replace(/\n/g, '<br/>');
   return html;
 }
@@ -37,17 +45,14 @@ export default function AIFloatingChat({ open, minimized, onMinimize, onClose, z
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Persist history
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_HISTORY)));
   }, [messages]);
 
-  // Scroll to bottom on new message
   useEffect(() => {
     if (!minimized) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading, minimized]);
 
-  // Focus input when opening
   useEffect(() => {
     if (open && !minimized) setTimeout(() => inputRef.current?.focus(), 100);
   }, [open, minimized]);
@@ -70,7 +75,7 @@ export default function AIFloatingChat({ open, minimized, onMinimize, onClose, z
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ messages: newMessages.slice(-20) }), // gửi tối đa 20 tin gần nhất
+        body: JSON.stringify({ messages: newMessages.slice(-8) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Lỗi kết nối AI');
@@ -101,24 +106,23 @@ export default function AIFloatingChat({ open, minimized, onMinimize, onClose, z
       className={`ai-fcw${minimized ? ' ai-fcw--minimized' : ''}`}
       style={{ zIndex: zIndex || 1100 }}
     >
-      {/* Header */}
       <div className="ai-fcw-header" onClick={onMinimize}>
         <div className="ai-fcw-header-left">
           <div className="ai-fcw-avatar">
             <svg viewBox="0 0 36 36" width="32" height="32" fill="none">
               <defs>
-                <linearGradient id="aiGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                <linearGradient id="aiGradHeader" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
                   <stop stopColor="#a855f7"/>
                   <stop offset="1" stopColor="#3b82f6"/>
                 </linearGradient>
               </defs>
-              <circle cx="18" cy="18" r="18" fill="url(#aiGrad)"/>
+              <circle cx="18" cy="18" r="18" fill="url(#aiGradHeader)"/>
               <path d="M18 9l1.8 5.5H25l-4.3 3.1 1.6 5.1L18 19.6l-4.3 3.1 1.6-5.1L11 14.5h5.2L18 9z" fill="white"/>
             </svg>
             <span className="ai-fcw-online-dot" />
           </div>
           <div className="ai-fcw-header-info">
-            <span className="ai-fcw-name">Gemini AI</span>
+            <span className="ai-fcw-name">iPock AI</span>
             <span className="ai-fcw-status">Trợ lý AI · Luôn hoạt động</span>
           </div>
         </div>
@@ -141,63 +145,45 @@ export default function AIFloatingChat({ open, minimized, onMinimize, onClose, z
         </div>
       </div>
 
-      {/* Body */}
       {!minimized && (
         <div className="ai-fcw-body">
           <div className="ai-fcw-messages">
             {messages.length === 0 && (
               <div className="ai-fcw-welcome">
                 <div className="ai-fcw-welcome-icon">✨</div>
-                <p>Xin chào! Tôi là <strong>Gemini AI</strong>.</p>
+                <p>Xin chào! Tôi là <strong>trợ lý AI của iPock</strong> 🌐</p>
                 <p>Hỏi tôi bất cứ điều gì — viết caption, gợi ý bài đăng, hay chỉ trò chuyện thôi!</p>
               </div>
             )}
             {messages.map((msg, i) => (
               <div key={i} className={`ai-fcw-msg${msg.role === 'user' ? ' ai-fcw-msg--user' : ' ai-fcw-msg--ai'}`}>
                 {msg.role === 'assistant' && (
-                  <div className="ai-fcw-msg-avatar">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                      <defs>
-                        <linearGradient id="aiGrad2" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                          <stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/>
-                        </linearGradient>
-                      </defs>
-                      <circle cx="12" cy="12" r="12" fill="url(#aiGrad2)"/>
-                      <path d="M12 6l1.2 3.7H17l-2.9 2.1 1.1 3.4L12 13.1l-3.2 2.1 1.1-3.4L7 9.7h3.8L12 6z" fill="white"/>
-                    </svg>
-                  </div>
+                  <div className="ai-fcw-msg-avatar">{AI_AVATAR_SVG}</div>
                 )}
-                <div
-                  className="ai-fcw-msg-bubble"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
-                />
+                {msg.role === 'assistant' ? (
+                  <div
+                    className="ai-fcw-msg-bubble"
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                  />
+                ) : (
+                  <div className="ai-fcw-msg-bubble">{msg.content}</div>
+                )}
               </div>
             ))}
             {loading && (
               <div className="ai-fcw-msg ai-fcw-msg--ai">
-                <div className="ai-fcw-msg-avatar">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                    <defs>
-                      <linearGradient id="aiGrad3" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/>
-                      </linearGradient>
-                    </defs>
-                    <circle cx="12" cy="12" r="12" fill="url(#aiGrad3)"/>
-                    <path d="M12 6l1.2 3.7H17l-2.9 2.1 1.1 3.4L12 13.1l-3.2 2.1 1.1-3.4L7 9.7h3.8L12 6z" fill="white"/>
-                  </svg>
-                </div>
+                <div className="ai-fcw-msg-avatar">{AI_AVATAR_SVG}</div>
                 <TypingDots />
               </div>
             )}
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
           <div className="ai-fcw-input-row">
             <textarea
               ref={inputRef}
               className="ai-fcw-input"
-              placeholder="Hỏi Gemini AI..."
+              placeholder="Hỏi iPock AI..."
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}

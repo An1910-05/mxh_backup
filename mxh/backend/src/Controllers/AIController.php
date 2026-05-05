@@ -38,12 +38,12 @@ class AIController
         $payload = json_encode([
             'contents'         => $contents,
             'generationConfig' => [
-                'temperature'     => 0.9,
-                'maxOutputTokens' => 1024,
+                'temperature'     => 0.6,
+                'maxOutputTokens' => 512,
             ],
             'systemInstruction' => [
                 'parts' => [[
-                    'text' => 'Bạn là trợ lý AI thân thiện của mạng xã hội MXH. Trả lời ngắn gọn, tự nhiên bằng tiếng Việt. Có thể hỗ trợ viết caption, gợi ý bài đăng, trả lời câu hỏi thường ngày.'
+                    'text' => 'Bạn là trợ lý AI của mạng xã hội iPock. Khi tự giới thiệu hoặc chào hỏi, hãy nói rõ bạn là trợ lý AI của iPock. Trả lời ĐÚNG trọng tâm câu hỏi, ngắn gọn, tự nhiên bằng tiếng Việt. Không dài dòng, không lạc đề. Hỗ trợ: viết caption, gợi ý bài đăng, trả lời câu hỏi thường ngày.'
                 ]]
             ],
         ]);
