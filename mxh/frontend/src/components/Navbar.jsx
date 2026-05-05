@@ -141,9 +141,9 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
       )}
       <div className="apple-nav-inner">
         <Link to="/" className="apple-nav-brand">iPock</Link>
-        <div className="apple-nav-links">
-          {user ? (
-            <>
+        {user ? (
+          <>
+            <div className="apple-nav-links">
               <div className="nav-container" ref={containerRef}>
                 <div className="moving-bg" style={{ left: pill.left, width: pill.width, opacity: pill.visible ? 1 : 0 }} />
                 <Link ref={setLinkRef(0)} to="/" className={linkClass(0)}>Trang chủ</Link>
@@ -186,7 +186,9 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
                   {totalUnread > 0 && <span className="nav-badge">{totalUnread > 99 ? '99+' : totalUnread}</span>}
                 </Link>
               </div>
+            </div>
 
+            <div className="nav-right-cluster">
               <div className="nav-profile-cluster">
                 <Link
                   to={profileLink(user)}
@@ -275,14 +277,17 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
               </div>
 
               <button type="button" onClick={handleLogout} className="apple-nav-brand nav-logout">Đăng xuất</button>
-            </>
-          ) : (
-            <>
+            </div>
+          </>
+        ) : (
+          <>
+            <span />
+            <div className="apple-nav-links">
               <Link to="/login" className={linkClass(0)}>Đăng nhập</Link>
               <Link to="/register" className={linkClass(1)}>Đăng ký</Link>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </nav>
   );
