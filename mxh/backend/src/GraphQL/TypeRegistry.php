@@ -22,6 +22,7 @@ use App\GraphQL\Types\TaiXiuPlaceBetResultType;
 use App\GraphQL\Types\ShopCategoryType;
 use App\GraphQL\Types\ShopProductType;
 use App\GraphQL\Types\ShopOrderType;
+use App\GraphQL\Types\ShopSellerApplicationType;
 
 class TypeRegistry
 {
@@ -45,6 +46,7 @@ class TypeRegistry
     private static ?ShopCategoryType $shopCategory = null;
     private static ?ShopProductType $shopProduct = null;
     private static ?ShopOrderType $shopOrder = null;
+    private static ?ShopSellerApplicationType $shopSellerApplication = null;
 
     public static function user(): UserType { return self::$user ??= new UserType(); }
     public static function profile(): ProfileType { return self::$profile ??= new ProfileType(); }
@@ -66,4 +68,5 @@ class TypeRegistry
     public static function shopCategory(): ShopCategoryType { return self::$shopCategory ??= new ShopCategoryType(); }
     public static function shopProduct(): ShopProductType { return self::$shopProduct ??= new ShopProductType(); }
     public static function shopOrder(): ShopOrderType { return self::$shopOrder ??= new ShopOrderType(); }
+    public static function shopSellerApplication(): ShopSellerApplicationType { return self::$shopSellerApplication ??= new ShopSellerApplicationType(); }
 }

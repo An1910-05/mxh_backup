@@ -1,11 +1,27 @@
 # MXH — Danh sách lỗi & vấn đề kỹ thuật
 
 > File này ghi lại toàn bộ bug, vấn đề còn tồn đọng, và các lỗi đã được sửa trong dự án.
-> Cập nhật lần cuối: 2026-04-17
+> Cập nhật lần cuối: 2026-05-11
 
 ---
 
 ## Đã sửa (Fixed)
+
+### [FIX-002] Migration 019 + 020 lỗi syntax trên MySQL 8.0
+- **Mức độ:** Nghiêm trọng (chặn migrate.php → backend không khởi tạo được DB mới)
+- **Phát hiện:** 2026-05-11
+- **Sửa:** 2026-05-11
+- **Mô tả:** Cả 019 và 020 dùng `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` và `CREATE INDEX IF NOT EXISTS`. Cú pháp này **chỉ tồn tại trên MariaDB** — MySQL 8.0 báo lỗi 1064 (`syntax error near 'IF NOT EXISTS'`). Hậu quả: `docker compose exec backend php database/migrate.php` dừng tại 019, không chạy được 020 và 021 (shop tables) trên DB mới. Ngoài ra file 019 còn thiếu hàng `INSERT INTO _migrations` cuối file → kể cả nếu chạy được, runner sẽ vẫn cố chạy lại lần sau.
+- **File sửa:** `backend/database/migrations/019_add_role_to_users.sql`, `backend/database/migrations/020_group_chat_phase1.sql`
+- **Cách sửa:** Đổi sang `ALTER TABLE ... ADD COLUMN ...` và `CREATE INDEX ...` thuần. Idempotency được đảm bảo bởi bảng `_migrations` (migrate.php không chạy lại file đã có entry). Bổ sung `INSERT INTO _migrations ('019_add_role_to_users.sql', NOW())` cuối 019. Backfill `_migrations` cho DB hiện tại đã có columns/indexes: `INSERT INTO _migrations (filename) VALUES ('019_...'),('020_...')`.
+
+### [FIX-003] Trang Thông báo nuốt lỗi tải → người dùng không phân biệt được “rỗng” vs “lỗi” (BUG-002)
+- **Mức độ:** Nhỏ (UX / debug)
+- **Phát hiện:** 2026-04 (BUGS.md cũ)
+- **Sửa:** 2026-05-11
+- **Mô tả:** `NotificationsPage.jsx` catch lỗi của `getNotifications()` rồi set `items=[]` mà không có state lỗi → user thấy “Chưa có thông báo” trong cả 2 trường hợp.
+- **File sửa:** `frontend/src/pages/NotificationsPage.jsx`
+- **Cách sửa:** Thêm state `error`, set bên trong `.catch()`, render khối thông báo lỗi riêng (`Lỗi tải thông báo: {error}`) khi `error` tồn tại; đồng thời `console.error` cho dev DevTools (đã có sẵn).
 
 ### [FIX-001] `leaflet` thiếu trong `package.json`
 - **Mức độ:** Nghiêm trọng (build lỗi)
@@ -17,69 +33,23 @@
 - **Cách sửa:** Thêm `"leaflet": "^1.9.4"` vào `dependencies`.
 - **Lưu ý:** Cần rebuild Docker image frontend (`docker compose up -d --build frontend`) hoặc chạy `npm install` trong `frontend/` để áp dụng.
 
+### [FIX-BUG-001] LikeService — Không có thông báo khi ai đó like bài viết
+- **Mức độ:** Trung bình
+- **Phát hiện:** 2026-04
+- **Sửa:** đã được áp dụng (xác nhận lại 2026-05-11)
+- **File sửa:** `backend/src/Services/LikeService.php`, `frontend/src/pages/NotificationsPage.jsx`
+- **Cách sửa:** `LikeService::likePost()` đã insert `NotificationRepository::insert($postOwnerId, 'like', ...)` khi like mới (kiểm tra `$isNew` và `$postOwnerId !== $userId`). `TYPE_LABEL` trong `NotificationsPage.jsx` đã có entry `like: 'đã thích bài viết của bạn'`.
+
 ---
 
 ## Còn tồn đọng (Open)
 
-### [BUG-001] Không có thông báo khi ai đó like bài viết
-- **Mức độ:** Trung bình
-- **File:** `backend/src/Services/LikeService.php` — method `likePost()`
-- **Mô tả:** `LikeService::likePost()` tạo bản ghi trong bảng `likes` nhưng **không gọi `NotificationRepository::insert()`** → chủ bài viết không bao giờ nhận được thông báo khi bài bị like. Frontend `NotificationsPage.jsx` (mảng `TYPE_LABEL`) cũng không khai báo loại `like`, xác nhận tính năng chưa được triển khai.
-- **Cách sửa đề xuất:**
-
-  **Backend** — thêm vào `LikeService::likePost()` sau khi tạo like thành công:
-  ```php
-  $postOwnerId = (int)$post['user_id'];
-  if ($postOwnerId !== $userId) {
-      (new NotificationRepository())->insert($postOwnerId, 'like', $userId, $postId, null);
-  }
-  ```
-
-  **Frontend** — thêm vào mảng `TYPE_LABEL` trong `NotificationsPage.jsx`:
-  ```js
-  like: 'đã thích bài viết của bạn',
-  ```
-
----
-
-### [BUG-002] Lỗi trong notification hook bị nuốt im lặng
-- **Mức độ:** Nhỏ (UX / debug)
-- **File 1:** `frontend/src/hooks/useNotificationUnread.js`
-- **File 2:** `frontend/src/pages/NotificationsPage.jsx`
-- **Mô tả:** Mọi lỗi (token hết hạn, DB chưa tồn tại, lỗi mạng, lỗi GraphQL) đều bị bắt và bỏ qua hoàn toàn. Người dùng chỉ thấy badge = 0 và danh sách trống — không thể phân biệt "chưa có thông báo" với "đang lỗi".
-
-  ```js
-  // useNotificationUnread.js
-  } catch { /* ignore */ }
-
-  // NotificationsPage.jsx
-  .catch(() => setItems([]))
-  ```
-
-- **Cách debug tạm thời:** Mở DevTools → Network → lọc `/graphql` → xem response của `notificationUnreadCount` và `notifications`.
-- **Cách sửa đề xuất:** Thêm state lỗi vào `NotificationsPage.jsx`:
-  ```jsx
-  const [error, setError] = useState(null);
-  // ...
-  .catch((err) => { setError(err.message); setItems([]); })
-  // ...
-  {error && <div className="apple-empty">Lỗi tải thông báo: {error}</div>}
-  ```
-
----
-
-### [BUG-003] Migration 011 có thể lỗi khi chạy lại
-- **Mức độ:** Vận hành
+### [BUG-003] Migration 011 không idempotent nếu chạy thủ công lần 2
+- **Mức độ:** Vận hành (rủi ro thấp khi đi qua migrate.php)
 - **File:** `backend/database/migrations/011_notifications_mentions_location.sql`
-- **Mô tả:** Migration 011 chứa các câu `ALTER TABLE posts ADD COLUMN ...` và `ALTER TABLE comments ADD COLUMN ...`. Nếu chạy lại khi cột đã tồn tại, MySQL báo lỗi `Duplicate column name` → migration dừng giữa chừng, bảng `notifications` có thể không được tạo. Hậu quả: mọi GraphQL query liên quan đến notifications ném exception → bị nuốt ở frontend → biểu hiện như "không có thông báo nào".
-- **Kiểm tra:**
-  ```bash
-  docker compose exec backend php database/migrate.php
-  # Hoặc trong MySQL:
-  SHOW TABLES LIKE 'notifications';
-  SELECT * FROM _migrations WHERE filename = '011_notifications_mentions_location.sql';
-  ```
-- **Cách sửa đề xuất:** Dùng `ADD COLUMN IF NOT EXISTS` (MySQL 8.0+) trong migration, hoặc kiểm tra cột trước khi ALTER trong `migrate.php`.
+- **Mô tả:** Các câu `ALTER TABLE posts ADD COLUMN location_label ...` và tương tự trên `comments` không có `IF NOT EXISTS` (MySQL 8.0 không hỗ trợ). Nếu ai đó apply file thủ công (vd `mysql < 011_...sql`) trên DB đã chạy migration → MySQL báo `Duplicate column name`.
+- **Tình trạng:** Khi đi qua `migrate.php`, runner kiểm tra `_migrations` trước khi chạy → an toàn. Đã thêm comment cảnh báo ở đầu file. Không có cách viết idempotent thuần SQL trên MySQL 8.0 mà vẫn tương thích với migrate.php (runner split theo `;` nên không dùng được stored procedure).
+- **Khuyến nghị:** Luôn chạy migration qua `docker compose exec backend php database/migrate.php`, không apply file thủ công.
 
 ---
 

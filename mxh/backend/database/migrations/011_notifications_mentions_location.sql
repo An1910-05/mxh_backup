@@ -1,3 +1,7 @@
+-- Migration 011: notifications + mentions + location columns.
+-- Note: MySQL 8.0 không hỗ trợ `ADD COLUMN IF NOT EXISTS`. Idempotency dựa vào
+-- bảng `_migrations` của migrate.php. Không apply file thủ công nếu đã chạy.
+
 CREATE TABLE IF NOT EXISTS post_mentions (
     post_id INT NOT NULL,
     mentioned_user_id INT NOT NULL,

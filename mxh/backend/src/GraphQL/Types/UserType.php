@@ -16,6 +16,14 @@ class UserType extends ObjectType
                 'username' => Type::nonNull(Type::string()),
                 'email' => Type::nonNull(Type::string()),
                 'custom_url' => Type::string(),
+                'role' => [
+                    'type' => Type::string(),
+                    'resolve' => fn($row) => $row['role'] ?? 'user',
+                ],
+                'is_seller' => [
+                    'type' => Type::boolean(),
+                    'resolve' => fn($row) => !empty($row['is_seller']),
+                ],
                 'created_at' => Type::string(),
                 'updated_at' => Type::string(),
             ],

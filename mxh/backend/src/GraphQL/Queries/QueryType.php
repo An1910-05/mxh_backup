@@ -14,6 +14,7 @@ use App\Services\LikeService;
 use App\Services\TaiXiuService;
 use App\Services\ShopProductService;
 use App\Services\ShopOrderService;
+use App\Services\ShopSellerService;
 use App\Repositories\ShopCategoryRepository;
 use App\Repositories\UserRepository;
 
@@ -480,6 +481,32 @@ class QueryType extends ObjectType
                         $service = new ShopOrderService();
                         $filters = ['status' => $args['status'] ?? null];
                         return $service->getOrders($filters, $args['limit'], $args['page']);
+                    },
+                ],
+
+                'myShopApplication' => [
+                    'type' => TypeRegistry::shopSellerApplication(),
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new ShopSellerService();
+                        return $service->getMyApplication((int)$context['user']['id']);
+                    },
+                ],
+
+                'shopSellerApplications' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopSellerApplication()))),
+                    'args' => [
+                        'status' => ['type' => Type::string(), 'defaultValue' => 'pending'],
+                        'limit' => ['type' => Type::int(), 'defaultValue' => 50],
+                        'page' => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        if (($context['user']['role'] ?? 'user') !== 'admin') {
+                            throw new \GraphQL\Error\Error('Admin access required');
+                        }
+                        $service = new ShopSellerService();
+                        return $service->listByStatus($args['status'], $args['limit'], $args['page']);
                     },
                 ],
 

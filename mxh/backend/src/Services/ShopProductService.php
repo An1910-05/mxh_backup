@@ -104,7 +104,8 @@ class ShopProductService
             'stock_quantity' => $data['stock_quantity'],
             'images' => $data['images'],
             'digital_file_url' => $data['digital_file_url'] ?? null,
-            'status' => 'draft'
+            'status' => 'approved',
+            'approved_at' => date('Y-m-d H:i:s'),
         ];
 
         $productId = $this->productRepo->create($productData);

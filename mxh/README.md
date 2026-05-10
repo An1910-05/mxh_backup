@@ -10,6 +10,37 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **Cửa hàng — Workflow đăng ký bán hàng + admin duyệt + dashboard quản lý sản phẩm + redesign ShopPage:** Mở rộng tính năng Shop Phase 1 thành marketplace đầy đủ: user thường truy cập `/shop` chỉ thấy giao diện mua hàng (sidebar danh mục + search + sort + grid product card kiểu BachHoaMMO). Để bán, user bấm "Đăng ký bán hàng" → form 4 trường (tên cửa hàng + giới thiệu + SĐT + địa chỉ) → admin xét duyệt qua trang `/admin/shop-applications`. Sau khi được duyệt, user có cờ `is_seller=1` → vào `/shop/dashboard` để đăng & quản lý sản phẩm (modal tạo nhanh có upload ảnh). Sản phẩm seller tạo ra **không cần admin duyệt nữa** (default status `'approved'`) — nhưng `createShopProduct` mutation luôn check seller gate. Người bán vẫn mua hàng cửa hàng khác bình thường.
+  - **Quy tắc nghiệp vụ — phân quyền Shop:**
+    - Chưa đăng ký bán hàng → chỉ xem & mua sản phẩm.
+    - Đã gửi đơn (`pending`) → ShopPage hiện badge "Đơn đăng ký đang chờ duyệt".
+    - Đơn `rejected` → có thể chỉnh sửa & gửi lại (re-submit cùng row), hiện lý do từ chối.
+    - Đơn `approved` → `users.is_seller = 1` được set, ShopPage có nút "Quản lý cửa hàng" → `/shop/dashboard`.
+    - Admin (role='admin') vào `/admin/shop-applications` xem 3 tab (Chờ duyệt / Đã duyệt / Đã từ chối), bấm Duyệt/Từ chối (kèm lý do).
+  - **Backend — 1 migration + 2 file mới + sửa 5 file:**
+    - Migration `022_shop_seller_applications.sql`: bảng `shop_seller_applications` (UNIQUE user_id + status enum + reviewed_by/at + rejection_reason) + cột `users.is_seller TINYINT(1)` + index `idx_users_is_seller`.
+    - `Repositories/ShopSellerApplicationRepository.php`: findById/findByUserId/listByStatus + insert/resubmit/approve/reject + helper `setUserIsSeller`/`userIsSeller`.
+    - `Services/ShopSellerService.php`: register (validate + handle resubmit), approve (set is_seller), reject (require reason), `requireSeller` gate, `isSeller` check.
+    - `GraphQL/Types/ShopSellerApplicationType.php` + đăng ký vào `TypeRegistry`.
+    - `QueryType.php`: thêm `myShopApplication`, `shopSellerApplications(status, limit, page)` (admin-only).
+    - `MutationType.php`: thêm `registerShopSeller`, `approveShopSeller`, `rejectShopSeller`. `createShopProduct` gọi `requireSeller()` trước khi tạo.
+    - `ShopProductService::createProduct`: đổi default status từ `'draft'` sang `'approved'` + set `approved_at` (vì đã bỏ duyệt sản phẩm).
+    - `UserType` thêm field `role`, `is_seller`. `UserRepository::findById` thêm cột `is_seller` vào SELECT để `/auth/me` trả flag này.
+  - **Frontend — 3 page mới + redesign ShopPage + sửa routes/AuthContext/AdminLayout/services:**
+    - `pages/ShopRegisterPage.jsx`: form đăng ký 4 trường, hiện trạng thái đơn nếu đã gửi (pending/rejected có thể sửa & gửi lại; approved auto-redirect dashboard).
+    - `pages/ShopDashboardPage.jsx`: list sản phẩm của seller (grid với status badge + giá + tồn + đã bán + view), nút "Đăng sản phẩm mới" mở modal `CreateProductModal` (upload ảnh qua `/upload/media` + chọn category + physical/digital + giá + tồn).
+    - `pages/admin/AdminShopApplications.jsx`: 3-tab list, card hiển thị thông tin đơn + nút Duyệt/Từ chối (prompt lý do).
+    - `pages/admin/AdminLayout.jsx`: thêm nav item "Đơn bán hàng" → `/admin/shop-applications`.
+    - Redesign `pages/ShopPage.jsx`: sidebar danh mục (sticky) + search bar + sort chips (Phổ Biến / Shop uy tín / Giá tăng / Giá giảm) + grid product card 2 cột với badge "Sản phẩm/Dịch vụ", "KHÔNG TRÙNG", thông tin tồn kho overlay trên ảnh, giá đỏ. CTA động dưới sidebar tuỳ trạng thái seller (Đăng ký / Đang chờ duyệt / Bị từ chối / Quản lý cửa hàng).
+    - `services/shop.js`: thêm 5 hàm `getMyShopApplication`, `registerShopSeller`, `getShopSellerApplications`, `approveShopSeller`, `rejectShopSeller`.
+    - `contexts/AuthContext.jsx`: expose `refreshUser` để các page có thể yêu cầu reload user sau khi state đổi.
+    - `App.jsx`: thêm 3 route — `/shop/register`, `/shop/dashboard`, `/admin/shop-applications`.
+    - `styles.css`: ~280 dòng CSS Shop (sidebar dark + product card + register/dashboard form + admin app cards + modal).
+  - File liên quan: `backend/database/migrations/022_shop_seller_applications.sql`, `backend/src/Repositories/ShopSellerApplicationRepository.php`, `backend/src/Services/ShopSellerService.php`, `backend/src/GraphQL/Types/ShopSellerApplicationType.php`, `backend/src/GraphQL/TypeRegistry.php`, `backend/src/GraphQL/Types/UserType.php`, `backend/src/GraphQL/Queries/QueryType.php`, `backend/src/GraphQL/Mutations/MutationType.php`, `backend/src/Services/ShopProductService.php`, `backend/src/Repositories/UserRepository.php`, `frontend/src/pages/ShopPage.jsx`, `frontend/src/pages/ShopRegisterPage.jsx`, `frontend/src/pages/ShopDashboardPage.jsx`, `frontend/src/pages/admin/AdminShopApplications.jsx`, `frontend/src/pages/admin/AdminLayout.jsx`, `frontend/src/services/shop.js`, `frontend/src/contexts/AuthContext.jsx`, `frontend/src/App.jsx`, `frontend/src/styles.css`
+- **Sửa migration 019 + 020 lỗi syntax `ADD COLUMN IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` trên MySQL 8.0:** MySQL 8.0 không hỗ trợ các cú pháp này (chỉ MariaDB hỗ trợ). Khi chạy `migrate.php` mới (DB chưa có 2 migration này) sẽ fail ngay tại migration 019, làm chặn cả 020 và 021. Đã chuyển sang ALTER/CREATE INDEX thuần — idempotency dựa vào bảng `_migrations` của runner. Đồng thời bổ sung dòng `INSERT INTO _migrations` cuối file 019 (trước đây file thiếu) và backfill 2 record `019`, `020` trong DB hiện tại.
+  - File liên quan: `backend/database/migrations/019_add_role_to_users.sql`, `backend/database/migrations/020_group_chat_phase1.sql`, `backend/database/migrations/011_notifications_mentions_location.sql` (thêm comment cảnh báo)
+- **Trang Thông báo — Hiển thị trạng thái lỗi rõ ràng (BUG-002):** Trước đây mọi lỗi tải `getNotifications` đều bị catch và set `items=[]`, người dùng chỉ thấy “Chưa có thông báo” → không phân biệt được “rỗng thật” và “lỗi mạng / token hết hạn”. Đã thêm state `error`, render khối lỗi riêng với message từ exception khi fetch fail.
+  - File liên quan: `frontend/src/pages/NotificationsPage.jsx`
 - **Thêm danh mục “Cửa hàng” vào Navbar và MobileTabBar:** Thêm link “Cửa hàng” với biểu tượng túi mua sắm (bag.fill) từ SF Symbols vào thanh điều hướng. Tính năng hiển thị ở cả desktop (Navbar) và mobile (MobileTabBar), route `/shop` đã được thêm vào App.jsx với trang ShopPage placeholder.
   - File liên quan: `frontend/src/components/Navbar.jsx`, `frontend/src/mobile/components/MobileTabBar.jsx`, `frontend/src/App.jsx`, `frontend/src/pages/ShopPage.jsx`, `frontend/src/assets/sf-symbols/bag.fill.png`
 - **Chat nhóm trong cửa sổ chat nổi (FCW) — Fix lỗi chữ bị xuống dòng bất thường:** Khi mở chat nhóm trong `FloatingChatWindow`, phần wrapper `.msg-other-stack` có thể bị co theo min-content làm bubble quá hẹp → chữ wrap từng ký tự. Đã chỉnh CSS để stack “other” có thể co giãn đúng và tăng max-width cho bubble trong FCW.

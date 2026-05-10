@@ -16,6 +16,7 @@ use App\Services\NotificationService;
 use App\Services\TaiXiuService;
 use App\Services\ShopProductService;
 use App\Services\ShopOrderService;
+use App\Services\ShopSellerService;
 use App\Repositories\ShopCategoryRepository;
 use App\Validators\PostValidator;
 use App\Validators\ProfileValidator;
@@ -378,8 +379,58 @@ class MutationType extends ObjectType
                     ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
+                        (new ShopSellerService())->requireSeller((int)$context['user']['id']);
                         $service = new ShopProductService();
                         return $service->createProduct($context['user']['id'], $args);
+                    },
+                ],
+
+                'registerShopSeller' => [
+                    'type' => TypeRegistry::shopSellerApplication(),
+                    'args' => [
+                        'storeName' => Type::nonNull(Type::string()),
+                        'intro' => Type::nonNull(Type::string()),
+                        'phone' => Type::nonNull(Type::string()),
+                        'address' => Type::nonNull(Type::string()),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopSellerService();
+                        return $service->register((int)$context['user']['id'], [
+                            'store_name' => $args['storeName'],
+                            'intro' => $args['intro'],
+                            'phone' => $args['phone'],
+                            'address' => $args['address'],
+                        ]);
+                    },
+                ],
+
+                'approveShopSeller' => [
+                    'type' => TypeRegistry::shopSellerApplication(),
+                    'args' => ['id' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        if (($context['user']['role'] ?? 'user') !== 'admin') {
+                            throw new \GraphQL\Error\Error('Admin access required');
+                        }
+                        $service = new ShopSellerService();
+                        return $service->approve((int)$args['id'], (int)$context['user']['id']);
+                    },
+                ],
+
+                'rejectShopSeller' => [
+                    'type' => TypeRegistry::shopSellerApplication(),
+                    'args' => [
+                        'id' => Type::nonNull(Type::int()),
+                        'reason' => Type::nonNull(Type::string()),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        if (($context['user']['role'] ?? 'user') !== 'admin') {
+                            throw new \GraphQL\Error\Error('Admin access required');
+                        }
+                        $service = new ShopSellerService();
+                        return $service->reject((int)$args['id'], (int)$context['user']['id'], (string)$args['reason']);
                     },
                 ],
 

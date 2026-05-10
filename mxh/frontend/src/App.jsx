@@ -20,6 +20,9 @@ import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import GamesPage from './pages/GamesPage';
 import ShopPage from './pages/ShopPage';
+import ShopRegisterPage from './pages/ShopRegisterPage';
+import ShopDashboardPage from './pages/ShopDashboardPage';
+import AdminShopApplications from './pages/admin/AdminShopApplications';
 import PaymentResultPage from './pages/PaymentResultPage';
 import TaiXiuFloatingWidget from './components/TaiXiuFloatingWidget';
 import LeftSidebar from './components/LeftSidebar';
@@ -109,6 +112,7 @@ export default function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="posts" element={<AdminPosts />} />
               <Route path="transactions" element={<AdminTransactions />} />
+              <Route path="shop-applications" element={<AdminShopApplications />} />
             </Route>
 
             {/* Main app — wrapped in AppShell */}
@@ -126,6 +130,8 @@ export default function App() {
                   <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
                   <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
+                  <Route path="/shop/register" element={<ProtectedRoute><ShopRegisterPage /></ProtectedRoute>} />
+                  <Route path="/shop/dashboard" element={<ProtectedRoute><ShopDashboardPage /></ProtectedRoute>} />
                   <Route path="/games" element={<ProtectedRoute><GamesPage /></ProtectedRoute>} />
                   <Route path="/payment/result" element={<ProtectedRoute><PaymentResultPage /></ProtectedRoute>} />
                   <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />

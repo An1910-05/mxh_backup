@@ -76,13 +76,19 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
+    setError(null);
     getNotifications(40, 1).then(data => {
       setItems(Array.isArray(data) ? data : []);
-    }).catch(err => { console.error('[notifications] fetch failed:', err); setItems([]); }).finally(() => setLoading(false));
+    }).catch(err => {
+      console.error('[notifications] fetch failed:', err);
+      setError(err?.message || 'Không thể tải thông báo');
+      setItems([]);
+    }).finally(() => setLoading(false));
   }, [user]);
 
   const handleItemClick = async (item) => {
@@ -186,7 +192,15 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {!loading && filteredItems.length === 0 && (
+      {!loading && error && (
+        <div className="notif-lg-empty">
+          <div className="notif-lg-empty-icon" aria-hidden="true" />
+          <div className="notif-lg-empty-title">Lỗi tải thông báo</div>
+          <div className="notif-lg-empty-sub">{error}</div>
+        </div>
+      )}
+
+      {!loading && !error && filteredItems.length === 0 && (
         <div className={`notif-lg-empty notif-lg-empty--${activeFilter}`}>
           <div className="notif-lg-empty-icon" aria-hidden="true" />
           <div className="notif-lg-empty-title">{emptyTitle}</div>

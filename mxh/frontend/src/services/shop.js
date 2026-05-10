@@ -54,6 +54,15 @@ export async function createShopProduct(productData) {
   return data.createShopProduct;
 }
 
+export async function deleteShopProduct(id) {
+  const data = await graphqlFetch(`
+    mutation DeleteShopProduct($id: Int!) {
+      deleteShopProduct(id: $id)
+    }
+  `, { id: parseInt(id) });
+  return data.deleteShopProduct;
+}
+
 export async function createShopOrder(orderData) {
   const data = await graphqlFetch(`
     mutation CreateShopOrder($productId: Int!, $quantity: Int!, $shippingAddress: String, $buyerNotes: String) {
@@ -102,3 +111,56 @@ export async function cancelShopOrder(orderId, reason) {
   `, { orderId: parseInt(orderId), reason });
   return data.cancelShopOrder;
 }
+
+// ============== Seller Applications ==============
+const APPLICATION_FIELDS = `
+  id userId storeName intro phone address status
+  rejectionReason reviewedBy reviewedAt createdAt
+  applicantUsername applicantEmail reviewerUsername
+`;
+
+export async function getMyShopApplication() {
+  const data = await graphqlFetch(`query { myShopApplication { ${APPLICATION_FIELDS} } }`);
+  return data.myShopApplication;
+}
+
+export async function registerShopSeller({ storeName, intro, phone, address }) {
+  const data = await graphqlFetch(`
+    mutation RegisterShopSeller($storeName: String!, $intro: String!, $phone: String!, $address: String!) {
+      registerShopSeller(storeName: $storeName, intro: $intro, phone: $phone, address: $address) {
+        ${APPLICATION_FIELDS}
+      }
+    }
+  `, { storeName, intro, phone, address });
+  return data.registerShopSeller;
+}
+
+export async function getShopSellerApplications(status = 'pending', limit = 50, page = 1) {
+  const data = await graphqlFetch(`
+    query GetShopSellerApplications($status: String, $limit: Int, $page: Int) {
+      shopSellerApplications(status: $status, limit: $limit, page: $page) {
+        ${APPLICATION_FIELDS}
+      }
+    }
+  `, { status, limit, page });
+  return data.shopSellerApplications;
+}
+
+export async function approveShopSeller(id) {
+  const data = await graphqlFetch(`
+    mutation ApproveShopSeller($id: Int!) {
+      approveShopSeller(id: $id) { ${APPLICATION_FIELDS} }
+    }
+  `, { id: parseInt(id) });
+  return data.approveShopSeller;
+}
+
+export async function rejectShopSeller(id, reason) {
+  const data = await graphqlFetch(`
+    mutation RejectShopSeller($id: Int!, $reason: String!) {
+      rejectShopSeller(id: $id, reason: $reason) { ${APPLICATION_FIELDS} }
+    }
+  `, { id: parseInt(id), reason });
+  return data.rejectShopSeller;
+}
+
