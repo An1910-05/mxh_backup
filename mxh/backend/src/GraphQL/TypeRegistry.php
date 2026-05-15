@@ -23,6 +23,9 @@ use App\GraphQL\Types\ShopCategoryType;
 use App\GraphQL\Types\ShopProductType;
 use App\GraphQL\Types\ShopOrderType;
 use App\GraphQL\Types\ShopSellerApplicationType;
+use App\GraphQL\Types\CaroRoomType;
+use App\GraphQL\Types\CaroPlayerType;
+use App\GraphQL\Types\CaroMoveType;
 
 class TypeRegistry
 {
@@ -47,6 +50,9 @@ class TypeRegistry
     private static ?ShopProductType $shopProduct = null;
     private static ?ShopOrderType $shopOrder = null;
     private static ?ShopSellerApplicationType $shopSellerApplication = null;
+    private static ?CaroRoomType $caroRoom = null;
+    private static ?CaroPlayerType $caroPlayer = null;
+    private static ?CaroMoveType $caroMove = null;
 
     public static function user(): UserType { return self::$user ??= new UserType(); }
     public static function profile(): ProfileType { return self::$profile ??= new ProfileType(); }
@@ -69,4 +75,7 @@ class TypeRegistry
     public static function shopProduct(): ShopProductType { return self::$shopProduct ??= new ShopProductType(); }
     public static function shopOrder(): ShopOrderType { return self::$shopOrder ??= new ShopOrderType(); }
     public static function shopSellerApplication(): ShopSellerApplicationType { return self::$shopSellerApplication ??= new ShopSellerApplicationType(); }
+    public static function caroRoom(): CaroRoomType { return self::$caroRoom ??= new CaroRoomType(); }
+    public static function caroPlayer(): CaroPlayerType { return self::$caroPlayer ??= new CaroPlayerType(); }
+    public static function caroMove(): CaroMoveType { return self::$caroMove ??= new CaroMoveType(); }
 }

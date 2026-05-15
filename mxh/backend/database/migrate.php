@@ -46,23 +46,44 @@ try {
         echo "Running: {$filename}...\n";
 
         $sql = file_get_contents($file);
+        // Strip `-- ...` line comments (avoid splitter being confused by `;` in comments)
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql);
         $statements = array_filter(
             array_map('trim', explode(';', $sql)),
             fn($s) => !empty($s)
         );
 
         foreach ($statements as $statement) {
-            $stmt = $pdo->prepare($statement);
-            $stmt->execute();
-
-            do {
-                $stmt->fetchAll();
-            } while ($stmt->nextRowset());
-
-            $stmt->closeCursor();
+            $attempt = $statement;
+            // MySQL 8.0.x trước 8.0.29 không hỗ trợ ADD COLUMN/INDEX IF NOT EXISTS
+            // → thử statement gốc trước, nếu lỗi syntax 1064 thì strip "IF NOT EXISTS" / "IF EXISTS" rồi retry
+            for ($pass = 0; $pass < 2; $pass++) {
+                try {
+                    $stmt = $pdo->prepare($attempt);
+                    $stmt->execute();
+                    do { $stmt->fetchAll(); } while ($stmt->nextRowset());
+                    $stmt->closeCursor();
+                    break;
+                } catch (PDOException $e) {
+                    $code = $e->errorInfo[1] ?? 0;
+                    $msg = $e->getMessage();
+                    // Pass 0: nếu là syntax 1064 và statement có IF NOT EXISTS / IF EXISTS → retry bỏ clause đó
+                    if ($pass === 0 && $code === 1064 && preg_match('/\bIF\s+(NOT\s+)?EXISTS\b/i', $attempt)) {
+                        $attempt = preg_replace('/\bIF\s+NOT\s+EXISTS\b\s*/i', '', $attempt);
+                        $attempt = preg_replace('/\bIF\s+EXISTS\b\s*/i', '', $attempt);
+                        continue;
+                    }
+                    // Safe-to-skip: column/key đã tồn tại hoặc không tồn tại
+                    if (in_array($code, [1060, 1061, 1091, 1050, 1051], true)) {
+                        echo "  Skip stmt ({$code}): " . substr($msg, 0, 100) . "\n";
+                        break;
+                    }
+                    throw $e;
+                }
+            }
         }
 
-        $pdo->prepare("INSERT INTO _migrations (filename) VALUES (?)")->execute([$filename]);
+        $pdo->prepare("INSERT INTO _migrations (filename) VALUES (?) ON DUPLICATE KEY UPDATE executed_at = NOW()")->execute([$filename]);
         echo "  Done.\n";
     }
 

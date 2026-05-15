@@ -19,9 +19,12 @@ import ChatPage from './pages/ChatPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import GamesPage from './pages/GamesPage';
+import CaroPage from './pages/CaroPage';
 import ShopPage from './pages/ShopPage';
 import ShopRegisterPage from './pages/ShopRegisterPage';
 import ShopDashboardPage from './pages/ShopDashboardPage';
+import ShopProductDetailPage from './pages/ShopProductDetailPage';
+import ShopCartPage from './pages/ShopCartPage';
 import AdminShopApplications from './pages/admin/AdminShopApplications';
 import PaymentResultPage from './pages/PaymentResultPage';
 import TaiXiuFloatingWidget from './components/TaiXiuFloatingWidget';
@@ -132,7 +135,11 @@ export default function App() {
                   <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
                   <Route path="/shop/register" element={<ProtectedRoute><ShopRegisterPage /></ProtectedRoute>} />
                   <Route path="/shop/dashboard" element={<ProtectedRoute><ShopDashboardPage /></ProtectedRoute>} />
+                  <Route path="/shop/cart" element={<ProtectedRoute><ShopCartPage /></ProtectedRoute>} />
+                  <Route path="/shop/product/:productId" element={<ProtectedRoute><ShopProductDetailPage /></ProtectedRoute>} />
                   <Route path="/games" element={<ProtectedRoute><GamesPage /></ProtectedRoute>} />
+                  <Route path="/games/caro" element={<ProtectedRoute><CaroPage /></ProtectedRoute>} />
+                  <Route path="/games/caro/:roomId" element={<ProtectedRoute><CaroPage /></ProtectedRoute>} />
                   <Route path="/payment/result" element={<ProtectedRoute><PaymentResultPage /></ProtectedRoute>} />
                   <Route path="/post/:postId" element={<ProtectedRoute><PostDetailPage /></ProtectedRoute>} />
                   <Route path="/:customUrl" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

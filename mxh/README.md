@@ -10,6 +10,46 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **Shop — Liquid Glass redesign + trang chi tiết sản phẩm + giỏ hàng:** Áp dụng phong cách Liquid Glass (backdrop-filter + ambient blob backgrounds + specular highlight tracking pointer) cho 3 trang shop: redesign `/shop` (sidebar danh mục + search bar + segmented sort + product card 2 cột), trang chi tiết mới `/shop/product/:id` (gallery + buybox với seller card + nút "Thêm giỏ / Mua ngay" + tabs Mô tả / Bảo hành), trang giỏ hàng mới `/shop/cart` (group theo seller + chọn từng item + footbar checkout + sidebar tóm tắt đơn). Style scope qua `.shop-lg-scope` để không lẫn với phần còn lại của app.
+  - **Quy tắc nghiệp vụ:**
+    - Giỏ hàng lưu trong `localStorage` (key `mxh-shop-cart-v1`) — không cần migration backend.
+    - Khi "Mua ngay" → add vào giỏ + navigate sang `/shop/cart` (giữ flow checkout đồng nhất).
+    - Checkout gọi `createShopOrder` cho TỪNG sản phẩm đã chọn (1 đơn / 1 sản phẩm) → cập nhật giỏ + báo kết quả tổng.
+    - Mã giảm giá demo `IPOCK10` = giảm 10% tối đa 50K (tính ở frontend).
+    - Cart badge ở topbar shop tự đồng bộ qua custom event `mxh-shop-cart-changed`.
+  - **Sửa bug pre-existing**: `UserType.php` thêm field `avatar` (nullable) — ShopPage cũ query `seller { avatar }` đang lỗi "Cannot query field avatar on type User" được fix luôn.
+  - **Frontend — 3 page + 1 hook + CSS + sửa 3 file:**
+    - `pages/ShopPage.jsx`: rewrite hoàn toàn với layout liquid glass (giữ logic load categories/products/sort/search + sellerCta).
+    - `pages/ShopProductDetailPage.jsx`: page mới — gallery với thumbs, buybox với qty/CTA, tabs Mô tả/Bảo hành, banner "Thêm vào giỏ".
+    - `pages/ShopCartPage.jsx`: page mới — group theo seller, checkbox per-item/per-shop/all, footbar sticky, sidebar summary với coupon + ghi chú giao hàng.
+    - `hooks/useShopCart.js`: hook quản lý giỏ hàng (localStorage + addItem/setQty/toggleSelect/removeItem/totals).
+    - `services/shop.js`: revert `seller { id username avatar }` (giờ avatar query được rồi).
+    - `App.jsx`: import 2 page mới + 2 route `/shop/cart` và `/shop/product/:productId`.
+    - `styles.css`: thêm block CSS Liquid Glass scoped `.shop-lg-*` (~600 dòng) — glass primitive, lq interactive với specular highlight, topbar, sidebar/main grid, card grid, hero gallery + buybox, qty/CTA, cart row, footbar, summary, responsive 1080/980/720px.
+  - **Backend — 1 file sửa:**
+    - `GraphQL/Types/UserType.php`: thêm field `avatar` (Type::string nullable, resolve từ `$row['avatar'] ?? null`). Fix pre-existing bug "Cannot query field avatar".
+
+- **Cờ Caro — Thay thẻ "Xóc đĩa" + lobby đầy đủ + chế độ local/AI/online matchmaking:** Thẻ "Xóc đĩa" (sắp ra mắt) ở `/games` được thay bằng game **Cờ Caro** dùng được luôn. Trang `/games/caro` là sảnh gồm 5 hành động: **Tạo phòng** (sinh mã 6 ký tự, có thể đặt mật khẩu, chọn private/public), **Vào bằng mã** (nhập mã + mật khẩu nếu có), **Ghép ngẫu nhiên** (matchmaking — claim phòng đang chờ trong queue, hoặc tạo phòng mới chờ ghép), **2 người 1 máy** (local hot-seat), **Chơi với máy** (AI heuristic chấm điểm 4 hướng). Khi vào trận → route `/games/caro/:roomId` (online dùng polling GraphQL 1.5s, có pause khi tab ẩn). Bàn cờ mặc định 15×15, thắng khi 5 quân liên tiếp 4 hướng. Rời phòng giữa trận = xin thua.
+  - **Quy tắc nghiệp vụ:**
+    - Mã phòng sinh từ tập 30 ký tự không gây nhầm lẫn (bỏ I/L/O/0/1), 6 ký tự → unique check loop.
+    - Mật khẩu chỉ áp dụng cho phòng KHÔNG matchmaking (vì matchmaking phải ghép tự do).
+    - Phòng `waiting` chưa có đối thủ → creator có thể rời thì xoá phòng. Phòng `playing` → rời = đối thủ thắng.
+    - Phòng `public` (không matchmaking) hiển thị trong sảnh; private chỉ vào được qua mã.
+    - Random match dùng `SELECT ... FOR UPDATE` để tránh race khi 2 user cùng claim 1 phòng.
+  - **Backend — 1 migration + 5 file mới + sửa 3 file:**
+    - Migration `023_create_caro_tables.sql`: bảng `caro_rooms` (code unique, password_hash, visibility enum private/public, is_matchmaking flag, status enum waiting/playing/finished/abandoned, current_turn X/O, winner_symbol, board_size/win_length, move_count, `board_state MEDIUMTEXT` (JSON moves), last_move_at) + FK tới `users(id)` + 6 index.
+    - `Repositories/CaroRepository.php`: findById/findByCode, createRoom, joinRoom (atomic UPDATE với điều kiện waiting+null), applyMove/finishRoom/abandonRoom, findOpenMatchmakingRoom (FOR UPDATE), listOpenPublicRooms, listMyActiveRooms, listMyRecentFinished, deleteWaitingRoom.
+    - `Services/CaroService.php`: createRoom (sinh code, hash password bcrypt), joinByCode (verify password), randomMatch (transaction + FOR UPDATE), makeMove (validate turn/vị trí, check win 4 hướng, finish/draw/continue), leaveRoom (waiting → delete, playing → abandon = đối thủ thắng), getRoom/listPublic/listMyActive/listMyHistory. Helper `checkWin` đếm liên tiếp 2 phía mỗi hướng.
+    - `GraphQL/Types/CaroRoomType.php`, `CaroPlayerType.php`, `CaroMoveType.php` + đăng ký vào `TypeRegistry`.
+    - `QueryType.php`: thêm `caroRoom`, `caroRoomByCode`, `caroPublicRooms`, `caroMyActiveRooms`, `caroMyHistory`.
+    - `MutationType.php`: thêm `caroCreateRoom`, `caroJoinByCode`, `caroRandomMatch`, `caroMakeMove`, `caroLeaveRoom`.
+  - **Frontend — 1 page mới + sửa 3 file + CSS:**
+    - `pages/CaroPage.jsx`: chứa Lobby + LocalGame + AIGame + OnlineGame + CreateRoomModal + JoinCodeModal + CaroBoard (component dùng chung). AI dùng heuristic chấm điểm theo 4 hướng + ưu tiên center. Online dùng `setInterval(refresh, 1500)` với pause khi `document.hidden`.
+    - `services/graphql.js`: thêm 5 query + 5 mutation Caro (CARO_ROOM_FIELDS chung).
+    - `App.jsx`: import `CaroPage`, thêm 2 route `/games/caro` và `/games/caro/:roomId`.
+    - `pages/GamesPage.jsx`: thay thẻ "Xóc đĩa (sắp ra mắt)" bằng thẻ "Cờ Caro" có `onClick={() => navigate('/games/caro')}`.
+    - `styles.css`: thêm block CSS Caro (lobby actions grid, room list, board grid với CSS var `--caro-size`, players card, banner status, modal, responsive 720px/480px).
+
 - **Cửa hàng — Workflow đăng ký bán hàng + admin duyệt + dashboard quản lý sản phẩm + redesign ShopPage:** Mở rộng tính năng Shop Phase 1 thành marketplace đầy đủ: user thường truy cập `/shop` chỉ thấy giao diện mua hàng (sidebar danh mục + search + sort + grid product card kiểu BachHoaMMO). Để bán, user bấm "Đăng ký bán hàng" → form 4 trường (tên cửa hàng + giới thiệu + SĐT + địa chỉ) → admin xét duyệt qua trang `/admin/shop-applications`. Sau khi được duyệt, user có cờ `is_seller=1` → vào `/shop/dashboard` để đăng & quản lý sản phẩm (modal tạo nhanh có upload ảnh). Sản phẩm seller tạo ra **không cần admin duyệt nữa** (default status `'approved'`) — nhưng `createShopProduct` mutation luôn check seller gate. Người bán vẫn mua hàng cửa hàng khác bình thường.
   - **Quy tắc nghiệp vụ — phân quyền Shop:**
     - Chưa đăng ký bán hàng → chỉ xem & mua sản phẩm.

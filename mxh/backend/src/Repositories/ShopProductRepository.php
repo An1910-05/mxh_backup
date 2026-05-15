@@ -52,11 +52,12 @@ class ShopProductRepository
             SELECT
                 p.*,
                 u.username as seller_username,
-                u.avatar as seller_avatar,
+                up.avatar as seller_avatar,
                 c.name as category_name,
                 c.slug as category_slug
             FROM shop_products p
             JOIN users u ON p.seller_id = u.id
+            LEFT JOIN profiles up ON p.seller_id = up.user_id
             JOIN shop_categories c ON p.category_id = c.id
             WHERE {$whereClause}
             ORDER BY p.created_at DESC
@@ -72,11 +73,12 @@ class ShopProductRepository
             SELECT
                 p.*,
                 u.username as seller_username,
-                u.avatar as seller_avatar,
+                up.avatar as seller_avatar,
                 c.name as category_name,
                 c.slug as category_slug
             FROM shop_products p
             JOIN users u ON p.seller_id = u.id
+            LEFT JOIN profiles up ON p.seller_id = up.user_id
             JOIN shop_categories c ON p.category_id = c.id
             WHERE p.id = ?
         ");

@@ -14,6 +14,7 @@ use App\Services\FriendshipService;
 use App\Services\StoryService;
 use App\Services\NotificationService;
 use App\Services\TaiXiuService;
+use App\Services\CaroService;
 use App\Services\ShopProductService;
 use App\Services\ShopOrderService;
 use App\Services\ShopSellerService;
@@ -624,6 +625,86 @@ class MutationType extends ObjectType
 
                         $repo->update($categoryId, $updateData);
                         return $repo->findById($categoryId);
+                    },
+                ],
+
+                // ── Caro (cờ caro) ─────────────────────────────────────
+                'caroCreateRoom' => [
+                    'type' => TypeRegistry::caroRoom(),
+                    'args' => [
+                        'name'       => Type::string(),
+                        'visibility' => Type::string(),    // 'private' | 'public'
+                        'password'   => Type::string(),
+                        'boardSize'  => Type::int(),
+                        'winLength'  => Type::int(),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new CaroService();
+                        return $service->createRoom((int) $context['user']['id'], [
+                            'name'       => $args['name'] ?? null,
+                            'visibility' => $args['visibility'] ?? 'private',
+                            'password'   => $args['password'] ?? null,
+                            'board_size' => $args['boardSize'] ?? null,
+                            'win_length' => $args['winLength'] ?? null,
+                        ]);
+                    },
+                ],
+
+                'caroJoinByCode' => [
+                    'type' => TypeRegistry::caroRoom(),
+                    'args' => [
+                        'code'     => Type::nonNull(Type::string()),
+                        'password' => Type::string(),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new CaroService();
+                        return $service->joinByCode(
+                            (int) $context['user']['id'],
+                            (string) $args['code'],
+                            $args['password'] ?? null
+                        );
+                    },
+                ],
+
+                'caroRandomMatch' => [
+                    'type' => TypeRegistry::caroRoom(),
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new CaroService();
+                        return $service->randomMatch((int) $context['user']['id']);
+                    },
+                ],
+
+                'caroMakeMove' => [
+                    'type' => TypeRegistry::caroRoom(),
+                    'args' => [
+                        'roomId' => Type::nonNull(Type::int()),
+                        'row'    => Type::nonNull(Type::int()),
+                        'col'    => Type::nonNull(Type::int()),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new CaroService();
+                        return $service->makeMove(
+                            (int) $context['user']['id'],
+                            (int) $args['roomId'],
+                            (int) $args['row'],
+                            (int) $args['col']
+                        );
+                    },
+                ],
+
+                'caroLeaveRoom' => [
+                    'type' => TypeRegistry::caroRoom(),
+                    'args' => ['roomId' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new CaroService();
+                        $result = $service->leaveRoom((int) $context['user']['id'], (int) $args['roomId']);
+                        if (isset($result['deleted'])) return null;
+                        return $result;
                     },
                 ],
 

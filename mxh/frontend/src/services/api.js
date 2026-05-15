@@ -68,7 +68,10 @@ export async function graphqlFetch(query, variables = {}) {
   const json = await res.json();
 
   if (json.errors && json.errors.length > 0) {
-    throw new Error(json.errors[0].message);
+    const err = json.errors[0];
+    const debug = err.debugMessage || err.extensions?.debugMessage;
+    const message = debug ? `${err.message}: ${debug}` : err.message;
+    throw new Error(message);
   }
 
   return json.data;

@@ -42,14 +42,16 @@ class ShopOrderRepository
             SELECT
                 o.*,
                 buyer.username as buyer_username,
-                buyer.avatar as buyer_avatar,
+                bp.avatar as buyer_avatar,
                 seller.username as seller_username,
-                seller.avatar as seller_avatar,
+                sp.avatar as seller_avatar,
                 p.title as product_title,
                 p.images as product_images
             FROM shop_orders o
             JOIN users buyer ON o.buyer_id = buyer.id
+            LEFT JOIN profiles bp ON o.buyer_id = bp.user_id
             JOIN users seller ON o.seller_id = seller.id
+            LEFT JOIN profiles sp ON o.seller_id = sp.user_id
             JOIN shop_products p ON o.product_id = p.id
             WHERE {$whereClause}
             ORDER BY o.created_at DESC
@@ -65,14 +67,16 @@ class ShopOrderRepository
             SELECT
                 o.*,
                 buyer.username as buyer_username,
-                buyer.avatar as buyer_avatar,
+                bp.avatar as buyer_avatar,
                 seller.username as seller_username,
-                seller.avatar as seller_avatar,
+                sp.avatar as seller_avatar,
                 p.title as product_title,
                 p.images as product_images
             FROM shop_orders o
             JOIN users buyer ON o.buyer_id = buyer.id
+            LEFT JOIN profiles bp ON o.buyer_id = bp.user_id
             JOIN users seller ON o.seller_id = seller.id
+            LEFT JOIN profiles sp ON o.seller_id = sp.user_id
             JOIN shop_products p ON o.product_id = p.id
             WHERE o.id = ?
         ");
@@ -87,14 +91,16 @@ class ShopOrderRepository
             SELECT
                 o.*,
                 buyer.username as buyer_username,
-                buyer.avatar as buyer_avatar,
+                bp.avatar as buyer_avatar,
                 seller.username as seller_username,
-                seller.avatar as seller_avatar,
+                sp.avatar as seller_avatar,
                 p.title as product_title,
                 p.images as product_images
             FROM shop_orders o
             JOIN users buyer ON o.buyer_id = buyer.id
+            LEFT JOIN profiles bp ON o.buyer_id = bp.user_id
             JOIN users seller ON o.seller_id = seller.id
+            LEFT JOIN profiles sp ON o.seller_id = sp.user_id
             JOIN shop_products p ON o.product_id = p.id
             WHERE o.order_number = ?
         ");

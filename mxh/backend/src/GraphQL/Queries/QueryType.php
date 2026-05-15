@@ -12,6 +12,7 @@ use App\Services\StoryService;
 use App\Services\NotificationService;
 use App\Services\LikeService;
 use App\Services\TaiXiuService;
+use App\Services\CaroService;
 use App\Services\ShopProductService;
 use App\Services\ShopOrderService;
 use App\Services\ShopSellerService;
@@ -507,6 +508,57 @@ class QueryType extends ObjectType
                         }
                         $service = new ShopSellerService();
                         return $service->listByStatus($args['status'], $args['limit'], $args['page']);
+                    },
+                ],
+
+                // ── Caro (cờ caro) ─────────────────────────────────────
+                'caroRoom' => [
+                    'type' => TypeRegistry::caroRoom(),
+                    'args' => ['id' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new CaroService();
+                        return $service->getRoom((int) $context['user']['id'], (int) $args['id']);
+                    },
+                ],
+
+                'caroRoomByCode' => [
+                    'type' => TypeRegistry::caroRoom(),
+                    'args' => ['code' => Type::nonNull(Type::string())],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new CaroService();
+                        return $service->getRoomByCode((int) $context['user']['id'], (string) $args['code']);
+                    },
+                ],
+
+                'caroPublicRooms' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::caroRoom()))),
+                    'args' => ['limit' => ['type' => Type::int(), 'defaultValue' => 30]],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new CaroService();
+                        return $service->listPublicRooms((int) $context['user']['id'], (int) $args['limit']);
+                    },
+                ],
+
+                'caroMyActiveRooms' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::caroRoom()))),
+                    'args' => ['limit' => ['type' => Type::int(), 'defaultValue' => 10]],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new CaroService();
+                        return $service->listMyActive((int) $context['user']['id'], (int) $args['limit']);
+                    },
+                ],
+
+                'caroMyHistory' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::caroRoom()))),
+                    'args' => ['limit' => ['type' => Type::int(), 'defaultValue' => 10]],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new CaroService();
+                        return $service->listMyHistory((int) $context['user']['id'], (int) $args['limit']);
                     },
                 ],
 

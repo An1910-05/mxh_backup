@@ -1,5 +1,9 @@
+import { useNavigate } from 'react-router-dom';
+
 export default function GamesPage() {
+  const navigate = useNavigate();
   const openTaiXiu = () => window.dispatchEvent(new CustomEvent('mxh-open-taixiu'));
+  const openCaro = () => navigate('/games/caro');
 
   return (
     <div className="apple-main fade-in">
@@ -19,14 +23,14 @@ export default function GamesPage() {
             <div className="game-card-play">Chơi</div>
           </button>
 
-          <div className="game-card game-card--soon">
-            <div className="game-card-icon">🃏</div>
+          <button className="game-card" onClick={openCaro}>
+            <div className="game-card-icon">⚪</div>
             <div className="game-card-info">
-              <strong>Xóc đĩa</strong>
-              <span>Sắp ra mắt</span>
+              <strong>Cờ Caro</strong>
+              <span>Tạo phòng / Ghép ngẫu nhiên / Chơi với máy</span>
             </div>
-            <div className="game-card-play game-card-play--soon">Sớm thôi</div>
-          </div>
+            <div className="game-card-play">Chơi</div>
+          </button>
 
           <div className="game-card game-card--soon">
             <div className="game-card-icon">🎰</div>

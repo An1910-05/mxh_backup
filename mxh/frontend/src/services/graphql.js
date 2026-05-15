@@ -281,3 +281,103 @@ export async function deleteAllNotifications() {
   const data = await graphqlFetch(`mutation { deleteAllNotifications }`);
   return data.deleteAllNotifications;
 }
+
+// === Caro (Cờ caro) ===
+
+const CARO_ROOM_FIELDS = `
+  id code name has_password visibility is_matchmaking status current_turn
+  board_size win_length move_count
+  moves { r c s }
+  winner_symbol winner_user_id
+  creator { id username custom_url avatar }
+  opponent { id username custom_url avatar }
+  viewer_symbol is_my_turn
+  created_at updated_at last_move_at
+`;
+
+export async function getCaroRoom(id) {
+  const data = await graphqlFetch(
+    `query CaroRoom($id: Int!) { caroRoom(id: $id) { ${CARO_ROOM_FIELDS} } }`,
+    { id: parseInt(id) }
+  );
+  return data.caroRoom;
+}
+
+export async function getCaroRoomByCode(code) {
+  const data = await graphqlFetch(
+    `query CaroRoomByCode($code: String!) { caroRoomByCode(code: $code) { ${CARO_ROOM_FIELDS} } }`,
+    { code }
+  );
+  return data.caroRoomByCode;
+}
+
+export async function getCaroPublicRooms(limit = 30) {
+  const data = await graphqlFetch(
+    `query CaroPublicRooms($limit: Int) { caroPublicRooms(limit: $limit) { ${CARO_ROOM_FIELDS} } }`,
+    { limit }
+  );
+  return data.caroPublicRooms;
+}
+
+export async function getCaroMyActiveRooms(limit = 10) {
+  const data = await graphqlFetch(
+    `query CaroMyActive($limit: Int) { caroMyActiveRooms(limit: $limit) { ${CARO_ROOM_FIELDS} } }`,
+    { limit }
+  );
+  return data.caroMyActiveRooms;
+}
+
+export async function getCaroMyHistory(limit = 10) {
+  const data = await graphqlFetch(
+    `query CaroMyHistory($limit: Int) { caroMyHistory(limit: $limit) { ${CARO_ROOM_FIELDS} } }`,
+    { limit }
+  );
+  return data.caroMyHistory;
+}
+
+export async function caroCreateRoom({ name, visibility, password, boardSize, winLength } = {}) {
+  const data = await graphqlFetch(
+    `mutation CaroCreateRoom($name: String, $visibility: String, $password: String, $boardSize: Int, $winLength: Int) {
+       caroCreateRoom(name: $name, visibility: $visibility, password: $password, boardSize: $boardSize, winLength: $winLength) { ${CARO_ROOM_FIELDS} }
+     }`,
+    { name, visibility, password, boardSize, winLength }
+  );
+  return data.caroCreateRoom;
+}
+
+export async function caroJoinByCode(code, password) {
+  const data = await graphqlFetch(
+    `mutation CaroJoinByCode($code: String!, $password: String) {
+       caroJoinByCode(code: $code, password: $password) { ${CARO_ROOM_FIELDS} }
+     }`,
+    { code, password }
+  );
+  return data.caroJoinByCode;
+}
+
+export async function caroRandomMatch() {
+  const data = await graphqlFetch(
+    `mutation { caroRandomMatch { ${CARO_ROOM_FIELDS} } }`
+  );
+  return data.caroRandomMatch;
+}
+
+export async function caroMakeMove(roomId, row, col) {
+  const data = await graphqlFetch(
+    `mutation CaroMakeMove($roomId: Int!, $row: Int!, $col: Int!) {
+       caroMakeMove(roomId: $roomId, row: $row, col: $col) { ${CARO_ROOM_FIELDS} }
+     }`,
+    { roomId: parseInt(roomId), row: parseInt(row), col: parseInt(col) }
+  );
+  return data.caroMakeMove;
+}
+
+export async function caroLeaveRoom(roomId) {
+  const data = await graphqlFetch(
+    `mutation CaroLeaveRoom($roomId: Int!) {
+       caroLeaveRoom(roomId: $roomId) { ${CARO_ROOM_FIELDS} }
+     }`,
+    { roomId: parseInt(roomId) }
+  );
+  return data.caroLeaveRoom;
+}
