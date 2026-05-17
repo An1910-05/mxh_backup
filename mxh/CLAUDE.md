@@ -36,7 +36,7 @@ mxh/
 │   │   ├── migrate.php      # Runner
 │   │   └── seed.php         # Tài khoản thử
 │   └── uploads/             # File user upload (avatar, media, cover)
-├── frontend/         # React 18 + Vite 5, KHÔNG TypeScript
+├── frontend/         # React 18 + Vite 5
 │   └── src/
 │       ├── components/      # UI components tái sử dụng
 │       ├── contexts/        # React Context (Auth, Chat)
@@ -52,7 +52,6 @@ mxh/
 
 **CỨNG — KHÔNG ĐƯỢC:**
 - Thêm framework PHP (Laravel, Symfony, Slim)
-- Chuyển sang TypeScript
 - Thêm state management (Redux, Zustand, MobX)
 - Thay đổi cấu trúc thư mục hiện tại
 - Tách `QueryType.php` hoặc `MutationType.php` thành nhiều file
@@ -148,8 +147,9 @@ Khi thêm một entity/tính năng mới (ví dụ: "Reaction"), PHẢI tạo **
 - **React 18** — functional components + hooks, KHÔNG class components
 - **Vite 5** — bundler
 - **React Router DOM v6** — routing
-- **CSS thuần** — `styles.css` (desktop), `mobile/mobile.css` (mobile)
-- **KHÔNG TypeScript**, KHÔNG Tailwind, KHÔNG CSS modules, KHÔNG styled-components
+- **CSS thuần** — `styles.css` (desktop), `mobile/mobile.css` (mobile); cho phép Tailwind nếu component yêu cầu
+- **TypeScript được phép** — `.tsx`/`.ts` hợp lệ song song với `.jsx`/`.js`
+- **KHÔNG** CSS modules, KHÔNG styled-components
 - **KHÔNG state management** ngoài React Context (AuthContext, ChatContext)
 
 ### 3.2 Đặt tên file
@@ -289,21 +289,17 @@ Backend có field mới nhưng `graphql.js` không request field đó trong quer
 
 Project dùng **1 file `graphql.js` cho tất cả GraphQL calls**. KHÔNG tạo `notificationApi.js`, `postApi.js`, v.v.
 
-### 7.4 Dùng TypeScript / .tsx
-
-Project là **JavaScript thuần**. KHÔNG có tsconfig, KHÔNG dùng `.tsx` hay `.ts`.
-
-### 7.5 Quên cập nhật cả Navbar và MobileTabBar
+### 7.4 Quên cập nhật cả Navbar và MobileTabBar
 
 Thêm tab vào `Navbar.jsx` nhưng quên `MobileTabBar.jsx` (hoặc ngược lại).
 → Desktop có tab, mobile không có (hoặc ngược lại).
 
-### 7.6 Nuốt lỗi bằng `catch {}`
+### 7.5 Nuốt lỗi bằng `catch {}`
 
 **KHÔNG viết `catch {}` hoặc `catch { /* ignore */ }`** — ít nhất phải `console.error(err)`.
 Lỗi này đã gây ra bug "thông báo không hoạt động" (xem README.md mục phân tích lỗi).
 
-### 7.7 Quên migration record
+### 7.6 Quên migration record
 
 Migration SQL cuối file PHẢI có:
 ```sql
@@ -312,12 +308,12 @@ ON DUPLICATE KEY UPDATE executed_at = NOW();
 ```
 Nếu thiếu → migration chạy lại lần sau sẽ báo lỗi duplicate.
 
-### 7.8 Thêm notification type nhưng quên frontend label
+### 7.7 Thêm notification type nhưng quên frontend label
 
 Backend tạo notification type mới (ví dụ `'like'`) nhưng quên thêm vào `TYPE_LABEL` trong `NotificationsPage.jsx`.
 → Frontend hiển thị raw type string thay vì label tiếng Việt.
 
-### 7.9 Sửa cấu trúc thư mục
+### 7.8 Sửa cấu trúc thư mục
 
 KHÔNG di chuyển, đổi tên, hoặc tạo thư mục con mới trong `src/` mà không hỏi user.
 Cấu trúc hiện tại là **cố ý phẳng** — đừng "tổ chức lại" thành nhiều lớp con.

@@ -10,6 +10,7 @@ export default defineConfig({
   resolve: {
     alias: {
       'react-facebook-emoji': path.resolve(__dirname, 'src/components/FacebookEmoji.jsx'),
+      '@': path.resolve(__dirname, 'src'),
     },
   },
   server: {

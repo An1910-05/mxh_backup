@@ -14,8 +14,10 @@ echo.
 docker info >nul 2>&1
 if errorlevel 1 (
     echo [LOI] Docker Desktop chua chay! Mo Docker Desktop roi thu lai.
-    pause
-    exit /b 1
+    echo.
+    echo Nhan phim bat ky de thu lai (hoac dong cua so de huy)...
+    pause >nul
+    goto menu
 )
 
 echo   1) Khoi dong nhanh        ^(container cu, khong build^)
@@ -27,7 +29,14 @@ echo   6) Xem log
 echo   7) Dung tat ca container
 echo   8) Thoat
 echo.
-set /p choice=Chon (1-8):
+set "choice="
+set /p "choice=Chon (1-8): "
+
+if not defined choice (
+    echo [LOI] Ban chua nhap gi.
+    timeout /t 2 /nobreak >nul
+    goto menu
+)
 
 if "%choice%"=="1" goto start_quick
 if "%choice%"=="2" goto start_build
@@ -36,11 +45,17 @@ if "%choice%"=="4" goto run_migrate
 if "%choice%"=="5" goto run_restore_uploads
 if "%choice%"=="6" goto show_logs
 if "%choice%"=="7" goto stop_all
-if "%choice%"=="8" exit /b 0
+if "%choice%"=="8" goto bye
 
-echo Lua chon khong hop le.
+echo [LOI] Lua chon khong hop le: "%choice%"
 timeout /t 2 /nobreak >nul
 goto menu
+
+:bye
+echo.
+echo Tam biet!
+timeout /t 1 /nobreak >nul
+exit /b 0
 
 :start_quick
 echo.

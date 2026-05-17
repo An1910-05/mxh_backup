@@ -32,10 +32,10 @@ class AdminController
             "SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
         )->fetchColumn();
 
-        // Total posts
-        $stats['total_posts'] = (int)$this->db->query("SELECT COUNT(*) FROM posts WHERE is_deleted = 0")->fetchColumn();
+        // Total posts (hard delete model — no is_deleted column)
+        $stats['total_posts'] = (int)$this->db->query("SELECT COUNT(*) FROM posts")->fetchColumn();
         $stats['new_posts_week'] = (int)$this->db->query(
-            "SELECT COUNT(*) FROM posts WHERE is_deleted = 0 AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
+            "SELECT COUNT(*) FROM posts WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
         )->fetchColumn();
 
         // Total transactions & revenue
@@ -82,7 +82,9 @@ class AdminController
             $where .= " AND u.role = 'admin'";
         }
 
-        $total = (int)$this->db->query("SELECT COUNT(*) FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE {$where}")->fetchColumn();
+        $countStmt = $this->db->prepare("SELECT COUNT(*) FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE {$where}");
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
 
         $stmt = $this->db->prepare(
             "SELECT u.id, u.username, u.email, p.avatar, u.role, u.is_blocked, u.created_at
@@ -172,7 +174,7 @@ class AdminController
         $offset = ($page - 1) * $limit;
         $search = trim($_GET['search'] ?? '');
 
-        $where = 'p.is_deleted = 0';
+        $where = '1=1';
         $params = [];
 
         if ($search !== '') {
@@ -215,7 +217,7 @@ class AdminController
 
         if ($postId === 0) Response::error('post_id required', 400);
 
-        $stmt = $this->db->prepare("UPDATE posts SET is_deleted = 1 WHERE id = ?");
+        $stmt = $this->db->prepare("DELETE FROM posts WHERE id = ?");
         $stmt->execute([$postId]);
 
         Response::success(['deleted' => true, 'post_id' => $postId]);

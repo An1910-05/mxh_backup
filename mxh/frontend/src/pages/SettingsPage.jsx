@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getSettings, changePassword, updateSettingsProfile, createPayment, getBalance, getTransactions } from '../services/auth';
+import { NumberCounter } from '@/components/ui/number-counter';
 import generalIcon from '../assets/sf-symbols/person.crop.circle.fill.png';
 import passwordIcon from '../assets/sf-symbols/lock.circle.fill.png';
 import walletIcon from '../assets/sf-symbols/creditcard.fill.png';
@@ -390,7 +391,14 @@ export default function SettingsPage() {
               {/* Balance card */}
               <div className="wallet-balance-card">
                 <div className="wallet-balance-label">Số dư hiện tại</div>
-                <div className="wallet-balance-amount">{formatVND(balance)}</div>
+                <NumberCounter
+                  className="wallet-balance-amount"
+                  value={Number(balance) || 0}
+                  duration={1.5}
+                  separator="."
+                  suffix=" VND"
+                  once={false}
+                />
               </div>
 
               {/* Top-up */}

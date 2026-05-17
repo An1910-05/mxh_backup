@@ -40,6 +40,25 @@ class PaymentService
 
         $frontendUrl = rtrim(explode(',', $_ENV['FRONTEND_URL'] ?? 'http://localhost:5173')[0], '/');
 
+        // Mock mode cho dev local khi VNPay sandbox chưa duyệt URL.
+        // Bật bằng PAYMENT_MOCK=1 trong .env. Bỏ qua VNPay, redirect thẳng về
+        // /payment/result với params giả lập callback success.
+        if (($_ENV['PAYMENT_MOCK'] ?? '0') === '1') {
+            $mockParams = http_build_query([
+                'mock' => '1',
+                'vnp_TxnRef' => $txnRef,
+                'vnp_Amount' => $amount * 100,
+                'vnp_ResponseCode' => '00',
+                'vnp_TransactionNo' => 'MOCK' . time(),
+                'vnp_BankCode' => 'MOCK_BANK',
+            ]);
+            return [
+                'payment_url' => $frontendUrl . '/payment/result?' . $mockParams,
+                'txn_ref' => $txnRef,
+                'mock' => true,
+            ];
+        }
+
         $tz = new \DateTimeZone('Asia/Ho_Chi_Minh');
         $now = new \DateTime('now', $tz);
         $expire = (clone $now)->modify('+15 minutes');
@@ -150,6 +169,21 @@ class PaymentService
 
     private function parsePaymentPayload(array $vnpData): ?array
     {
+        // Mock mode: bỏ qua signature check, chấp nhận params như VNPay trả về thật.
+        // Chỉ kích hoạt khi PAYMENT_MOCK=1 (cấu hình backend), tránh bypass ở prod.
+        if (
+            ($_ENV['PAYMENT_MOCK'] ?? '0') === '1'
+            && isset($vnpData['mock']) && $vnpData['mock'] === '1'
+        ) {
+            return [
+                'txn_ref' => (string)($vnpData['vnp_TxnRef'] ?? ''),
+                'amount' => ((int)($vnpData['vnp_Amount'] ?? 0)) / 100,
+                'response_code' => (string)($vnpData['vnp_ResponseCode'] ?? '99'),
+                'transaction_no' => (string)($vnpData['vnp_TransactionNo'] ?? ''),
+                'bank_code' => (string)($vnpData['vnp_BankCode'] ?? ''),
+            ];
+        }
+
         $secureHash = $vnpData['vnp_SecureHash'] ?? '';
         unset($vnpData['vnp_SecureHash'], $vnpData['vnp_SecureHashType']);
 

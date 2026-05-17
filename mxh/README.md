@@ -10,6 +10,27 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **Admin panel — Fix 2 bug runtime chặn toàn bộ dashboard:**
+  - Bug 1: `AdminController` tham chiếu cột `posts.is_deleted` không tồn tại trong schema (sai 4 chỗ ở stats, list posts, delete post) → `/admin`, `/admin/posts` 500 và không xóa được bài. Sửa: bỏ điều kiện `is_deleted = 0` (project dùng **hard delete** — đã có `ON DELETE CASCADE` cho likes/comments/mentions/notifications), `deletePost` đổi sang `DELETE FROM posts WHERE id = ?`.
+  - Bug 2: `AdminController::getUsers` câu COUNT dùng `$db->query(...)` với placeholder `:s, :s2` → search bất kỳ key nào → 500 "Invalid parameter number". Sửa: đổi sang `prepare()` + `execute($params)`.
+  - **File:** `backend/src/Controllers/AdminController.php`.
+
+- **VNPay — Mock mode (`PAYMENT_MOCK=1`) cho dev local:** Khi VNPay sandbox tạm thời chưa duyệt URL whitelist (lỗi *"Website này chưa được phê duyệt"*), bật `PAYMENT_MOCK=1` trong `.env` để bỏ qua VNPay: backend redirect thẳng về `/payment/result?mock=1&...` với params giả lập callback success, cộng tiền vào balance ngay. Bật/tắt qua env, không ảnh hưởng code production (mặc định OFF khi env không set).
+  - **Files:** `backend/src/Services/PaymentService.php` (thêm 2 nhánh mock trong `createPaymentUrl` và `parsePaymentPayload`), `.env`, `.env.example`, `docker-compose.yml`.
+  - **Cách dùng:** đặt `PAYMENT_MOCK=1` trong `.env` → recreate backend (`docker compose up -d backend --force-recreate`) → bấm "Nạp tiền" trên UI, kiểm tra balance tăng.
+  - **Tắt khi VNPay hoạt động trở lại:** đặt `PAYMENT_MOCK=0` hoặc xóa biến. Cần re-register URL `http://localhost:5173/payment/result` trên https://sandbox.vnpayment.vn/merchantv2/ (login `khanhvybit3@gmail.com`).
+
+- **Ví tiền — Animated number counter cho số dư:** Thay `<div class="wallet-balance-amount">` bằng component `NumberCounter` của JolyUI (registry shadcn). Số dư đếm mượt từ 0 lên giá trị thật trong 1.5s khi page load hoặc balance thay đổi (after top-up).
+  - **Files:** `frontend/src/components/ui/number-counter.jsx` (NEW — port từ TSX gốc JolyUI sang JSX), `frontend/src/pages/SettingsPage.jsx` (replace div line ~393, thêm import).
+  - **Deps:** `motion` (alias của framer-motion).
+  - **Behavior:** `once={false}` để re-animate mỗi khi balance đổi; `separator="."` theo định dạng VN (1.000.000); `suffix=" VND"`; `duration=1.5s`; default easing `easeOut`.
+
+- **Frontend — Setup hạ tầng JolyUI / shadcn (Tailwind preflight off):** Cài Tailwind CSS v3 (preflight tắt → không reset CSS toàn cục, các trang cũ giữ nguyên), shadcn helpers (`clsx`, `tailwind-merge`, `class-variance-authority`, `tailwindcss-animate`), TypeScript toolchain (để shadcn CLI hoạt động). Thêm path alias `@` → `src/` trong Vite + tsconfig. Cấu hình `components.json` với `tsx: false` để shadcn output `.jsx` đồng bộ project.
+  - **Files mới:** `frontend/tailwind.config.js` (preflight off, no prefix, theme CSS vars), `frontend/postcss.config.js`, `frontend/components.json`, `frontend/tsconfig.json`, `frontend/src/index.css` (Tailwind directives + CSS variables shadcn), `frontend/src/lib/utils.js` (hàm `cn()`).
+  - **Files sửa:** `frontend/vite.config.js` (+ alias `@`), `frontend/src/main.jsx` (+ `import './index.css'` trước `styles.css` để CSS cũ override Tailwind nếu cần), `frontend/package.json` (+ deps).
+  - **Cách dùng:** chạy `npx shadcn@latest add <url>` để thêm component từ shadcn/JolyUI registry. Component xuất ra `.jsx` ở `src/components/ui/`.
+  - **CLAUDE.md đã được cập nhật:** bỏ cấm TypeScript, Tailwind (mục 1, 3.1, 7.x renumber).
+
 - **Shop — Liquid Glass redesign + trang chi tiết sản phẩm + giỏ hàng:** Áp dụng phong cách Liquid Glass (backdrop-filter + ambient blob backgrounds + specular highlight tracking pointer) cho 3 trang shop: redesign `/shop` (sidebar danh mục + search bar + segmented sort + product card 2 cột), trang chi tiết mới `/shop/product/:id` (gallery + buybox với seller card + nút "Thêm giỏ / Mua ngay" + tabs Mô tả / Bảo hành), trang giỏ hàng mới `/shop/cart` (group theo seller + chọn từng item + footbar checkout + sidebar tóm tắt đơn). Style scope qua `.shop-lg-scope` để không lẫn với phần còn lại của app.
   - **Quy tắc nghiệp vụ:**
     - Giỏ hàng lưu trong `localStorage` (key `mxh-shop-cart-v1`) — không cần migration backend.
