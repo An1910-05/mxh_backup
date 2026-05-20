@@ -190,6 +190,10 @@ try {
             (new PaymentController())->ipn();
             break;
 
+        case $uri === '/payment/momo/ipn' && $method === 'POST':
+            (new PaymentController())->momoIpn();
+            break;
+
         case $uri === '/payment/verify' && $method === 'GET':
             (new PaymentController())->verifyReturn();
             break;

@@ -14,12 +14,12 @@ class TransactionRepository
         $this->db = Database::getConnection();
     }
 
-    public function create(int $userId, string $txnRef, int $amount, string $description = ''): int
+    public function create(int $userId, string $txnRef, int $amount, string $description = '', string $provider = 'vnpay'): int
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO transactions (user_id, txn_ref, amount, description, status) VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO transactions (user_id, txn_ref, amount, description, status, provider) VALUES (?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$userId, $txnRef, $amount, $description, 'pending']);
+        $stmt->execute([$userId, $txnRef, $amount, $description, 'pending', $provider]);
         return (int) $this->db->lastInsertId();
     }
 
@@ -43,6 +43,14 @@ class TransactionRepository
             'UPDATE transactions SET status = ?, vnp_response_code = ?, vnp_transaction_no = ?, bank_code = ? WHERE txn_ref = ?'
         );
         return $stmt->execute([$status, $responseCode, $transactionNo, $bankCode, $txnRef]);
+    }
+
+    public function updateMomoStatus(string $txnRef, string $status, ?string $responseCode = null, ?string $momoTransId = null, ?string $momoRequestId = null): bool
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE transactions SET status = ?, vnp_response_code = ?, momo_trans_id = ?, momo_request_id = ? WHERE txn_ref = ?'
+        );
+        return $stmt->execute([$status, $responseCode, $momoTransId, $momoRequestId, $txnRef]);
     }
 
     public function getByUserId(int $userId, int $limit = 20, int $offset = 0): array

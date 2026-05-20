@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthShell from '../components/AuthShell';
 import { useAuth } from '../hooks/useAuth';
+import { BorderBeam } from '../components/ui/border-beam';
+import { Meteors } from '../components/ui/meteors';
+import { ShimmerButton } from '../components/ui/shimmer-button';
+import { MagicCard } from '../components/ui/magic-card';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -134,9 +138,16 @@ export default function LoginPage() {
         headline="Hoàn tất đăng ký tài khoản Google"
         subcopy="Chỉ cần thêm vài thông tin nữa để bắt đầu sử dụng iPock."
       >
-        <div className="auth-card auth-card--register">
+        <MagicCard
+          className="auth-card auth-card--register auth-card--joly"
+          gradientFrom="#42b72a"
+          gradientTo="#1877f2"
+          gradientColor="#82c4ff"
+        >
+          <Meteors number={10} />
+          <BorderBeam size={220} duration={11} colorFrom="#42b72a" colorTo="#1877f2" />
           <div className="auth-card-head">
-            <h2 className="auth-card-title">Thông tin cá nhân</h2>
+            <h2 className="auth-card-title auth-card-title--gradient">Thông tin cá nhân</h2>
             <p className="auth-card-subtitle">Đăng ký với {googleEmail}</p>
           </div>
 
@@ -185,10 +196,15 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button type="submit" className="auth-submit auth-submit--success" disabled={loading}>
+            <ShimmerButton
+              type="submit"
+              disabled={loading}
+              background="linear-gradient(135deg, #42b72a, #1877f2)"
+              className="auth-shimmer-submit"
+            >
               {loading ? <span className="apple-spinner" aria-hidden="true" /> : null}
               {loading ? 'Đang tạo tài khoản…' : 'Hoàn tất đăng ký'}
-            </button>
+            </ShimmerButton>
           </form>
 
           <div className="auth-divider" />
@@ -197,7 +213,7 @@ export default function LoginPage() {
               Quay lại đăng nhập
             </button>
           </div>
-        </div>
+        </MagicCard>
       </AuthShell>
     );
   }
@@ -209,10 +225,18 @@ export default function LoginPage() {
       subcopy="iPock giúp bạn chia sẻ khoảnh khắc, trò chuyện thời gian thực và theo dõi mọi điều đang diễn ra quanh mình."
       footnote={<><strong>Tạo Trang</strong> cho cộng đồng, thương hiệu hoặc doanh nghiệp của bạn trên iPock.</>}
     >
-      <div className="auth-card auth-card--login">
+      <MagicCard
+        className="auth-card auth-card--login auth-card--joly"
+        gradientFrom="#1877f2"
+        gradientTo="#9c40ff"
+        gradientColor="#82c4ff"
+      >
+        <Meteors number={14} />
+        <BorderBeam size={250} duration={10} colorFrom="#1877f2" colorTo="#9c40ff" />
+
         {error ? <div className="apple-alert apple-alert-danger auth-alert" role="alert">{error}</div> : null}
 
-        <form className="auth-form" onSubmit={handleSubmit}>
+        <form className="auth-form auth-form--stagger" onSubmit={handleSubmit}>
           <label className="sr-only" htmlFor="login-email">Email</label>
           <input
             id="login-email"
@@ -240,10 +264,15 @@ export default function LoginPage() {
             required
           />
 
-          <button type="submit" className="auth-submit auth-submit--primary" disabled={loading}>
+          <ShimmerButton
+            type="submit"
+            disabled={loading}
+            background="linear-gradient(135deg, #1877f2, #4f46e5)"
+            className="auth-shimmer-submit"
+          >
             {loading ? <span className="apple-spinner" aria-hidden="true" /> : null}
             {loading ? 'Đang đăng nhập…' : 'Đăng nhập'}
-          </button>
+          </ShimmerButton>
         </form>
 
         <p className="auth-link-row">
@@ -264,7 +293,7 @@ export default function LoginPage() {
             <div className="auth-google-wrap" ref={googleBtnRef} />
           </>
         )}
-      </div>
+      </MagicCard>
 
       <div className="auth-demo">
         Dùng thử:

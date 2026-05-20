@@ -74,10 +74,10 @@ export async function resetPassword(token, password) {
   return result.data;
 }
 
-export async function createPayment(amount) {
+export async function createPayment(amount, provider = 'vnpay') {
   const result = await restFetch('/payment/create', {
     method: 'POST',
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({ amount, provider }),
   });
   return result.data;
 }

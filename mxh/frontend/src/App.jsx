@@ -18,6 +18,7 @@ import FriendsPage from './pages/FriendsPage';
 import ChatPage from './pages/ChatPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
+import WalletPage from './pages/WalletPage';
 import GamesPage from './pages/GamesPage';
 import CaroPage from './pages/CaroPage';
 import ShopPage from './pages/ShopPage';
@@ -132,6 +133,7 @@ export default function App() {
                   <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
                   <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+                  <Route path="/wallet" element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
                   <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
                   <Route path="/shop/register" element={<ProtectedRoute><ShopRegisterPage /></ProtectedRoute>} />
                   <Route path="/shop/dashboard" element={<ProtectedRoute><ShopDashboardPage /></ProtectedRoute>} />

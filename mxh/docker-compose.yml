@@ -65,6 +65,11 @@ services:
       VNP_TMN_CODE: ${VNP_TMN_CODE:-5UQ9JN3J}
       VNP_HASH_SECRET: ${VNP_HASH_SECRET:-4ADPX1KAMS0N2GKFA834HHVT0A6DELTO}
       VNP_URL: ${VNP_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      MOMO_PARTNER_CODE: ${MOMO_PARTNER_CODE:-MOMO}
+      MOMO_ACCESS_KEY: ${MOMO_ACCESS_KEY:-F8BBA842ECF85}
+      MOMO_SECRET_KEY: ${MOMO_SECRET_KEY:-K951B6PE1waDMi640xX08PD3vg6EkVlz}
+      MOMO_ENDPOINT: ${MOMO_ENDPOINT:-https://test-payment.momo.vn/v2/gateway/api/create}
+      BACKEND_URL: ${BACKEND_URL:-http://${MXH_PUBLIC_HOST:-localhost}:8000}
       PAYMENT_MOCK: ${PAYMENT_MOCK:-0}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     restart: unless-stopped

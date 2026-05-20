@@ -82,8 +82,8 @@ export default function PaymentResultPage() {
           )}
 
           <div className="payment-result-actions">
-            <Link to="/settings" className="settings-btn settings-btn--primary">
-              Về Cài đặt
+            <Link to="/wallet" className="settings-btn settings-btn--primary">
+              Về Ví tiền
             </Link>
             <Link to="/" className="settings-btn settings-btn--ghost">
               Trang chủ

@@ -36,7 +36,7 @@ class PaymentService
         $description = 'Nap tien iPock - ' . number_format($amount) . ' VND';
 
         // Save pending transaction before redirecting to VNPay.
-        $this->txnRepo->create($userId, $txnRef, $amount, $description);
+        $this->txnRepo->create($userId, $txnRef, $amount, $description, 'vnpay');
 
         $frontendUrl = rtrim(explode(',', $_ENV['FRONTEND_URL'] ?? 'http://localhost:5173')[0], '/');
 

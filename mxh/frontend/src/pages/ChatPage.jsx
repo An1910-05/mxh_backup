@@ -82,11 +82,11 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="apple-main apple-main--wide chat-page">
+    <div className="apple-main apple-main--wide chat-page chat-page--v2">
       <div className={`chat-layout ${mobileShowChat ? 'chat-layout--show-chat' : ''}`}>
         <div className="chat-sidebar">
           <div className="chat-sidebar-header">
-            <h2>Tin nhắn</h2>
+            <h2>Đoạn chat</h2>
             <button
               type="button"
               className="chat-create-group-btn"
@@ -94,9 +94,7 @@ export default function ChatPage() {
               aria-label="Tạo nhóm chat mới"
               title="Tạo nhóm chat mới"
             >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden>
-                <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
+              <i className="bi bi-pencil-square" aria-hidden="true" />
             </button>
           </div>
           <ConversationList
@@ -111,7 +109,10 @@ export default function ChatPage() {
 
         <div className="chat-main">
           {loading ? (
-            <div className="chat-empty">Đang tải...</div>
+            <div className="chat-empty">
+              <span className="apple-spinner" />
+              <p>Đang tải đoạn chat…</p>
+            </div>
           ) : activeConversation?.isAI ? (
             <AIChatWindow onBack={handleBack} />
           ) : activeConversation ? (
@@ -124,8 +125,21 @@ export default function ChatPage() {
             />
           ) : (
             <div className="chat-empty">
-              <div className="chat-empty-icon" aria-hidden="true" />
-              <p>Chọn cuộc trò chuyện để bắt đầu</p>
+              <div className="chat-empty-glyph" aria-hidden="true">
+                <i className="bi bi-chat-dots-fill" />
+              </div>
+              <h3 className="chat-empty-title">Đoạn chat của bạn</h3>
+              <p className="chat-empty-sub">
+                Chọn một đoạn chat từ danh sách bên trái hoặc bắt đầu cuộc trò chuyện mới.
+              </p>
+              <button
+                type="button"
+                className="chat-empty-cta"
+                onClick={() => setShowCreateGroup(true)}
+              >
+                <i className="bi bi-pencil-square" aria-hidden="true" />
+                <span>Bắt đầu đoạn chat mới</span>
+              </button>
             </div>
           )}
         </div>
@@ -140,9 +154,7 @@ export default function ChatPage() {
           aria-label="Tạo nhóm chat mới"
           title="Tạo nhóm chat"
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden>
-            <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
+          <i className="bi bi-pencil-square" aria-hidden="true" />
         </button>
       )}
 
