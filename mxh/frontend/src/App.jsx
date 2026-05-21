@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Agentation } from 'agentation';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
@@ -104,6 +105,7 @@ export default function App() {
       <AuthProvider>
         <ChatProvider>
           <CallProvider>
+          <Agentation />
           <BlobSvgFilter />
           <TaiXiuFloatingWidget />
           <FloatingChatManager />

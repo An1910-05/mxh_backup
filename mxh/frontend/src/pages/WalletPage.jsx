@@ -24,15 +24,6 @@ function formatVND(amount) {
   return new Intl.NumberFormat('vi-VN').format(amount) + ' VND';
 }
 
-function withVietnameseDiacritics(text) {
-  if (!text) return 'Nạp tiền';
-  return text
-    .replace(/Nap tien iPock/gi, 'Nạp tiền iPock')
-    .replace(/Nap tien/gi, 'Nạp tiền')
-    .replace(/Tieu tien/gi, 'Tiêu tiền')
-    .replace(/Hoan tien/gi, 'Hoàn tiền');
-}
-
 const STATUS_LABELS = {
   success: 'Thành công',
   failed:  'Không thành công',
@@ -257,14 +248,10 @@ export default function WalletPage() {
               {transactions.map((txn) => (
                 <div key={txn.id} className="wallet-txn-row">
                   <div className="wallet-txn-info">
-                    <span className={`wallet-txn-status wallet-txn-status--${txn.status}`} aria-hidden="true">
-                      <i className={`bi ${txn.status === 'success' ? 'bi-check-lg' : 'bi-x-lg'}`} />
-                    </span>
                     <div>
                       <div className="wallet-txn-desc">
                         <span className={`wallet-txn-result wallet-txn-result--${txn.status}`}>
-                          <i className={`bi ${txn.status === 'success' ? 'bi-check-circle-fill' : 'bi-x-circle-fill'}`} aria-hidden="true" />
-                          <span>{STATUS_LABELS[txn.status] || txn.status}</span>
+                          {STATUS_LABELS[txn.status] || txn.status}
                         </span>
                         {txn.provider && (
                           <span className={`wallet-txn-provider wallet-txn-provider--${txn.provider}`}>

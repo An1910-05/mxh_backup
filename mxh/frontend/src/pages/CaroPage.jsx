@@ -174,14 +174,11 @@ function CaroBoard({ boardSize, moves, onCellClick, disabled, lastMove, winnerLi
 
   return (
     <div className="caro-board-wrap">
-      <div className="caro-board">
-        {rows}
-      </div>
-      {mySymbol && (
-        <div className="caro-board-foot">
-          Bạn đang chơi quân <strong>{mySymbol === 'X' ? '✕ (X)' : '○ (O)'}</strong>
+      <div className="caro-board-inner">
+        <div className="caro-board">
+          {rows}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -219,7 +216,7 @@ function LocalGame({ onExit }) {
   return (
     <div className="caro-game-wrap">
       <div className="caro-game-header">
-        <button className="caro-back-btn" onClick={onExit}>← Thoát</button>
+        <button className="caro-back-btn" onClick={onExit}><i className="bi bi-chevron-left" /> Thoát</button>
         <div className="caro-game-title">
           <strong>Chơi 2 người trên 1 máy</strong>
           <span>Lần lượt click ô để đánh quân</span>
@@ -302,7 +299,7 @@ function AIGame({ onExit }) {
   return (
     <div className="caro-game-wrap">
       <div className="caro-game-header">
-        <button className="caro-back-btn" onClick={onExit}>← Thoát</button>
+        <button className="caro-back-btn" onClick={onExit}><i className="bi bi-chevron-left" /> Thoát</button>
         <div className="caro-game-title">
           <strong>Chơi với máy</strong>
           <span>Bạn cầm quân ✕, máy cầm quân ○</span>
@@ -430,7 +427,7 @@ function OnlineGame({ roomId, onExit }) {
     return (
       <div className="caro-game-wrap">
         <div className="caro-game-header">
-          <button className="caro-back-btn" onClick={onExit}>← Thoát</button>
+          <button className="caro-back-btn" onClick={onExit}><i className="bi bi-chevron-left" /> Thoát</button>
           <div className="caro-game-title"><strong>Đang tải phòng…</strong></div>
         </div>
         {error && <div className="caro-error">{error}</div>}
@@ -469,7 +466,7 @@ function OnlineGame({ roomId, onExit }) {
   return (
     <div className="caro-game-wrap">
       <div className="caro-game-header">
-        <button className="caro-back-btn" onClick={onExit}>← Sảnh</button>
+        <button className="caro-back-btn" onClick={onExit}><i className="bi bi-chevron-left" /> Sảnh</button>
         <div className="caro-game-title">
           <strong>{room.name || 'Phòng Caro'}</strong>
           <span>
@@ -747,7 +744,7 @@ function Lobby({ onPickMode, onEnterRoom }) {
   return (
     <div className="caro-lobby">
       <div className="caro-lobby-header">
-        <button className="caro-back-btn" onClick={() => navigate('/games')}>← Trò chơi</button>
+        <button className="caro-back-btn" onClick={() => navigate('/games')}><i className="bi bi-chevron-left" /> Trò chơi</button>
         <div>
           <h1>Cờ Caro</h1>
           <p>5 quân liên tiếp để thắng. Chơi cùng bạn bè hoặc ghép ngẫu nhiên.</p>
@@ -758,27 +755,27 @@ function Lobby({ onPickMode, onEnterRoom }) {
 
       <div className="caro-actions-grid">
         <button className="caro-action-card caro-action-card--primary" onClick={() => setShowCreate(true)}>
-          <span className="caro-action-icon">＋</span>
+          <span className="caro-action-icon"><i className="bi bi-plus-lg" /></span>
           <strong>Tạo phòng</strong>
           <small>Nhận mã 6 ký tự, chia sẻ cho bạn bè. Có thể đặt mật khẩu.</small>
         </button>
         <button className="caro-action-card" onClick={() => { setJoinPrefill(''); setShowJoin(true); }}>
-          <span className="caro-action-icon">🔑</span>
+          <span className="caro-action-icon"><i className="bi bi-key" /></span>
           <strong>Vào bằng mã</strong>
           <small>Nhập mã phòng (và mật khẩu nếu có) để tham gia.</small>
         </button>
         <button className="caro-action-card" onClick={handleRandom} disabled={matching}>
-          <span className="caro-action-icon">🎯</span>
+          <span className="caro-action-icon"><i className="bi bi-shuffle" /></span>
           <strong>{matching ? 'Đang ghép…' : 'Ghép ngẫu nhiên'}</strong>
           <small>Ghép với người chơi khác đang chờ.</small>
         </button>
         <button className="caro-action-card" onClick={() => onPickMode('local')}>
-          <span className="caro-action-icon">👥</span>
+          <span className="caro-action-icon"><i className="bi bi-people-fill" /></span>
           <strong>2 người 1 máy</strong>
           <small>Lần lượt cùng nhau trên cùng thiết bị.</small>
         </button>
         <button className="caro-action-card" onClick={() => onPickMode('ai')}>
-          <span className="caro-action-icon">🤖</span>
+          <span className="caro-action-icon"><i className="bi bi-cpu" /></span>
           <strong>Chơi với máy</strong>
           <small>Đối thủ AI ngay trên trình duyệt.</small>
         </button>
@@ -799,7 +796,7 @@ function Lobby({ onPickMode, onEnterRoom }) {
                     {r.status === 'waiting' ? 'Đang chờ đối thủ' : 'Đang chơi'}
                   </span>
                 </div>
-                <span className="caro-room-cta">Tiếp tục →</span>
+                <span className="caro-room-cta">Tiếp tục <i className="bi bi-chevron-right" /></span>
               </li>
             ))}
           </ul>
@@ -824,7 +821,7 @@ function Lobby({ onPickMode, onEnterRoom }) {
                     {r.has_password && ' · 🔒'}
                   </span>
                 </div>
-                <span className="caro-room-cta">Vào →</span>
+                <span className="caro-room-cta">Vào <i className="bi bi-chevron-right" /></span>
               </li>
             ))}
           </ul>

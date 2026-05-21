@@ -123,6 +123,9 @@ class CaroService
 
     public function randomMatch(int $userId): array
     {
+        // Dọn phòng matchmaking cũ của user trước khi tạo mới
+        $this->repo->deleteUserWaitingMatchmakingRooms($userId);
+
         $db = Database::getConnection();
         $db->beginTransaction();
         try {
@@ -280,6 +283,10 @@ class CaroService
 
     public function listMyActive(int $userId, int $limit = 10): array
     {
+        // Xoá phòng matchmaking cũ của chính user này
+        $this->repo->deleteUserWaitingMatchmakingRooms($userId);
+        // Dọn tất cả phòng waiting quá 15 phút (toàn hệ thống)
+        $this->repo->cleanupStaleWaitingRooms(15);
         $rows = $this->repo->listMyActiveRooms($userId, $limit);
         return array_map(fn($r) => $this->buildRoomPayload($r, $userId), $rows);
     }

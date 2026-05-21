@@ -188,4 +188,28 @@ class CaroRepository
         $stmt->execute([$roomId, $creatorId]);
         return $stmt->rowCount() > 0;
     }
+
+    /** Xoá tất cả phòng matchmaking đang waiting của user. */
+    public function deleteUserWaitingMatchmakingRooms(int $userId): void
+    {
+        $stmt = $this->db->prepare(
+            "DELETE FROM caro_rooms
+              WHERE creator_id = ? AND is_matchmaking = 1
+                AND status = 'waiting' AND opponent_id IS NULL"
+        );
+        $stmt->execute([$userId]);
+    }
+
+    /** Xoá các phòng waiting quá X phút (dùng PHP timestamp để tránh lỗi INTERVAL binding). */
+    public function cleanupStaleWaitingRooms(int $olderThanMinutes = 15): void
+    {
+        $cutoff = date('Y-m-d H:i:s', time() - $olderThanMinutes * 60);
+        $stmt = $this->db->prepare(
+            "DELETE FROM caro_rooms
+              WHERE status = 'waiting'
+                AND opponent_id IS NULL
+                AND created_at < ?"
+        );
+        $stmt->execute([$cutoff]);
+    }
 }
