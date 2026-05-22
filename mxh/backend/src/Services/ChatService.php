@@ -199,6 +199,7 @@ class ChatService
                 $conv['display_avatar'] = $other['avatar'];
                 $conv['other_user_id'] = (int)$other['id'];
                 $conv['other_custom_url'] = $other['custom_url'];
+                $conv['other_is_verified'] = !empty($other['is_verified']);
 
                 $presence = $this->presenceRepo->getPresence((int)$other['id']);
                 $conv['is_online'] = $presence ? (bool)$presence['is_online'] : false;

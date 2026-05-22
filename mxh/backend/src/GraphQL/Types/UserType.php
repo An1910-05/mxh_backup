@@ -28,6 +28,10 @@ class UserType extends ObjectType
                     'type' => Type::boolean(),
                     'resolve' => fn($row) => !empty($row['is_seller']),
                 ],
+                'is_verified' => [
+                    'type' => Type::boolean(),
+                    'resolve' => fn($row) => !empty($row['is_verified']),
+                ],
                 'created_at' => Type::string(),
                 'updated_at' => Type::string(),
             ],

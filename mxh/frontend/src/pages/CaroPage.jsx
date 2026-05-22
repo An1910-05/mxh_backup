@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { API_ORIGIN } from '../config';
 
@@ -10,10 +10,12 @@ function mediaUrl(u) {
 }
 import {
   caroCreateRoom,
+  caroDeclineRematch,
   caroJoinByCode,
   caroLeaveRoom,
   caroMakeMove,
   caroRandomMatch,
+  caroRequestRematch,
   getCaroMyActiveRooms,
   getCaroMyHistory,
   getCaroPublicRooms,
@@ -165,7 +167,7 @@ function CaroBoard({ boardSize, moves, onCellClick, disabled, lastMove, winnerLi
           disabled={disabled || !!sym}
           onClick={() => !sym && !disabled && onCellClick(r, c)}
         >
-          {sym === 'X' ? <span className="caro-x">✕</span> : sym === 'O' ? <span className="caro-o">○</span> : null}
+          {sym === 'X' ? <span className="caro-x">✕</span> : sym === 'O' ? <span className="caro-o">O</span> : null}
         </button>
       );
     }
@@ -226,8 +228,8 @@ function LocalGame({ onExit }) {
       <div className="caro-status">
         {winner === 'draw' && <div className="caro-banner caro-banner--draw">Hòa</div>}
         {winner === 'X' && <div className="caro-banner caro-banner--x">Quân ✕ (X) thắng</div>}
-        {winner === 'O' && <div className="caro-banner caro-banner--o">Quân ○ (O) thắng</div>}
-        {!winner && <div className="caro-banner">Lượt: <strong>{turn === 'X' ? '✕ (X)' : '○ (O)'}</strong></div>}
+        {winner === 'O' && <div className="caro-banner caro-banner--o">Quân <span className="caro-sym-o">O</span> thắng</div>}
+        {!winner && <div className="caro-banner">Lượt: <strong>{turn === 'X' ? <span className="caro-sym-x">✕</span> : <span className="caro-sym-o">O</span>}</strong></div>}
       </div>
       <CaroBoard
         boardSize={boardSize}
@@ -302,7 +304,7 @@ function AIGame({ onExit }) {
         <button className="caro-back-btn" onClick={onExit}><i className="bi bi-chevron-left" /> Thoát</button>
         <div className="caro-game-title">
           <strong>Chơi với máy</strong>
-          <span>Bạn cầm quân ✕, máy cầm quân ○</span>
+          <span>Bạn cầm quân ✕, máy cầm quân O</span>
         </div>
         <button className="caro-secondary-btn" onClick={reset}>Bàn mới</button>
       </div>
@@ -339,7 +341,52 @@ function OnlineGame({ roomId, onExit }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [forfeitModal, setForfeitModal] = useState(false);
+  const [rematching, setRematching] = useState(false);
+  const [showPostgame, setShowPostgame] = useState(true);
+  const [declinedRematch, setDeclinedRematch] = useState(false);
   const timerRef = useRef(null);
+  const roomStatusRef = useRef(null);
+  const exitingRef = useRef(false);
+  const pendingNavRef = useRef(null);
+
+  useEffect(() => {
+    roomStatusRef.current = room?.status ?? null;
+  }, [room?.status]);
+
+  // Chặn click trên <a> (navbar, sidebar...) khi đang chơi — capture phase
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (exitingRef.current || roomStatusRef.current !== 'playing') return;
+      const anchor = e.target.closest('a');
+      if (!anchor?.href) return;
+      try {
+        const url = new URL(anchor.href, window.location.origin);
+        if (url.origin !== window.location.origin) return;
+        if (url.pathname === window.location.pathname) return;
+        e.preventDefault();
+        e.stopPropagation();
+        pendingNavRef.current = url.pathname + url.search;
+        setForfeitModal(true);
+      } catch { /* ignore */ }
+    };
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, []);
+
+  // Chặn nút back của trình duyệt khi đang chơi
+  useEffect(() => {
+    if (room?.status !== 'playing') return;
+    window.history.pushState(null, '', window.location.href);
+    const handlePop = () => {
+      if (exitingRef.current) return;
+      window.history.pushState(null, '', window.location.href);
+      pendingNavRef.current = null;
+      setForfeitModal(true);
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [room?.status]);
 
   const refresh = useCallback(async () => {
     try {
@@ -358,7 +405,22 @@ function OnlineGame({ roomId, onExit }) {
     return () => clearInterval(timerRef.current);
   }, [refresh]);
 
-  // Tạm dừng poll khi tab bị ẩn
+  useEffect(() => {
+    if (room?.status === 'finished' || room?.status === 'abandoned') {
+      setShowPostgame(true);
+    }
+  }, [room?.status]);
+
+  // Nếu phòng chờ bị huỷ trước khi chơi (đối thủ từ chối đấu lại) → tự ghép ngẫu nhiên
+  useEffect(() => {
+    if (room?.status !== 'abandoned' || (room?.move_count ?? 0) > 0) return;
+    const t = setTimeout(() => {
+      navigate('/games/caro', { state: { autoMatch: true } });
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [room?.status, room?.move_count, navigate]);
+
+  // Tạm dừng poll khi tab bị ẩn; hỏi xin thua khi quay lại nếu đang chơi
   useEffect(() => {
     const onVis = () => {
       if (document.hidden) {
@@ -366,6 +428,10 @@ function OnlineGame({ roomId, onExit }) {
       } else {
         refresh();
         timerRef.current = setInterval(refresh, POLL_INTERVAL_MS);
+        setRoom(prev => {
+          if (prev?.status === 'playing') setForfeitModal(true);
+          return prev;
+        });
       }
     };
     document.addEventListener('visibilitychange', onVis);
@@ -399,22 +465,66 @@ function OnlineGame({ roomId, onExit }) {
     }
   };
 
-  const handleLeave = async () => {
+  const doLeave = async () => {
     if (!room || leaving) return;
-    const confirmed = window.confirm(
-      room.status === 'playing'
-        ? 'Rời phòng đồng nghĩa bạn xin thua trận này. Tiếp tục?'
-        : 'Rời phòng?'
-    );
-    if (!confirmed) return;
+    setForfeitModal(false);
     setLeaving(true);
+    exitingRef.current = true;
     try {
       await caroLeaveRoom(room.id);
+      const dest = pendingNavRef.current;
+      pendingNavRef.current = null;
+      navigate(dest || '/games/caro');
     } catch (err) {
       console.error('leave failed', err);
-    } finally {
+      exitingRef.current = false;
       setLeaving(false);
+      pendingNavRef.current = null;
+    }
+  };
+
+  const handleLeave = () => {
+    if (!room || leaving) return;
+    if (room.status === 'playing') {
+      setForfeitModal(true);
+    } else {
+      doLeave();
+    }
+  };
+
+  const handleBackToLobby = () => {
+    if (room?.status === 'playing') {
+      setForfeitModal(true);
+    } else {
       onExit();
+    }
+  };
+
+  const handleRematch = async () => {
+    if (rematching || !room) return;
+    setRematching(true);
+    try {
+      const newRoom = await caroRequestRematch(room.id);
+      navigate(`/games/caro/${newRoom.id}`);
+    } catch (err) {
+      console.error('rematch failed', err);
+      setError(err?.message || 'Tạo phòng thất bại');
+    } finally {
+      setRematching(false);
+    }
+  };
+
+  const handleAcceptRematch = async () => {
+    if (!room?.rematch_room_code) return;
+    setRematching(true);
+    try {
+      await caroJoinByCode(room.rematch_room_code, null);
+      navigate(`/games/caro/${room.rematch_room_id}`);
+    } catch (err) {
+      console.error('accept rematch failed', err);
+      setError(err?.message || 'Không thể vào phòng đấu lại');
+    } finally {
+      setRematching(false);
     }
   };
 
@@ -452,7 +562,9 @@ function OnlineGame({ roomId, onExit }) {
       </div>
     );
   } else if (room.status === 'finished' || room.status === 'abandoned') {
-    if (room.winner_symbol === 'draw') {
+    if (room.status === 'abandoned' && (room.move_count ?? 0) === 0) {
+      statusBanner = <div className="caro-banner">Đối thủ từ chối — đang chuyển sang ghép ngẫu nhiên…</div>;
+    } else if (room.winner_symbol === 'draw') {
       statusBanner = <div className="caro-banner caro-banner--draw">Hòa</div>;
     } else if (room.winner_user_id === myId) {
       statusBanner = <div className="caro-banner caro-banner--win">Bạn thắng 🎉</div>;
@@ -466,7 +578,7 @@ function OnlineGame({ roomId, onExit }) {
   return (
     <div className="caro-game-wrap">
       <div className="caro-game-header">
-        <button className="caro-back-btn" onClick={onExit}><i className="bi bi-chevron-left" /> Sảnh</button>
+        <button className="caro-back-btn" onClick={handleBackToLobby}><i className="bi bi-chevron-left" /> Sảnh</button>
         <div className="caro-game-title">
           <strong>{room.name || 'Phòng Caro'}</strong>
           <span>
@@ -487,7 +599,7 @@ function OnlineGame({ roomId, onExit }) {
           </div>
           <div className="caro-player-info">
             <strong>{creator?.username || 'Người chơi 1'}</strong>
-            <span>Quân ✕ (X){isMe(creator?.id) ? ' · Bạn' : ''}</span>
+            <span><span className="caro-sym-x">✕</span>{isMe(creator?.id) ? ' · Bạn' : ''}</span>
           </div>
         </div>
         <div className="caro-vs">VS</div>
@@ -497,7 +609,7 @@ function OnlineGame({ roomId, onExit }) {
           </div>
           <div className="caro-player-info">
             <strong>{opponent?.username || (waitingForOpponent ? 'Đang chờ…' : 'Người chơi 2')}</strong>
-            <span>Quân ○ (O){isMe(opponent?.id) ? ' · Bạn' : ''}</span>
+            <span><span className="caro-sym-o">O</span>{isMe(opponent?.id) ? ' · Bạn' : ''}</span>
           </div>
         </div>
       </div>
@@ -505,25 +617,101 @@ function OnlineGame({ roomId, onExit }) {
       <div className="caro-status">{statusBanner}</div>
       {error && <div className="caro-error">{error}</div>}
 
-      <CaroBoard
-        boardSize={room.board_size}
-        moves={room.moves || []}
-        onCellClick={handleCell}
-        disabled={
-          submitting ||
-          room.status !== 'playing' ||
-          !room.is_my_turn ||
-          !room.viewer_symbol
-        }
-        lastMove={lastMove}
-        mySymbol={room.viewer_symbol}
-      />
+      <div className="caro-board-container">
+        <CaroBoard
+          boardSize={room.board_size}
+          moves={room.moves || []}
+          onCellClick={handleCell}
+          disabled={
+            submitting ||
+            room.status !== 'playing' ||
+            !room.is_my_turn ||
+            !room.viewer_symbol
+          }
+          lastMove={lastMove}
+          mySymbol={room.viewer_symbol}
+        />
 
-      {(room.status === 'finished' || room.status === 'abandoned') && (
-        <div className="caro-postgame">
-          <button className="caro-primary-btn" onClick={() => navigate('/games/caro')}>
-            Về sảnh
-          </button>
+        {(room.status === 'finished' || room.status === 'abandoned') && (() => {
+          const myId = Number(user?.id || 0);
+          const rematchByMe = room.rematch_room_id && room.rematch_initiated_by_id === myId;
+          const rematchByOpponent = room.rematch_room_id && room.rematch_initiated_by_id !== myId;
+
+          const postgameButtons = (small) => (
+            <>
+              {!room.rematch_room_id && (
+                <button
+                  className={small ? 'caro-primary-btn caro-btn-sm' : 'caro-primary-btn'}
+                  onClick={handleRematch}
+                  disabled={rematching}
+                >
+                  {rematching ? '…' : 'Đấu lại'}
+                </button>
+              )}
+              {rematchByMe && (
+                <span className="caro-postgame-waiting">Đang chờ đối thủ chấp nhận…</span>
+              )}
+              {rematchByOpponent && !declinedRematch && (
+                <div className="caro-rematch-invite">
+                  <span>Đối thủ mời đấu lại!</span>
+                  <button
+                    className={small ? 'caro-primary-btn caro-btn-sm' : 'caro-primary-btn'}
+                    onClick={handleAcceptRematch}
+                    disabled={rematching}
+                  >
+                    {rematching ? '…' : 'Chấp nhận'}
+                  </button>
+                  <button
+                    className={small ? 'caro-secondary-btn caro-btn-sm' : 'caro-secondary-btn'}
+                    onClick={async () => {
+                      setDeclinedRematch(true);
+                      try { await caroDeclineRematch(room.id); } catch (e) { console.error('decline rematch', e); }
+                      navigate('/games/caro', { state: { autoMatch: true } });
+                    }}
+                  >
+                    Từ chối
+                  </button>
+                </div>
+              )}
+              <button
+                className={small ? 'caro-secondary-btn caro-btn-sm' : 'caro-secondary-btn'}
+                onClick={() => navigate('/games/caro')}
+              >
+                Về sảnh
+              </button>
+            </>
+          );
+
+          return showPostgame ? (
+            <div className="caro-postgame-overlay">
+              <button className="caro-postgame-toggle" onClick={() => setShowPostgame(false)}>
+                <i className="bi bi-eye" /> Xem bàn cờ
+              </button>
+              {postgameButtons(false)}
+            </div>
+          ) : (
+            <div className="caro-postgame-bar">
+              <button className="caro-postgame-toggle" onClick={() => setShowPostgame(true)}>
+                <i className="bi bi-eye-slash" /> Ẩn bàn cờ
+              </button>
+              {postgameButtons(true)}
+            </div>
+          );
+        })()}
+      </div>
+
+      {forfeitModal && (
+        <div className="caro-modal-backdrop" onClick={() => setForfeitModal(false)}>
+          <div className="caro-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Rời trận</h3>
+            <p>Bạn muốn thua đúng không?</p>
+            <div className="caro-modal-actions">
+              <button className="caro-secondary-btn" onClick={() => setForfeitModal(false)}>Không</button>
+              <button className="caro-danger-btn" disabled={leaving} onClick={doLeave}>
+                {leaving ? 'Đang rời…' : 'Có, xin thua'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -682,6 +870,7 @@ function JoinCodeModal({ open, onClose, onJoined, initialCode = '' }) {
 
 function Lobby({ onPickMode, onEnterRoom }) {
   const navigate = useNavigate();
+  const { state: locationState } = useLocation();
   const [activeRooms, setActiveRooms] = useState([]);
   const [publicRooms, setPublicRooms] = useState([]);
   const [history, setHistory] = useState([]);
@@ -691,6 +880,8 @@ function Lobby({ onPickMode, onEnterRoom }) {
   const [showJoin, setShowJoin] = useState(false);
   const [joinPrefill, setJoinPrefill] = useState('');
   const [matching, setMatching] = useState(false);
+  const [matchingRoomId, setMatchingRoomId] = useState(null);
+  const matchTimerRef = useRef(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -714,16 +905,71 @@ function Lobby({ onPickMode, onEnterRoom }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const handleRandom = async () => {
+  // Tự động ghép ngẫu nhiên nếu được redirect từ trang game với flag autoMatch
+  const handleRandomRef = useRef(null);
+  useEffect(() => {
+    if (locationState?.autoMatch && handleRandomRef.current) {
+      handleRandomRef.current();
+      // Xoá state để không trigger lại khi refresh
+      window.history.replaceState({}, '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Poll phòng matchmaking 5s/lần đến khi có đối thủ
+  useEffect(() => {
+    if (!matchingRoomId) return;
+    const poll = async () => {
+      try {
+        const room = await getCaroRoom(matchingRoomId);
+        if (room.status === 'playing') {
+          clearInterval(matchTimerRef.current);
+          setMatching(false);
+          setMatchingRoomId(null);
+          onEnterRoom(room);
+        } else if (room.status !== 'waiting') {
+          clearInterval(matchTimerRef.current);
+          setMatching(false);
+          setMatchingRoomId(null);
+        }
+      } catch (err) {
+        console.error('matchmaking poll failed', err);
+      }
+    };
+    matchTimerRef.current = setInterval(poll, 5000);
+    return () => clearInterval(matchTimerRef.current);
+  }, [matchingRoomId, onEnterRoom]);
+
+  const handleRandom = useCallback(async () => {
     setMatching(true);
+    setError('');
     try {
       const room = await caroRandomMatch();
-      onEnterRoom(room);
+      if (room.status === 'playing') {
+        setMatching(false);
+        onEnterRoom(room);
+      } else {
+        // Đang chờ — bắt đầu poll 5s/lần
+        setMatchingRoomId(room.id);
+      }
     } catch (err) {
       console.error('random match failed', err);
       setError(err?.message || 'Ghép trận thất bại');
-    } finally {
       setMatching(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Gắn ref để autoMatch effect có thể gọi
+  useEffect(() => { handleRandomRef.current = handleRandom; }, [handleRandom]);
+
+  const handleCancelMatching = async () => {
+    clearInterval(matchTimerRef.current);
+    const roomId = matchingRoomId;
+    setMatching(false);
+    setMatchingRoomId(null);
+    if (roomId) {
+      try { await caroLeaveRoom(roomId); } catch (err) { console.error('cancel match failed', err); }
     }
   };
 
@@ -764,11 +1010,20 @@ function Lobby({ onPickMode, onEnterRoom }) {
           <strong>Vào bằng mã</strong>
           <small>Nhập mã phòng (và mật khẩu nếu có) để tham gia.</small>
         </button>
-        <button className="caro-action-card" onClick={handleRandom} disabled={matching}>
-          <span className="caro-action-icon"><i className="bi bi-shuffle" /></span>
-          <strong>{matching ? 'Đang ghép…' : 'Ghép ngẫu nhiên'}</strong>
-          <small>Ghép với người chơi khác đang chờ.</small>
-        </button>
+        {matching ? (
+          <div className="caro-action-card caro-action-card--matching">
+            <span className="caro-action-icon caro-matching-spin"><i className="bi bi-arrow-repeat" /></span>
+            <strong>Đang tìm đối thủ…</strong>
+            <small>Cứ 5 giây tìm một lần</small>
+            <button className="caro-cancel-match-btn" onClick={handleCancelMatching}>Huỷ</button>
+          </div>
+        ) : (
+          <button className="caro-action-card" onClick={handleRandom}>
+            <span className="caro-action-icon"><i className="bi bi-shuffle" /></span>
+            <strong>Ghép ngẫu nhiên</strong>
+            <small>Ghép với người chơi khác đang chờ.</small>
+          </button>
+        )}
         <button className="caro-action-card" onClick={() => onPickMode('local')}>
           <span className="caro-action-icon"><i className="bi bi-people-fill" /></span>
           <strong>2 người 1 máy</strong>
@@ -881,7 +1136,7 @@ export default function CaroPage() {
   if (roomId) {
     return (
       <div className="apple-main fade-in">
-        <OnlineGame roomId={Number(roomId)} onExit={goLobby} />
+        <OnlineGame key={roomId} roomId={Number(roomId)} onExit={goLobby} />
       </div>
     );
   }

@@ -29,8 +29,11 @@ class CaroRoomType extends ObjectType
                 'winner_user_id' => Type::int(),
                 'creator'        => TypeRegistry::caroPlayer(),
                 'opponent'       => TypeRegistry::caroPlayer(),
-                'viewer_symbol'  => Type::string(),                   // 'X' | 'O' | null
-                'is_my_turn'     => Type::nonNull(Type::boolean()),
+                'viewer_symbol'           => Type::string(),           // 'X' | 'O' | null
+                'is_my_turn'              => Type::nonNull(Type::boolean()),
+                'rematch_room_id'         => Type::int(),
+                'rematch_room_code'       => Type::string(),
+                'rematch_initiated_by_id' => Type::int(),
                 'created_at'     => Type::string(),
                 'updated_at'     => Type::string(),
                 'last_move_at'   => Type::string(),

@@ -4,13 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   followUser, unfollowUser, updateProfile, updateCustomUrl, clearAvatar,
-  sendFriendRequest, acceptFriendRequest, cancelFriendRequest, cancelFriendRequestByUser, unfriend,
+  sendFriendRequest, acceptFriendRequest, rejectFriendRequest, cancelFriendRequest, cancelFriendRequestByUser, unfriend,
   getUserFriends, getUserFollowers, getUserFollowing,
 } from '../services/graphql';
 import { uploadFile } from '../services/api';
 import { formatJoinMonthYear } from '../utils/time';
 import { formatHandleDisplay } from '../utils/userDisplay';
 import { API_ORIGIN } from '../config';
+import VerifiedBadge from './VerifiedBadge';
 const DEFAULT_AVATAR = '/default-avatar.png';
 
 function bumpFriendRequestsBadge() {
@@ -35,6 +36,7 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
   const [customUrl, setCustomUrl] = useState(profile.custom_url || '');
   const [urlError, setUrlError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [handleCopied, setHandleCopied] = useState(false);
 
   const [avatar, setAvatar] = useState(profile.avatar);
   const [coverPhoto, setCoverPhoto] = useState(profile.cover_photo);
@@ -51,6 +53,9 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
   const [avatarMenu, setAvatarMenu] = useState(false);
   const [viewingAvatar, setViewingAvatar] = useState(false);
   const [viewingCover, setViewingCover] = useState(false);
+  const [showFriendMenu, setShowFriendMenu] = useState(false);
+  const friendMenuRef = useRef(null);
+  const [showAbout, setShowAbout] = useState(false);
 
   const isOwn = user && user.id === profile.user_id;
 
@@ -61,6 +66,15 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
     else document.body.classList.remove(cls);
     return () => document.body.classList.remove(cls);
   }, [viewingAvatar, viewingCover]);
+
+  useEffect(() => {
+    if (!showFriendMenu) return undefined;
+    const handler = (e) => {
+      if (friendMenuRef.current && !friendMenuRef.current.contains(e.target)) setShowFriendMenu(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showFriendMenu]);
 
   useEffect(() => {
     if (!listPanel) return undefined;
@@ -92,32 +106,59 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
     finally { setLoading(false); }
   };
 
-  const handleFriendAction = async () => {
+  const handleAddFriend = async () => {
     setLoading(true);
     try {
-      if (friendStatus === 'none' || friendStatus === 'rejected') {
-        const result = await sendFriendRequest(profile.user_id);
-        setFriendStatus(result.status);
-        setFriendshipId(result.friendship_id);
-        setIsSender(result.status === 'pending');
-      } else if (friendStatus === 'pending' && isSender) {
-        if (friendshipId) {
-          await cancelFriendRequest(friendshipId);
-        } else {
-          await cancelFriendRequestByUser(profile.user_id);
-        }
-        setFriendStatus('none');
-        setFriendshipId(null);
-      } else if (friendStatus === 'pending' && !isSender) {
-        await acceptFriendRequest(friendshipId);
-        setFriendStatus('accepted');
-      } else if (friendStatus === 'accepted') {
-        if (window.confirm('Hủy kết bạn?')) {
-          await unfriend(profile.user_id);
-          setFriendStatus('none');
-          setFriendshipId(null);
-        }
-      }
+      const result = await sendFriendRequest(profile.user_id);
+      setFriendStatus(result.status);
+      setFriendshipId(result.friendship_id);
+      setIsSender(result.status === 'pending');
+      bumpFriendRequestsBadge();
+    } catch (err) { console.error(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleCancelRequest = async () => {
+    setShowFriendMenu(false);
+    setLoading(true);
+    try {
+      if (friendshipId) await cancelFriendRequest(friendshipId);
+      else await cancelFriendRequestByUser(profile.user_id);
+      setFriendStatus('none');
+      setFriendshipId(null);
+      bumpFriendRequestsBadge();
+    } catch (err) { console.error(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleAccept = async () => {
+    setLoading(true);
+    try {
+      await acceptFriendRequest(friendshipId);
+      setFriendStatus('accepted');
+      bumpFriendRequestsBadge();
+    } catch (err) { console.error(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleDecline = async () => {
+    setLoading(true);
+    try {
+      await rejectFriendRequest(friendshipId);
+      setFriendStatus('none');
+      setFriendshipId(null);
+      bumpFriendRequestsBadge();
+    } catch (err) { console.error(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleUnfriend = async () => {
+    setShowFriendMenu(false);
+    setLoading(true);
+    try {
+      await unfriend(profile.user_id);
+      setFriendStatus('none');
+      setFriendshipId(null);
       bumpFriendRequestsBadge();
     } catch (err) { console.error(err.message); }
     finally { setLoading(false); }
@@ -234,19 +275,6 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
     navigate(`/chat?user=${targetUserId}`);
   };
 
-  const friendBtnLabel = () => {
-    if (friendStatus === 'accepted') return '✓ Bạn bè';
-    if (friendStatus === 'pending' && isSender) return '✕ Hủy lời mời';
-    if (friendStatus === 'pending' && !isSender) return 'Chấp nhận lời mời';
-    return 'Kết bạn';
-  };
-
-  const friendBtnClass = () => {
-    if (friendStatus === 'accepted') return 'apple-btn-outline';
-    if (friendStatus === 'pending' && isSender) return 'apple-btn-ghost';
-    if (friendStatus === 'pending' && !isSender) return 'apple-btn-primary';
-    return 'apple-btn-dark';
-  };
 
   const customLink = profile.custom_url ? `${window.location.origin}/${profile.custom_url}` : null;
   const listTitle = { friends: 'Bạn bè', followers: 'Người theo dõi', following: 'Đang theo dõi' };
@@ -341,13 +369,70 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
           )}
           {user && !isOwn && (
             <div className="profile-x-other-actions">
-              <button type="button" onClick={handleFriendAction} className={`apple-btn apple-btn-sm profile-x-toolbar-btn ${friendBtnClass()}`} disabled={loading}>
-                {friendBtnLabel()}
+              {/* Friend button — Facebook style */}
+              {(friendStatus === 'none' || friendStatus === 'rejected') && (
+                <button type="button" className="pfb pfb--primary" onClick={handleAddFriend} disabled={loading}>
+                  <i className="bi bi-person-plus-fill" aria-hidden="true" />
+                  Thêm bạn bè
+                </button>
+              )}
+              {friendStatus === 'pending' && !isSender && (
+                <>
+                  <button type="button" className="pfb pfb--primary" onClick={handleAccept} disabled={loading}>
+                    <i className="bi bi-check-lg" aria-hidden="true" />
+                    Chấp nhận
+                  </button>
+                  <button type="button" className="pfb pfb--light" onClick={handleDecline} disabled={loading}>
+                    Từ chối
+                  </button>
+                </>
+              )}
+              {(friendStatus === 'pending' && isSender) && (
+                <div className="pfb-dropdown-wrap" ref={friendMenuRef}>
+                  <button type="button" className="pfb pfb--light" onClick={() => setShowFriendMenu(v => !v)} disabled={loading}>
+                    <i className="bi bi-person-check-fill" aria-hidden="true" />
+                    Đã gửi lời mời
+                    <i className="bi bi-chevron-down pfb-chevron" aria-hidden="true" />
+                  </button>
+                  {showFriendMenu && (
+                    <div className="pfb-menu">
+                      <button type="button" className="pfb-menu-item pfb-menu-item--danger" onClick={handleCancelRequest}>
+                        <i className="bi bi-person-x-fill" aria-hidden="true" />
+                        Hủy lời mời
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {friendStatus === 'accepted' && (
+                <div className="pfb-dropdown-wrap" ref={friendMenuRef}>
+                  <button type="button" className="pfb pfb--friends" onClick={() => setShowFriendMenu(v => !v)} disabled={loading}>
+                    <i className="bi bi-person-check-fill" aria-hidden="true" />
+                    Bạn bè
+                    <i className="bi bi-chevron-down pfb-chevron" aria-hidden="true" />
+                  </button>
+                  {showFriendMenu && (
+                    <div className="pfb-menu">
+                      <button type="button" className="pfb-menu-item pfb-menu-item--danger" onClick={handleUnfriend}>
+                        <i className="bi bi-person-dash-fill" aria-hidden="true" />
+                        Hủy kết bạn
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Follow */}
+              <button type="button" onClick={handleFollow} className={`pfb ${following ? 'pfb--light' : 'pfb--light'}`} disabled={loading}>
+                {following
+                  ? <><i className="bi bi-bell-slash-fill" aria-hidden="true" />Bỏ theo dõi</>
+                  : <><i className="bi bi-bell-fill" aria-hidden="true" />Theo dõi</>
+                }
               </button>
-              <button type="button" onClick={handleFollow} className={`apple-btn apple-btn-sm ${following ? 'profile-x-btn-light' : 'profile-x-btn-primary'}`} disabled={loading}>
-                {following ? 'Bỏ theo dõi' : 'Theo dõi'}
-              </button>
-              <button type="button" onClick={() => navigate(`/chat?user=${profile.user_id}`)} className="apple-btn profile-x-btn-light apple-btn-sm">
+
+              {/* Message */}
+              <button type="button" onClick={() => navigate(`/chat?user=${profile.user_id}`)} className="pfb pfb--light">
+                <i className="bi bi-chat-fill" aria-hidden="true" />
                 Nhắn tin
               </button>
             </div>
@@ -364,9 +449,103 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
         </div>
       )}
 
+      {showAbout && createPortal(
+        <div className="about-panel-overlay" onClick={() => setShowAbout(false)}>
+          <div className="about-panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal>
+            <div className="about-panel-header">
+              <button type="button" className="about-panel-back" onClick={() => setShowAbout(false)} aria-label="Đóng">
+                <i className="bi bi-arrow-left" aria-hidden="true" />
+              </button>
+              <span className="about-panel-title">Giới thiệu về tài khoản này</span>
+            </div>
+
+            <div className="about-panel-body">
+              <div className="about-panel-profile">
+                {avatar
+                  ? <img src={`${API_ORIGIN}${avatar}`} alt="" className="about-panel-avatar" />
+                  : <img src="/default-avatar.png" alt="" className="about-panel-avatar" />
+                }
+                <div className="about-panel-username-row">
+                  <span className="about-panel-username">{profile.username}</span>
+                  {profile.is_verified && (
+                    <svg viewBox="92 0 24 24" width="16" height="16" fill="#1d9bf0" aria-label="Đã xác thực">
+                      <path d="m109.207 9.707-6.5 6.5a.996.996 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414L102 14.086l5.793-5.793a1 1 0 1 1 1.414 1.414m6.68 4.768L114.618 12l1.267-2.474a1.02 1.02 0 0 0-.355-1.326l-2.334-1.51-.14-2.775a1.018 1.018 0 0 0-.97-.971l-2.778-.14-1.51-2.336a1.02 1.02 0 0 0-1.324-.354L104 1.38 101.526.114a1.02 1.02 0 0 0-1.326.354l-1.509 2.336-2.777.14a1.017 1.017 0 0 0-.97.97l-.14 2.777L92.468 8.2a1.02 1.02 0 0 0-.354 1.325L93.382 12l-1.268 2.474a1.02 1.02 0 0 0 .355 1.326l2.335 1.509.14 2.776c.025.528.443.945.97.971l2.777.14 1.51 2.336a1.02 1.02 0 0 0 1.324.354L104 22.62l2.474 1.267c.469.242 1.039.09 1.326-.355l1.51-2.335 2.776-.14c.527-.026.945-.443.97-.97l.14-2.777 2.336-1.51c.443-.286.595-.856.354-1.324" />
+                    </svg>
+                  )}
+                </div>
+                <span className="about-panel-handle">@{profile.custom_url || profile.username}</span>
+              </div>
+
+              <div className="about-panel-divider" />
+
+              <ul className="about-panel-list">
+                <li className="about-panel-item">
+                  <i className="bi bi-calendar3 about-panel-item-icon" aria-hidden="true" />
+                  <div>
+                    <div className="about-panel-item-label">Ngày tham gia</div>
+                    <div className="about-panel-item-value">{formatJoinMonthYear(profile.created_at)}</div>
+                  </div>
+                </li>
+
+                {profile.is_verified && profile.verified_until && (
+                  <li className="about-panel-item">
+                    <i className="bi bi-patch-check about-panel-item-icon" aria-hidden="true" />
+                    <div>
+                      <div className="about-panel-item-label">Đã xác nhận</div>
+                      <div className="about-panel-item-value">
+                        Kể từ {formatJoinMonthYear(profile.verified_until)}
+                      </div>
+                    </div>
+                  </li>
+                )}
+
+                <li className="about-panel-item">
+                  <i className="bi bi-globe2 about-panel-item-icon" aria-hidden="true" />
+                  <div>
+                    <div className="about-panel-item-label">Đã kết nối qua</div>
+                    <div className="about-panel-item-value">
+                      {profile.last_login_device === 'mobile' ? 'Ứng dụng di động' : 'Trình duyệt web'}
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <div className="profile-x-details" id="profile-x-details">
-        <h1 className="profile-name profile-name--x">{profile.username}</h1>
-        <div className="profile-handle">@{handleDisplay}</div>
+        <div className="profile-name-row">
+          <h1 className="profile-name profile-name--x">{profile.username}</h1>
+          <VerifiedBadge
+            isVerified={!!profile.is_verified}
+            verifiedUntil={profile.verified_until}
+            ownerId={profile.user_id}
+            size={22}
+            onPurchased={(updated) => { if (onProfileUpdate) onProfileUpdate(updated); }}
+          />
+        </div>
+        <button
+          type="button"
+          className={`profile-handle profile-handle--copyable${handleCopied ? ' profile-handle--copied' : ''}`}
+          onClick={() => {
+            navigator.clipboard.writeText(`@${handleDisplay}`).then(() => {
+              setHandleCopied(true);
+              setTimeout(() => setHandleCopied(false), 2000);
+            }).catch(() => {});
+          }}
+          title="Nhấn để sao chép"
+        >
+          @{handleDisplay}
+          <span className="profile-handle-copy-hint">
+            {handleCopied ? (
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            )}
+          </span>
+        </button>
 
         {editingBio ? (
           <div className="profile-edit-bio profile-edit-bio--x">
@@ -387,13 +566,13 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
           </p>
         )}
 
-        <div className="profile-join-row" role="note">
+        <button type="button" className="profile-join-row" onClick={() => setShowAbout(true)}>
           <svg className="profile-join-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
             <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" />
           </svg>
           <span>{formatJoinMonthYear(profile.created_at)}</span>
           <span className="profile-join-chevron" aria-hidden>›</span>
-        </div>
+        </button>
 
         <div className="profile-stats profile-stats--x">
           <button type="button" className="profile-stat-item profile-stat-clickable profile-stat--x" onClick={() => openList('following')}>
@@ -450,11 +629,6 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
                 </button>
               )}
             </div>
-          )}
-          {customLink && profile.custom_url && (
-            <a href={customLink} className="profile-x-meta-link profile-x-meta-url" title={customLink}>
-              {formatHandleDisplay(profile.custom_url)}
-            </a>
           )}
           {isOwn && <div className="profile-email profile-email--x">{profile.email}</div>}
           {isOwn && (

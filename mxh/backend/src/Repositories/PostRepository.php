@@ -17,7 +17,7 @@ class PostRepository
     public function findById(int $id): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT p.*, u.username, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?'
+            'SELECT p.*, u.username, u.is_verified AS user_is_verified, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?'
         );
         $stmt->execute([$id]);
         return $stmt->fetch() ?: null;
@@ -26,7 +26,7 @@ class PostRepository
     public function findAll(int $limit = 20, int $offset = 0): array
     {
         $stmt = $this->db->prepare(
-            'SELECT p.*, u.username, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC LIMIT ? OFFSET ?'
+            'SELECT p.*, u.username, u.is_verified AS user_is_verified, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC LIMIT ? OFFSET ?'
         );
         $stmt->execute([$limit, $offset]);
         return $stmt->fetchAll();
@@ -35,7 +35,7 @@ class PostRepository
     public function findByUserId(int $userId, int $limit = 20, int $offset = 0): array
     {
         $stmt = $this->db->prepare(
-            'SELECT p.*, u.username, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id = ? ORDER BY p.created_at DESC LIMIT ? OFFSET ?'
+            'SELECT p.*, u.username, u.is_verified AS user_is_verified, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id = ? ORDER BY p.created_at DESC LIMIT ? OFFSET ?'
         );
         $stmt->execute([$userId, $limit, $offset]);
         return $stmt->fetchAll();
@@ -45,7 +45,7 @@ class PostRepository
     {
         if (empty($userIds)) return [];
         $placeholders = implode(',', array_fill(0, count($userIds), '?'));
-        $sql = "SELECT p.*, u.username, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id IN ({$placeholders}) ORDER BY p.created_at DESC LIMIT ? OFFSET ?";
+        $sql = "SELECT p.*, u.username, u.is_verified AS user_is_verified, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id IN ({$placeholders}) ORDER BY p.created_at DESC LIMIT ? OFFSET ?";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([...$userIds, $limit, $offset]);
         return $stmt->fetchAll();

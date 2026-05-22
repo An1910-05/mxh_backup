@@ -6,6 +6,7 @@ use App\Helpers\JWTHelper;
 use App\Helpers\Response;
 use App\Repositories\UserRepository;
 
+
 class AuthMiddleware
 {
     /**
@@ -32,11 +33,16 @@ class AuthMiddleware
             Response::error('Unauthorized: User not found', 401);
         }
 
+        if (!empty($user['is_blocked'])) {
+            Response::error('account_banned', 403);
+        }
+
         return $user;
     }
 
     /**
      * Optional auth - returns user if token valid, null otherwise. Does not halt.
+     * Returns null for blocked users so they are treated as anonymous.
      */
     public static function optionalAuth(): ?array
     {
@@ -53,6 +59,12 @@ class AuthMiddleware
         }
 
         $userRepo = new UserRepository();
-        return $userRepo->findById($decoded->user_id);
+        $user = $userRepo->findById($decoded->user_id);
+
+        if (!$user || !empty($user['is_blocked'])) {
+            return null;
+        }
+
+        return $user;
     }
 }

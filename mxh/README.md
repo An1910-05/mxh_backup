@@ -10,6 +10,44 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **Profile — Thiết bị đăng nhập của chủ tài khoản:** Panel "Giới thiệu về tài khoản này" nay hiển thị thiết bị mà **chủ tài khoản** dùng để đăng nhập lần cuối (`mobile` / `web`), thay vì detect thiết bị của người đang xem. Lưu vào cột `last_login_device` trên bảng `users` mỗi khi đăng nhập (cả email và Google).
+  - **Migration:** `backend/database/migrations/026_add_last_login_device.sql`
+  - **Backend:** `UserRepository.php` (+`updateLoginDevice()`), `AuthService.php` (gọi `detectDevice()` khi login/googleLogin), `ProfileService.php` (+field `last_login_device`), `ProfileType.php` (+field GraphQL)
+  - **Frontend:** `graphql.js` (thêm `last_login_device` vào cả 2 profile queries), `ProfileInfo.jsx` (dùng `profile.last_login_device` thay `navigator.userAgent`)
+
+- **Profile — Tích xanh trong FCW/RSB + nút bạn bè Facebook-style + panel "Giới thiệu về tài khoản":**
+  - Tích xanh hiển thị trong thanh tiêu đề Floating Chat Window và danh sách liên hệ Right Sidebar.
+  - Nhấn tên/avatar trong FCW header → điều hướng đến trang cá nhân của người dùng đó.
+  - Nhấn avatar trong bong bóng tin nhắn → điều hướng đến trang cá nhân người gửi.
+  - Nút bạn bè trên profile redesign theo Facebook: dropdown "Bạn bè / Đã gửi lời mời" với menu hủy/hủy kết bạn, không dùng `window.confirm`.
+  - Nhấn vào dòng ngày tham gia → mở panel "Giới thiệu về tài khoản này" (kiểu Twitter/X) gồm avatar, username, ngày tham gia, ngày xác thực (nếu có), nền tảng kết nối (web/mobile).
+  - **Backend:** `ConversationRepository.php` (thêm `is_verified` vào `getOtherParticipant()`), `ChatService.php` (thêm `other_is_verified` vào `enrichConversation()`).
+  - **Frontend:** `FloatingChatWindow.jsx` (+`Link` header, `VerifiedBadge`), `chat/MessageBubble.jsx` (avatar → `Link`), `RightSidebar.jsx` (+`VerifiedBadge`, `is_verified` từ `getMyFriends`), `graphql.js` (thêm `is_verified` vào `getMyFriends` query), `ProfileInfo.jsx` (Facebook friend buttons `.pfb-*`, about panel `createPortal`), `styles.css` (+`.pfb-*`, `.about-panel-*`, `.fcw-header-profile-link`).
+
+- **Tích xanh xác thực (Verified Badge) — v2:** Bổ sung chọn gói **1 tháng (500k) / 1 năm (5M, tiết kiệm 1M)** trong modal mua; thêm nút **Hủy tích xanh** (không hoàn tiền) với dialog xác nhận. Cập nhật huy hiệu cũng hiển thị trong kết quả tìm kiếm; `@handle` trên trang cá nhân nhấn để **sao chép**; xóa link `@handle` trùng lặp trên `.profile-x-meta`.
+  - **Backend:** `ProfileService.php` (+`cancelVerified`, `VERIFIED_PRICE_YEARLY`), `UserRepository.php` (+`cancelVerified`), `MutationType.php` (+mutation `cancelVerified`, `purchaseVerified` nhận arg `duration`)
+  - **Frontend:** `VerifiedPurchaseModal.jsx` (viết lại — plan picker + cancel flow), `graphql.js` (+`cancelVerified()`), `styles.css` (+`.verified-modal-plan-picker`, `.verified-plan-card`, `--danger`/`--ghost` button variants)
+
+- **Tích xanh xác thực (Verified Badge) — v1:** Huy hiệu xác thực kiểu Facebook hiện ngay tên người dùng trên bài đăng và trang cá nhân. Badge màu xám nếu chưa mua, màu xanh nếu đã xác thực. Nhấn vào badge (với tài khoản của mình) → mở modal mua từ số dư ví. Hết hạn tự động reset về xám.
+  - **Migration:** `backend/database/migrations/025_add_verified_status.sql` (thêm `is_verified`, `verified_until` vào bảng `users`)
+  - **Backend:** `UserRepository.php`, `ProfileService.php`, `PostRepository.php`, `PostType.php`, `ProfileType.php`, `UserType.php`, `SearchUserType.php`, `MutationType.php`
+  - **Frontend:** `components/VerifiedBadge.jsx` (NEW), `components/VerifiedPurchaseModal.jsx` (NEW), `PostCard.jsx`, `ProfileInfo.jsx`, `SearchPage.jsx`, `graphql.js`, `styles.css`
+
+- **Ban tài khoản — phía server + frontend:** Admin block user (`is_blocked = 1`) → đăng nhập bị chặn với thông báo "Tài khoản đã bị khóa"; token còn hiệu lực nhưng mọi REST call trả 403 `account_banned` → redirect tự động sang `/banned`. Trong GraphQL, `optionalAuth()` trả `null` cho blocked user nên họ bị coi là ẩn danh (không thể dùng mutation cần auth).
+  - **Backend:** `AuthMiddleware.php` (`requireAuth` check `is_blocked` → 403; `optionalAuth` trả `null` cho blocked), `AuthService.php` (đăng nhập check `is_blocked`)
+  - **Frontend:** `pages/BannedPage.jsx` (NEW), `App.jsx` (+route `/banned`), `services/api.js` (+`handleBanned()` bắt 403 `account_banned`), `pages/LoginPage.jsx` (`mapAuthError()` dịch error sang tiếng Việt)
+
+- **Chat — cải tiến UX:** Nút "tạo nhóm" cũ thay bằng menu dropdown (3 chấm) gồm "Nhắn tin mới" + "Tạo nhóm chat". "Nhắn tin mới" mở modal danh sách bạn bè để chọn → tạo/mở conversation 1-1. "Xóa đoạn chat" nay chỉ ẩn cục bộ (localStorage); khi đối phương nhắn lại, đoạn chat tự hiện lại. `ChatContext` sửa lỗi stale closure khi WS nhận tin trong conversation đã ẩn.
+  - **Frontend:** `pages/ChatPage.jsx` (hidden convs logic + menu), `components/chat/NewDirectMessageModal.jsx` (NEW), `components/chat/ConversationList.jsx` (text + icon dropdown), `contexts/ChatContext.jsx` (conversationsRef fix), `components/chat/CreateGroupModal.jsx` (redesign BI icons + check marks + search icon)
+
+- **CreatePostForm — mention highlight overlay:** Mentions dạng `@[username|id]` được highlight màu xanh trực tiếp trên textarea qua overlay (sync scroll). Nhấn Esc khi form mở → hủy form. Khi chọn mention, embed user ID để link đúng ngay cả khi username đổi sau.
+  - **Frontend:** `components/CreatePostForm.jsx` (`renderHighlight`, `.cpf-highlight-overlay`, `.cpf-mention-mark`, Esc handler)
+
+- **SearchPage — live suggestions + skeleton:** Gõ vào ô tìm kiếm → debounce 280ms → hiện dropdown gợi ý tức thì. Trong khi tải kết quả đầy đủ → skeleton card animation.
+  - **Frontend:** `pages/SearchPage.jsx` (suggestions state, `SkeletonCard`), `styles.css` (`.srcard-skeleton`, `.srcard-skel-*`)
+
+
+
 - **Friends — Redesign V2 theo JolyUI + Bootstrap Icons:** Trang `/friends` viết lại toàn bộ UI (logic GraphQL giữ nguyên). Hero card có **`BorderBeam` + `Meteors`** + gradient title animated; **3 stat chip** (Lời mời / Đã gửi / Tất cả bạn bè) dùng làm tab phụ với icon Bootstrap (`bi-person-plus-fill`, `bi-send-fill`, `bi-people-fill`). Segmented tabs pill-style chuyển sang gradient riêng cho từng tab khi active (đỏ-cam cho lời mời, xanh-indigo cho đã gửi, xanh-lá-xanh cho friends). Mỗi user card wrap bằng **`MagicCard`** (spotlight theo chuột); card pending có **`BorderBeam`** đỏ-cam để nhấn mạnh urgency, avatar zoom hover + icon `bi-arrow-up-right-circle-fill` overlay. Nút *Xác nhận* dùng **`ShimmerButton`** gradient xanh-lá; *Xóa/Hủy* dùng icon button tone đỏ. Empty state là MagicCard có Meteors + icon Bootstrap to + ShimmerButton CTA `/search`. Toàn bộ icon là Bootstrap Icons (`bi-*`).
   - **Files sửa:** `frontend/src/pages/FriendsPage.jsx` (rewrite full ~280 dòng, import 4 component JolyUI, dùng class namespace `.friends-page--v2`), `frontend/src/styles.css` (+ block `FRIENDS PAGE — V2 (JolyUI + Bootstrap Icons)` ~370 dòng, đầy đủ light/dark + responsive ≤720px). README cập nhật mục này.
   - **Behavior:** Block legacy `.friends-*` (line ~6306) vẫn tồn tại để không vỡ chỗ tham chiếu khác; v2 dùng namespace mới. Dark mode dùng đen tuyệt đối `#000` đồng bộ với login + nav settings panel.

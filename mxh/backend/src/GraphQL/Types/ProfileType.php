@@ -27,6 +27,12 @@ class ProfileType extends ObjectType
                 'friendship_status' => Type::string(),
                 'friendship_id' => Type::int(),
                 'friendship_is_sender' => Type::boolean(),
+                'is_verified' => [
+                    'type' => Type::boolean(),
+                    'resolve' => fn($row) => !empty($row['is_verified']),
+                ],
+                'verified_until' => Type::string(),
+                'last_login_device' => Type::string(),
                 'created_at' => Type::string(),
             ],
         ]);

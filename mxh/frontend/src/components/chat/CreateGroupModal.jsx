@@ -110,9 +110,12 @@ export default function CreateGroupModal({ onClose, onCreated }) {
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget && !submitting) onClose?.(); }}>
       <div className="modal create-group-modal" role="dialog" aria-label="Tạo nhóm chat">
+
         <div className="modal-header">
-          <h3>Tạo nhóm chat mới</h3>
-          <button type="button" className="modal-close" onClick={() => !submitting && onClose?.()} aria-label="Đóng">×</button>
+          <h3>Tạo nhóm chat</h3>
+          <button type="button" className="modal-close" onClick={() => !submitting && onClose?.()} aria-label="Đóng">
+            <i className="bi bi-x-lg"></i>
+          </button>
         </div>
 
         <div className="modal-body">
@@ -120,21 +123,24 @@ export default function CreateGroupModal({ onClose, onCreated }) {
             <label className="cg-avatar-picker">
               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarSelect} disabled={submitting} />
               <div className="cg-avatar">
-                {avatarPreview ? (
-                  <img src={avatarPreview} alt="" />
-                ) : (
-                  <span className="cg-avatar-placeholder">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M14 4l2.59 3H21v12H3V7h4.41L10 4h4m1.5-2h-7L5.91 5H2C.9 5 0 5.9 0 7v12c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.91L15.5 2zm-3.5 6a4 4 0 100 8 4 4 0 000-8z"/></svg>
-                  </span>
-                )}
+                {avatarPreview
+                  ? <img src={avatarPreview} alt="" />
+                  : <i className="bi bi-people-fill cg-avatar-placeholder"></i>
+                }
+                <div className="cg-avatar-camera">
+                  <i className="bi bi-camera-fill"></i>
+                </div>
               </div>
               <span className="cg-avatar-edit">Đổi ảnh</span>
             </label>
+
             <div className="cg-title-wrap">
+              <label className="cg-title-label" htmlFor="cg-group-name">Tên nhóm</label>
               <input
+                id="cg-group-name"
                 type="text"
                 className="cg-title-input"
-                placeholder={autoTitle || 'Tên nhóm chat'}
+                placeholder={autoTitle || 'Nhập tên nhóm...'}
                 value={title}
                 onChange={(e) => setTitle(e.target.value.slice(0, 100))}
                 disabled={submitting}
@@ -146,16 +152,21 @@ export default function CreateGroupModal({ onClose, onCreated }) {
 
           <div className="cg-section">
             <div className="cg-section-title">
-              Thành viên ({selected.size} đã chọn — cần ít nhất 2)
+              Thành viên
+              {selected.size > 0 && <span className="cg-section-badge">{selected.size}</span>}
             </div>
-            <input
-              type="search"
-              className="cg-search"
-              placeholder="Tìm bạn bè..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              disabled={submitting}
-            />
+
+            <div className="cg-search-wrap">
+              <i className="bi bi-search cg-search-icon"></i>
+              <input
+                type="search"
+                className="cg-search"
+                placeholder="Tìm bạn bè..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
 
             {selectedList.length > 0 && (
               <div className="cg-chips">
@@ -163,17 +174,19 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                   <span key={f.id} className="cg-chip">
                     <img src={f.avatar ? `${API_ORIGIN}${f.avatar}` : DEFAULT_AVATAR} alt="" />
                     <span className="cg-chip-name">{f.username}</span>
-                    <button type="button" onClick={() => toggleSelect(f.id)} aria-label="Bỏ chọn">×</button>
+                    <button type="button" onClick={() => toggleSelect(f.id)} aria-label="Bỏ chọn">
+                      <i className="bi bi-x"></i>
+                    </button>
                   </span>
                 ))}
               </div>
             )}
 
             <div className="cg-friend-list">
-              {loading && <div className="cg-empty">Đang tải bạn bè...</div>}
+              {loading && <div className="cg-empty">Đang tải...</div>}
               {!loading && filtered.length === 0 && (
                 <div className="cg-empty">
-                  {search ? `Không tìm thấy "${search}"` : 'Bạn chưa có bạn bè để mời vào nhóm'}
+                  {search ? `Không tìm thấy "${search}"` : 'Chưa có bạn bè để mời vào nhóm'}
                 </div>
               )}
               {!loading && filtered.map(f => {
@@ -185,8 +198,13 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                       src={f.avatar ? `${API_ORIGIN}${f.avatar}` : DEFAULT_AVATAR}
                       alt=""
                     />
-                    <span className="cg-friend-name">{f.username}</span>
-                    {f.custom_url && <span className="cg-friend-url">@{f.custom_url}</span>}
+                    <div className="cg-friend-info">
+                      <span className="cg-friend-name">{f.username}</span>
+                      {f.custom_url && <span className="cg-friend-url">@{f.custom_url}</span>}
+                    </div>
+                    <div className={`cg-check ${checked ? 'cg-check--on' : ''}`}>
+                      {checked && <i className="bi bi-check2"></i>}
+                    </div>
                     <input
                       type="checkbox"
                       checked={checked}
@@ -199,7 +217,12 @@ export default function CreateGroupModal({ onClose, onCreated }) {
             </div>
           </div>
 
-          {error && <div className="cg-error">{error}</div>}
+          {error && (
+            <div className="cg-error">
+              <i className="bi bi-exclamation-circle-fill"></i>
+              {error}
+            </div>
+          )}
         </div>
 
         <div className="modal-footer">
@@ -215,6 +238,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
             {submitting ? 'Đang tạo...' : 'Tạo nhóm'}
           </button>
         </div>
+
       </div>
     </div>
   );

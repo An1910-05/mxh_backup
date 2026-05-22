@@ -29,6 +29,10 @@ class PostType extends ObjectType
                 'comment_count' => Type::int(),
                 'is_liked' => Type::boolean(),
                 'top_reactions' => Type::listOf(Type::string()),
+                'user_is_verified' => [
+                    'type' => Type::boolean(),
+                    'resolve' => fn($row) => !empty($row['user_is_verified']),
+                ],
                 'created_at' => Type::string(),
                 'updated_at' => Type::string(),
             ],

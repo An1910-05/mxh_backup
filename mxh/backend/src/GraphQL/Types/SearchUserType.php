@@ -17,6 +17,10 @@ class SearchUserType extends ObjectType
                 'email' => Type::string(),
                 'custom_url' => Type::string(),
                 'avatar' => Type::string(),
+                'is_verified' => [
+                    'type' => Type::boolean(),
+                    'resolve' => fn($row) => !empty($row['is_verified']),
+                ],
                 'created_at' => Type::string(),
             ],
         ]);

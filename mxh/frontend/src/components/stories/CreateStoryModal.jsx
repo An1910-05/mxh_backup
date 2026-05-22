@@ -67,8 +67,8 @@ export default function CreateStoryModal({ onClose, onCreated }) {
       <div className="story-modal" onClick={(e) => e.stopPropagation()}>
         <div className="story-modal-header">
           <h3>Tạo tin</h3>
-          <button className="story-modal-close" onClick={onClose}>
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M18.3 5.71a1 1 0 00-1.42 0L12 10.59 7.12 5.71a1 1 0 00-1.42 1.42L10.59 12l-4.89 4.88a1 1 0 001.42 1.42L12 13.41l4.88 4.89a1 1 0 001.42-1.42L13.41 12l4.89-4.88a1 1 0 000-1.41z" /></svg>
+          <button type="button" className="story-modal-close" onClick={onClose} aria-label="Đóng">
+            <i className="bi bi-x-lg" aria-hidden="true" />
           </button>
         </div>
 
@@ -82,15 +82,15 @@ export default function CreateStoryModal({ onClose, onCreated }) {
                 onChange={handleFileSelect}
                 style={{ display: 'none' }}
               />
-              <button className="story-modal-pick-btn story-modal-pick-photo" onClick={() => { fileRef.current.accept = 'image/jpeg,image/png,image/gif,image/webp'; fileRef.current.click(); }}>
+              <button type="button" className="story-modal-pick-btn story-modal-pick-photo" onClick={() => { fileRef.current.accept = 'image/jpeg,image/png,image/gif,image/webp'; fileRef.current.click(); }}>
                 <div className="story-modal-pick-icon">
-                  <svg viewBox="0 0 24 24" width="28" height="28" fill="#fff"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#fff" strokeWidth="2" fill="none" /><circle cx="8.5" cy="8.5" r="1.5" fill="#fff" /><path d="M21 15l-5-5L5 21" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none" /></svg>
+                  <i className="bi bi-image-fill" aria-hidden="true" />
                 </div>
                 <span>Tạo tin bằng ảnh</span>
               </button>
-              <button className="story-modal-pick-btn story-modal-pick-video" onClick={() => { fileRef.current.accept = 'video/mp4,video/webm,video/quicktime'; fileRef.current.click(); }}>
+              <button type="button" className="story-modal-pick-btn story-modal-pick-video" onClick={() => { fileRef.current.accept = 'video/mp4,video/webm,video/quicktime'; fileRef.current.click(); }}>
                 <div className="story-modal-pick-icon">
-                  <svg viewBox="0 0 24 24" width="28" height="28" fill="#fff"><path d="M8 5v14l11-7L8 5z" /></svg>
+                  <i className="bi bi-camera-video-fill" aria-hidden="true" />
                 </div>
                 <span>Tạo tin bằng video</span>
               </button>
@@ -105,7 +105,12 @@ export default function CreateStoryModal({ onClose, onCreated }) {
             </div>
           )}
 
-          {error && <div className="story-modal-error">{error}</div>}
+          {error && (
+            <div className="story-modal-error">
+              <i className="bi bi-exclamation-circle-fill" aria-hidden="true" />
+              {error}
+            </div>
+          )}
         </div>
 
         {mediaPreview && (

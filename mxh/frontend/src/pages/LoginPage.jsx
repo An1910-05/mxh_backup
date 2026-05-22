@@ -9,6 +9,16 @@ import { MagicCard } from '../components/ui/magic-card';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+function mapAuthError(message) {
+  if (!message) return 'Đã xảy ra lỗi. Vui lòng thử lại.';
+  if (message === 'account_banned') return 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.';
+  if (message === 'Invalid credentials') return 'Email hoặc mật khẩu không chính xác.';
+  if (message === 'User not found') return 'Không tìm thấy tài khoản với email này.';
+  if (message === 'Email already exists') return 'Email này đã được đăng ký.';
+  if (/network|fetch|failed to fetch/i.test(message)) return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.';
+  return message;
+}
+
 const MONTHS = [
   'Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
   'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12',
@@ -84,7 +94,7 @@ export default function LoginPage() {
       }
       navigate('/');
     } catch (err) {
-      setError(err.message);
+      setError(mapAuthError(err.message));
     } finally {
       setLoading(false);
     }
@@ -109,7 +119,7 @@ export default function LoginPage() {
       await loginWithGoogle(googleCredential, birthday, gender);
       navigate('/');
     } catch (err) {
-      setError(err.message);
+      setError(mapAuthError(err.message));
     } finally {
       setLoading(false);
     }
@@ -124,7 +134,7 @@ export default function LoginPage() {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError(err.message);
+      setError(mapAuthError(err.message));
     } finally {
       setLoading(false);
     }
@@ -151,7 +161,12 @@ export default function LoginPage() {
             <p className="auth-card-subtitle">Đăng ký với {googleEmail}</p>
           </div>
 
-          {error ? <div className="apple-alert apple-alert-danger auth-alert" role="alert">{error}</div> : null}
+          {error ? (
+          <div className="apple-alert apple-alert-danger auth-alert" role="alert">
+            <i className="bi bi-exclamation-circle-fill" aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        ) : null}
 
           <form className="auth-form" onSubmit={handleGoogleProfileSubmit}>
             <div className="auth-field-group">
@@ -234,7 +249,12 @@ export default function LoginPage() {
         <Meteors number={14} />
         <BorderBeam size={250} duration={10} colorFrom="#1877f2" colorTo="#9c40ff" />
 
-        {error ? <div className="apple-alert apple-alert-danger auth-alert" role="alert">{error}</div> : null}
+        {error ? (
+          <div className="apple-alert apple-alert-danger auth-alert" role="alert">
+            <i className="bi bi-exclamation-circle-fill" aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        ) : null}
 
         <form className="auth-form auth-form--stagger" onSubmit={handleSubmit}>
           <label className="sr-only" htmlFor="login-email">Email</label>

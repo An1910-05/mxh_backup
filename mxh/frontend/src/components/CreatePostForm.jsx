@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { createPost } from '../services/graphql';
 import { uploadFile } from '../services/api';
@@ -7,6 +8,31 @@ import { useMentionInput } from '../hooks/useMentionInput';
 import LocationPicker from './LocationPicker';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
+
+// Regex matches @[username|id] (new) or @username (legacy)
+const MENTION_RE = /(@\[[a-zA-Z0-9._]+\|\d+\]|@[a-zA-Z0-9._]+)/g;
+
+function renderHighlight(text) {
+  if (!text) return null;
+  const parts = text.split(MENTION_RE);
+  return parts.map((part, i) => {
+    const rich = part.match(/^@\[([a-zA-Z0-9._]+)\|(\d+)\]$/);
+    if (rich) {
+      const [, username, id] = rich;
+      // Invisible suffix keeps overlay width = textarea char count for correct cursor alignment
+      return (
+        <Link key={i} to={`/profile_id=${id}`} className="cpf-mention-mark">
+          @{username}<span aria-hidden="true" className="cpf-mention-pad">{`|${id}]`}</span>
+        </Link>
+      );
+    }
+    if (/^@[a-zA-Z0-9._]+$/.test(part)) {
+      return <span key={i} className="cpf-mention-mark">{part}</span>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 export default function CreatePostForm({ onPostCreated }) {
   const { user } = useAuth();
   const [content, setContent] = useState('');
@@ -31,6 +57,30 @@ export default function CreatePostForm({ onPostCreated }) {
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const fileRef = useRef(null);
   const textRef = useRef(null);
+  const overlayRef = useRef(null);
+
+  const handleCancel = () => {
+    setContent('');
+    setMediaFile(null); setMediaPreview(null); setMediaType(null);
+    if (fileRef.current) fileRef.current.value = '';
+    setLocationLabel(''); setGeoLat(null); setGeoLng(null);
+    setError('');
+    closeMention();
+    setExpanded(false);
+  };
+
+  // Nhấn Esc khi form đang mở → huỷ
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (showLocationPicker) return;
+      if (showMention) { closeMention(); return; }
+      handleCancel();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [expanded, showMention, showLocationPicker]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -104,7 +154,7 @@ export default function CreatePostForm({ onPostCreated }) {
     mentionChange(e);
   };
 
-  const handleMentionSelect = (username) => {
+  const handleMentionSelect = (username, userId) => {
     const el = textRef.current;
     if (!el) return;
     const current = el.value;
@@ -114,7 +164,8 @@ export default function CreatePostForm({ onPostCreated }) {
     if (atIdx < 0) return;
     const before = current.slice(0, atIdx);
     const after = current.slice(caret);
-    const insert = `@${username} `;
+    // Embed user ID so the mention links to a specific account even after username changes
+    const insert = userId ? `@[${username}|${userId}] ` : `@${username} `;
     const newValue = before + insert + after;
     setContent(newValue);
     closeMention();
@@ -144,14 +195,22 @@ export default function CreatePostForm({ onPostCreated }) {
             <button type="button" className="create-post-fb-placeholder" onClick={handleExpand}>{displayName} ơi, bạn đang nghĩ gì thế?</button>
           ) : (
             <div className="create-post-mention-wrap">
+              <div
+                ref={overlayRef}
+                className="cpf-highlight-overlay"
+                aria-hidden="true"
+              >
+                {renderHighlight(content)}{'​'}
+              </div>
               <textarea
                 ref={textRef}
                 value={content}
                 onChange={handleContentChange}
                 onBlur={() => setTimeout(closeMention, 150)}
+                onScroll={() => { if (overlayRef.current) overlayRef.current.scrollTop = textRef.current.scrollTop; }}
                 placeholder={`${displayName} ơi, bạn đang nghĩ gì thế? (gõ @ để tag bạn bè)`}
                 rows={3}
-                className="create-post-fb-textarea"
+                className="create-post-fb-textarea cpf-textarea-overlay"
               />
               {showMention && mentionResults.length > 0 && (
                 <div className="mention-dropdown mention-dropdown--post">
@@ -160,7 +219,7 @@ export default function CreatePostForm({ onPostCreated }) {
                       type="button"
                       key={u.id}
                       className="mention-item"
-                      onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u.username); }}
+                      onMouseDown={(e) => { e.preventDefault(); handleMentionSelect(u.username, u.id); }}
                     >
                       <img src={u.avatar ? `${API_ORIGIN}${u.avatar}` : DEFAULT_AVATAR} alt="" />
                       <span className="mention-name">{u.username}</span>
@@ -174,7 +233,9 @@ export default function CreatePostForm({ onPostCreated }) {
 
         {mediaPreview && (
           <div className="create-post-fb-media-preview">
-            <button type="button" onClick={removeMedia} className="create-post-fb-media-remove">✕</button>
+            <button type="button" onClick={removeMedia} className="create-post-fb-media-remove" aria-label="Xóa media">
+              <i className="bi bi-x-lg" aria-hidden="true" />
+            </button>
             {mediaType === 'image' ? <img src={mediaPreview} alt="Preview" /> : <video src={mediaPreview} controls />}
           </div>
         )}
@@ -185,12 +246,12 @@ export default function CreatePostForm({ onPostCreated }) {
         <div className="create-post-fb-actions">
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime" onChange={handleFileSelect} style={{display:'none'}} />
           <button type="button" className="create-post-fb-action" onClick={()=>fileRef.current?.click()}>
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#45bd62" strokeWidth="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="#45bd62"/><path d="M21 15l-5-5L5 21" stroke="#45bd62" strokeWidth="2" strokeLinecap="round"/></svg>
+            <i className="bi bi-image-fill" aria-hidden="true" />
             <span>Ảnh/video</span>
           </button>
           <button type="button" className="create-post-fb-action" onClick={pickLocation}>
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#45bd62" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span>📍 Vị trí</span>
+            <i className="bi bi-geo-alt-fill" aria-hidden="true" />
+            <span>Vị trí</span>
           </button>
         </div>
 
@@ -214,12 +275,17 @@ export default function CreatePostForm({ onPostCreated }) {
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                     </svg>
                     <span className="cpf-location-label">{locationLabel}</span>
-                    <button type="button" className="cpf-location-clear" onClick={clearLocation} title="Xóa vị trí">✕</button>
+                    <button type="button" className="cpf-location-clear" onClick={clearLocation} title="Xóa vị trí" aria-label="Xóa vị trí">
+                      <i className="bi bi-x-lg" aria-hidden="true" />
+                    </button>
                   </div>
                 </div>
               )}
             </div>
             <div className="create-post-fb-actions" style={{paddingTop:'8px'}}>
+              <button type="button" className="create-post-fb-cancel" onClick={handleCancel} disabled={loading}>
+                Hủy
+              </button>
               <button type="submit" className="create-post-fb-submit" disabled={loading || (!content.trim()&&!mediaFile&&!(locationLabel.trim()||geoLat!=null))}>
                 {uploading?'Đang tải...':loading?'Đang đăng...':'Đăng'}
               </button>

@@ -16,7 +16,7 @@ class UserRepository
 
     public function findById(int $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT u.id, u.username, u.email, u.custom_url, u.birthday, u.gender, u.balance, u.role, u.is_blocked, u.is_seller, u.created_at, u.updated_at, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = ?');
+        $stmt = $this->db->prepare('SELECT u.id, u.username, u.email, u.custom_url, u.birthday, u.gender, u.balance, u.role, u.is_blocked, u.is_seller, u.is_verified, u.verified_until, u.last_login_device, u.created_at, u.updated_at, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = ?');
         $stmt->execute([$id]);
         return $stmt->fetch() ?: null;
     }
@@ -44,7 +44,7 @@ class UserRepository
 
     public function findByCustomUrl(string $url): ?array
     {
-        $stmt = $this->db->prepare('SELECT u.id, u.username, u.email, u.custom_url, u.created_at, u.updated_at, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.custom_url = ?');
+        $stmt = $this->db->prepare('SELECT u.id, u.username, u.email, u.custom_url, u.is_verified, u.verified_until, u.created_at, u.updated_at, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.custom_url = ?');
         $stmt->execute([$url]);
         return $stmt->fetch() ?: null;
     }
@@ -68,7 +68,7 @@ class UserRepository
         $like = '%' . $query . '%';
         if (ctype_digit($query)) {
             $stmt = $this->db->prepare(
-                'SELECT u.id, u.username, u.email, u.custom_url, u.created_at, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = u.id) AS avatar
+                'SELECT u.id, u.username, u.email, u.custom_url, u.is_verified, u.created_at, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = u.id) AS avatar
                  FROM users u
                  WHERE u.id = ? OR u.username LIKE ? OR u.custom_url LIKE ?
                  ORDER BY (u.id = ?) DESC, u.username ASC
@@ -77,7 +77,7 @@ class UserRepository
             $stmt->execute([(int)$query, $like, $like, (int)$query, $limit, $offset]);
         } else {
             $stmt = $this->db->prepare(
-                'SELECT u.id, u.username, u.email, u.custom_url, u.created_at, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = u.id) AS avatar
+                'SELECT u.id, u.username, u.email, u.custom_url, u.is_verified, u.created_at, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = u.id) AS avatar
                  FROM users u
                  WHERE u.username LIKE ? OR u.custom_url LIKE ?
                  ORDER BY u.username ASC
@@ -163,5 +163,37 @@ class UserRepository
             $stmt->execute([$url]);
         }
         return (int) $stmt->fetchColumn() > 0;
+    }
+
+    public function expireVerifiedIfNeeded(int $userId): void
+    {
+        $this->db->prepare(
+            'UPDATE users SET is_verified = 0, verified_until = NULL WHERE id = ? AND verified_until IS NOT NULL AND verified_until < NOW()'
+        )->execute([$userId]);
+    }
+
+    public function setVerified(int $userId, string $until): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET is_verified = 1, verified_until = ? WHERE id = ?');
+        return $stmt->execute([$until, $userId]);
+    }
+
+    public function deductBalance(int $userId, int $amount): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?');
+        $stmt->execute([$amount, $userId, $amount]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function cancelVerified(int $userId): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET is_verified = 0, verified_until = NULL WHERE id = ?');
+        return $stmt->execute([$userId]);
+    }
+
+    public function updateLoginDevice(int $userId, string $device): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET last_login_device = ? WHERE id = ?');
+        return $stmt->execute([$device, $userId]);
     }
 }

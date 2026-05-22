@@ -200,6 +200,15 @@ class CaroRepository
         $stmt->execute([$userId]);
     }
 
+    public function setRematchRoomId(int $roomId, int $rematchRoomId): bool
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE caro_rooms SET rematch_room_id = ? WHERE id = ?'
+        );
+        $stmt->execute([$rematchRoomId, $roomId]);
+        return $stmt->rowCount() > 0;
+    }
+
     /** Xoá các phòng waiting quá X phút (dùng PHP timestamp để tránh lỗi INTERVAL binding). */
     public function cleanupStaleWaitingRooms(int $olderThanMinutes = 15): void
     {

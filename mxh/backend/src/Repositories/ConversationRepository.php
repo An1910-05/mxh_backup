@@ -194,7 +194,7 @@ class ConversationRepository
     public function getOtherParticipant(int $conversationId, int $userId): ?array
     {
         $stmt = $this->db->prepare('
-            SELECT u.id, u.username, u.custom_url, p.avatar
+            SELECT u.id, u.username, u.custom_url, u.is_verified, p.avatar
             FROM conversation_participants cp
             JOIN users u ON cp.user_id = u.id
             LEFT JOIN profiles p ON u.id = p.user_id

@@ -202,25 +202,19 @@ export default function FriendsPage() {
               <UserCard
                 key={r.friendship_id}
                 user={r}
-                link={`/profile_id=${r.id}`}
+                link={r.custom_url ? `/${r.custom_url}` : `/profile_id=${r.id}`}
                 subtitle={timeAgo(r.request_date)}
                 subtitleIcon="bi-clock-history"
                 actions={
                   <>
-                    <ShimmerButton
-                      onClick={() => handleAccept(r.friendship_id)}
-                      background="linear-gradient(135deg, #22c55e, #16a34a)"
-                      className="friends-v2-shimmer"
-                    >
+                    <button type="button" className="friends-v2-accept-btn" onClick={() => handleAccept(r.friendship_id)}>
                       <i className="bi bi-check-circle-fill" aria-hidden="true" />
                       <span>Xác nhận</span>
-                    </ShimmerButton>
-                    <IconActionButton
-                      icon="bi-x-lg"
-                      label="Xóa lời mời"
-                      tone="danger"
-                      onClick={() => handleReject(r.friendship_id)}
-                    />
+                    </button>
+                    <button type="button" className="friends-v2-reject-btn" onClick={() => handleReject(r.friendship_id)}>
+                      <i className="bi bi-x-lg" aria-hidden="true" />
+                      <span>Xóa lời mời</span>
+                    </button>
                   </>
                 }
               />
@@ -244,7 +238,7 @@ export default function FriendsPage() {
               <UserCard
                 key={r.friendship_id}
                 user={r}
-                link={`/profile_id=${r.id}`}
+                link={r.custom_url ? `/${r.custom_url}` : `/profile_id=${r.id}`}
                 subtitle={`Đã gửi ${timeAgo(r.request_date)}`}
                 subtitleIcon="bi-send-check"
                 actions={
@@ -280,7 +274,7 @@ export default function FriendsPage() {
                   user={f}
                   link={link}
                   subtitle={f.custom_url ? formatHandleDisplay(f.custom_url) : undefined}
-                  subtitleIcon={f.custom_url ? 'bi-at' : null}
+                  subtitleIcon={f.custom_url ? 'bi-person-badge' : null}
                   actions={
                     <Link to={link} className="friends-v2-view-btn">
                       <i className="bi bi-box-arrow-up-right" aria-hidden="true" />

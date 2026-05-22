@@ -1,6 +1,6 @@
 import { graphqlFetch } from './api';
 
-const POST_FIELDS = `id user_id username user_avatar content media_url media_type media_width media_height location_label latitude longitude like_count comment_count is_liked top_reactions created_at`;
+const POST_FIELDS = `id user_id username user_avatar user_is_verified content media_url media_type media_width media_height location_label latitude longitude like_count comment_count is_liked top_reactions created_at`;
 const COMMENT_FIELDS = `id post_id parent_id user_id username user_avatar content created_at media_url media_type media_width media_height`;
 
 
@@ -25,12 +25,12 @@ export async function getUserPosts(userId, limit = 20, page = 1) {
 }
 
 export async function getProfile(userId) {
-  const data = await graphqlFetch(`query Profile(`+`$userId: Int!) { profile(userId: $userId) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender created_at } }`, { userId: parseInt(userId) });
+  const data = await graphqlFetch(`query Profile(`+`$userId: Int!) { profile(userId: $userId) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender is_verified verified_until last_login_device created_at } }`, { userId: parseInt(userId) });
   return data.profile;
 }
 
 export async function getProfileByCustomUrl(url) {
-  const data = await graphqlFetch(`query ProfileByCustomUrl(`+`$url: String!) { profileByCustomUrl(url: $url) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender created_at } }`, { url });
+  const data = await graphqlFetch(`query ProfileByCustomUrl(`+`$url: String!) { profileByCustomUrl(url: $url) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender is_verified verified_until last_login_device created_at } }`, { url });
   return data.profileByCustomUrl;
 }
 
@@ -118,7 +118,7 @@ export async function unfollowUser(userId) {
 }
 
 export async function searchUsers(query, limit = 20) {
-  const data = await graphqlFetch(`query SearchUsers(`+`$query: String!, $limit: Int) { searchUsers(query: $query, limit: $limit) { id username email custom_url avatar created_at } }`, { query, limit });
+  const data = await graphqlFetch(`query SearchUsers(`+`$query: String!, $limit: Int) { searchUsers(query: $query, limit: $limit) { id username email custom_url avatar is_verified created_at } }`, { query, limit });
   return data.searchUsers;
 }
 
@@ -153,7 +153,7 @@ export async function unfriend(userId) {
 }
 
 export async function getMyFriends() {
-  const data = await graphqlFetch(`query { myFriends { id username email custom_url avatar created_at } }`);
+  const data = await graphqlFetch(`query { myFriends { id username email custom_url avatar is_verified created_at } }`);
   return data.myFriends;
 }
 
@@ -168,17 +168,17 @@ export async function getSentFriendRequests() {
 }
 
 export async function getUserFriends(userId) {
-  const data = await graphqlFetch(`query UserFriends(`+`$userId: Int!) { userFriends(userId: $userId) { id username custom_url } }`, { userId: parseInt(userId) });
+  const data = await graphqlFetch(`query UserFriends(`+`$userId: Int!) { userFriends(userId: $userId) { id username custom_url avatar } }`, { userId: parseInt(userId) });
   return data.userFriends;
 }
 
 export async function getUserFollowers(userId) {
-  const data = await graphqlFetch(`query UserFollowers(`+`$userId: Int!) { userFollowers(userId: $userId) { id username custom_url } }`, { userId: parseInt(userId) });
+  const data = await graphqlFetch(`query UserFollowers(`+`$userId: Int!) { userFollowers(userId: $userId) { id username custom_url avatar } }`, { userId: parseInt(userId) });
   return data.userFollowers;
 }
 
 export async function getUserFollowing(userId) {
-  const data = await graphqlFetch(`query UserFollowing(`+`$userId: Int!) { userFollowing(userId: $userId) { id username custom_url } }`, { userId: parseInt(userId) });
+  const data = await graphqlFetch(`query UserFollowing(`+`$userId: Int!) { userFollowing(userId: $userId) { id username custom_url avatar } }`, { userId: parseInt(userId) });
   return data.userFollowing;
 }
 
@@ -292,6 +292,7 @@ const CARO_ROOM_FIELDS = `
   creator { id username custom_url avatar }
   opponent { id username custom_url avatar }
   viewer_symbol is_my_turn
+  rematch_room_id rematch_room_code rematch_initiated_by_id
   created_at updated_at last_move_at
 `;
 
@@ -380,4 +381,40 @@ export async function caroLeaveRoom(roomId) {
     { roomId: parseInt(roomId) }
   );
   return data.caroLeaveRoom;
+}
+
+export async function caroRequestRematch(roomId) {
+  const data = await graphqlFetch(
+    `mutation CaroRequestRematch($roomId: Int!) {
+       caroRequestRematch(roomId: $roomId) { ${CARO_ROOM_FIELDS} }
+     }`,
+    { roomId: parseInt(roomId) }
+  );
+  return data.caroRequestRematch;
+}
+
+export async function caroDeclineRematch(roomId) {
+  const data = await graphqlFetch(
+    `mutation CaroDeclineRematch($roomId: Int!) {
+       caroDeclineRematch(roomId: $roomId) { ${CARO_ROOM_FIELDS} }
+     }`,
+    { roomId: parseInt(roomId) }
+  );
+  return data.caroDeclineRematch;
+}
+
+// === Tích xanh xác thực ===
+const PROFILE_VERIFIED_FIELDS = `user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender is_verified verified_until created_at`;
+
+export async function purchaseVerified(duration = 'monthly') {
+  const data = await graphqlFetch(
+    `mutation PurchaseVerified($duration: String) { purchaseVerified(duration: $duration) { ${PROFILE_VERIFIED_FIELDS} } }`,
+    { duration }
+  );
+  return data.purchaseVerified;
+}
+
+export async function cancelVerified() {
+  const data = await graphqlFetch(`mutation { cancelVerified { ${PROFILE_VERIFIED_FIELDS} } }`);
+  return data.cancelVerified;
 }

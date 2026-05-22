@@ -12,15 +12,27 @@ import FacebookEmoji from './FacebookEmoji';
 import ReactionDetailsPopup from './ReactionDetailsPopup';
 import { getPostLikers } from '../services/graphql';
 import { API_ORIGIN } from '../config';
+import VerifiedBadge from './VerifiedBadge';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
 export function renderTextWithMentions(text) {
   if (!text) return null;
-  const parts = text.split(/(@[a-zA-Z0-9._]+)/g);
+  const parts = text.split(/(@\[[a-zA-Z0-9._]+\|\d+\]|@[a-zA-Z0-9._]+)/g);
   return parts.map((part, i) => {
+    // New format: @[username|id] — navigate by ID (reliable)
+    const rich = part.match(/^@\[([a-zA-Z0-9._]+)\|(\d+)\]$/);
+    if (rich) {
+      const [, username, id] = rich;
+      return (
+        <Link key={i} to={`/profile_id=${id}`} className="post-mention" onClick={(e) => e.stopPropagation()}>
+          @{username}
+        </Link>
+      );
+    }
+    // Legacy format: @username — no ID stored, render as plain styled text (no link)
     if (/^@[a-zA-Z0-9._]+$/.test(part)) {
-      return <span key={i} className="post-mention">{part}</span>;
+      return <span key={i} className="post-mention post-mention--legacy">{part}</span>;
     }
     return part;
   });
@@ -284,6 +296,7 @@ export default function PostCard({ post, onDelete }) {
           <div className="post-meta">
             <div className="post-username-line">
               <Link to={`/profile_id=${post.user_id}`} className="post-username">{post.username}</Link>
+              <VerifiedBadge isVerified={!!post.user_is_verified} ownerId={post.user_id} size={15} />
               {post.location_label && (
                 <span className="post-location-inline">
                   {' '}đang ở <span className="post-location-inline-name">{post.location_label}</span>

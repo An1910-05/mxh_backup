@@ -708,6 +708,49 @@ class MutationType extends ObjectType
                     },
                 ],
 
+                'caroRequestRematch' => [
+                    'type' => TypeRegistry::caroRoom(),
+                    'args' => ['roomId' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new CaroService();
+                        return $service->requestRematch((int) $context['user']['id'], (int) $args['roomId']);
+                    },
+                ],
+
+                'caroDeclineRematch' => [
+                    'type' => TypeRegistry::caroRoom(),
+                    'args' => ['roomId' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new CaroService();
+                        return $service->declineRematch((int) $context['user']['id'], (int) $args['roomId']);
+                    },
+                ],
+
+                // ── Tích xanh xác thực ──────────────────────────────────
+                'purchaseVerified' => [
+                    'type' => TypeRegistry::profile(),
+                    'args' => [
+                        'duration' => Type::string(), // 'monthly' | 'yearly'
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service  = new ProfileService();
+                        $duration = $args['duration'] ?? 'monthly';
+                        return $service->purchaseVerified((int) $context['user']['id'], $duration);
+                    },
+                ],
+
+                'cancelVerified' => [
+                    'type' => TypeRegistry::profile(),
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ProfileService();
+                        return $service->cancelVerified((int) $context['user']['id']);
+                    },
+                ],
+
             ],
         ]);
     }

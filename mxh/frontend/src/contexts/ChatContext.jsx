@@ -14,6 +14,9 @@ export function ChatProvider({ children }) {
   const [onlineUsers, setOnlineUsers] = useState({});
   const [typingUsers, setTypingUsers] = useState({});
   const typingTimers = useRef({});
+  // Always up-to-date reference used inside WS callbacks to avoid stale closures
+  const conversationsRef = useRef([]);
+  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
   useEffect(() => {
     if (!token) return;
@@ -33,6 +36,11 @@ export function ChatProvider({ children }) {
   useEffect(() => {
     const unsubs = [
       on('updateNewMessage', (msg) => {
+        // If conversation isn't in current list (e.g. was hidden then removed), reload to surface it
+        if (!conversationsRef.current.some(c => c.id == msg.conversation_id)) {
+          loadConversations();
+          return;
+        }
         setConversations(prev => {
           const updated = prev.map(c => {
             if (c.id == msg.conversation_id) {
@@ -93,6 +101,10 @@ export function ChatProvider({ children }) {
       // Sender's own message — server only sends 'ack' (not updateNewMessage) to the sender
       on('ack', (msg) => {
         if (!msg || !msg.conversation_id) return;
+        if (!conversationsRef.current.some(c => c.id == msg.conversation_id)) {
+          loadConversations();
+          return;
+        }
         setConversations(prev => {
           const updated = prev.map(c => {
             if (c.id == msg.conversation_id) {

@@ -53,6 +53,12 @@ class AuthService
             throw new \RuntimeException('Invalid credentials', 401);
         }
 
+        if (!empty($user['is_blocked'])) {
+            throw new \RuntimeException('account_banned', 403);
+        }
+
+        $this->userRepo->updateLoginDevice($user['id'], self::detectDevice());
+
         $token = JWTHelper::encode(['user_id' => $user['id']]);
 
         unset($user['password_hash']);
@@ -61,6 +67,14 @@ class AuthService
             'user' => $user,
             'token' => $token,
         ];
+    }
+
+    private static function detectDevice(): string
+    {
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        return preg_match('/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua)
+            ? 'mobile'
+            : 'web';
     }
 
     public function googleLogin(string $idToken, ?string $birthday = null, ?string $gender = null): array
@@ -80,6 +94,7 @@ class AuthService
 
         $user = $this->userRepo->findByGoogleId($googleId);
         if ($user) {
+            $this->userRepo->updateLoginDevice($user['id'], self::detectDevice());
             $token = JWTHelper::encode(['user_id' => $user['id']]);
             unset($user['password_hash']);
             return ['user' => $user, 'token' => $token];
@@ -88,6 +103,7 @@ class AuthService
         $user = $this->userRepo->findByEmail($email);
         if ($user) {
             $this->userRepo->linkGoogleId($user['id'], $googleId);
+            $this->userRepo->updateLoginDevice($user['id'], self::detectDevice());
             $token = JWTHelper::encode(['user_id' => $user['id']]);
             unset($user['password_hash']);
             return ['user' => $user, 'token' => $token];

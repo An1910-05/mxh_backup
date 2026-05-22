@@ -13,6 +13,11 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+function handleBanned() {
+  localStorage.removeItem('token');
+  window.location.replace('/banned');
+}
+
 export async function restFetch(endpoint, options = {}) {
   const res = await fetch(`${API_URL}${endpoint}`, {
     ...options,
@@ -24,6 +29,11 @@ export async function restFetch(endpoint, options = {}) {
   });
 
   const data = await res.json();
+
+  if (res.status === 403 && data.message === 'account_banned') {
+    handleBanned();
+    throw new Error('account_banned');
+  }
 
   if (!res.ok) {
     throw new Error(data.message || 'Request failed');

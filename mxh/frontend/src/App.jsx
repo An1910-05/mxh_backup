@@ -43,6 +43,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminPosts from './pages/admin/AdminPosts';
 import AdminTransactions from './pages/admin/AdminTransactions';
+import BannedPage from './pages/BannedPage';
 
 const THEME_STORAGE_KEY = 'mxh-theme-mode';
 
@@ -61,7 +62,7 @@ function getInitialTheme() {
 function AppShell({ children }) {
   const isMobile = useIsMobile();
   const location = useLocation();
-  const isAuthRoute = ['/login', '/register', '/forgot-password', '/reset-password'].includes(location.pathname);
+  const isAuthRoute = ['/login', '/register', '/forgot-password', '/reset-password', '/banned'].includes(location.pathname);
   const [themeMode, setThemeMode] = useState(getInitialTheme);
 
   useEffect(() => {
@@ -125,6 +126,7 @@ export default function App() {
             <Route path="*" element={
               <AppShell>
                 <Routes>
+                  <Route path="/banned" element={<BannedPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />

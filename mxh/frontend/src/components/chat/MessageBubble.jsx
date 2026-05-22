@@ -412,13 +412,13 @@ export default function MessageBubble({ message, isOwn, isGroup = false, showAva
         onMouseLeave={() => { if (!showMenu) setHoverRow(false); }}
       >
         {!isOwn && showAvatar && (
-          <div className="msg-avatar">
+          <Link to={`/${msg.username}`} className="msg-avatar msg-avatar--link" tabIndex={-1}>
             {msg.sender_avatar ? (
               <img src={`${API_ORIGIN}${msg.sender_avatar}`} alt="" />
             ) : (
               <img src={DEFAULT_AVATAR} alt="" />
             )}
-          </div>
+          </Link>
         )}
         {!isOwn && !showAvatar && <div className="msg-avatar-spacer" />}
 

@@ -360,6 +360,64 @@ class CaroService
         return false;
     }
 
+    // ── Rematch ─────────────────────────────────────────────────────────
+
+    public function declineRematch(int $userId, int $finishedRoomId): array
+    {
+        $room = $this->repo->findById($finishedRoomId);
+        if (!$room) throw new \RuntimeException('Phòng không tồn tại.');
+
+        $creatorId  = (int) $room['creator_id'];
+        $opponentId = (int) ($room['opponent_id'] ?? 0);
+        if ($userId !== $creatorId && $userId !== $opponentId) {
+            throw new \RuntimeException('Bạn không thuộc phòng này.');
+        }
+
+        if (!empty($room['rematch_room_id'])) {
+            $this->repo->abandonRoom((int) $room['rematch_room_id'], null, null);
+        }
+
+        return $this->buildRoomPayload($room, $userId);
+    }
+
+    public function requestRematch(int $userId, int $roomId): array
+    {
+        $room = $this->repo->findById($roomId);
+        if (!$room) throw new \RuntimeException('Phòng không tồn tại.');
+
+        $creatorId  = (int) $room['creator_id'];
+        $opponentId = (int) ($room['opponent_id'] ?? 0);
+        if ($userId !== $creatorId && $userId !== $opponentId) {
+            throw new \RuntimeException('Bạn không thuộc phòng này.');
+        }
+        if (!in_array($room['status'], ['finished', 'abandoned'], true)) {
+            throw new \RuntimeException('Trận chưa kết thúc.');
+        }
+
+        // Đã có phòng đấu lại → trả về phòng đó
+        if (!empty($room['rematch_room_id'])) {
+            $existing = $this->repo->findById((int) $room['rematch_room_id']);
+            if ($existing) return $this->buildRoomPayload($existing, $userId);
+        }
+
+        $code     = $this->generateUniqueCode();
+        $newRoomId = $this->repo->createRoom([
+            'code'        => $code,
+            'name'        => $room['name'] ?? null,
+            'visibility'  => 'private',
+            'creator_id'  => $userId,
+            'board_size'  => (int) $room['board_size'],
+            'win_length'  => (int) $room['win_length'],
+            'board_state' => json_encode([]),
+        ]);
+
+        $this->repo->setRematchRoomId($roomId, $newRoomId);
+
+        return $this->buildRoomPayload($this->repo->findById($newRoomId), $userId);
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────
+
     private function buildRoomPayload(array $room, int $viewerId): array
     {
         $creator = $this->loadPlayer((int) $room['creator_id']);
@@ -374,28 +432,41 @@ class CaroService
             && $room['status'] === 'playing'
             && $viewerSymbol === $room['current_turn'];
 
+        $rematchRoomCode       = null;
+        $rematchInitiatedById  = null;
+        if (!empty($room['rematch_room_id'])) {
+            $rr = $this->repo->findById((int) $room['rematch_room_id']);
+            if ($rr) {
+                $rematchRoomCode      = $rr['code'];
+                $rematchInitiatedById = (int) $rr['creator_id'];
+            }
+        }
+
         return [
-            'id'             => (int) $room['id'],
-            'code'           => (string) $room['code'],
-            'name'           => $room['name'] ?? null,
-            'has_password'   => !empty($room['password_hash']),
-            'visibility'     => (string) $room['visibility'],
-            'is_matchmaking' => (bool) $room['is_matchmaking'],
-            'status'         => (string) $room['status'],
-            'current_turn'   => (string) $room['current_turn'],
-            'board_size'     => (int) $room['board_size'],
-            'win_length'     => (int) $room['win_length'],
-            'move_count'     => (int) $room['move_count'],
-            'moves'          => $moves,
-            'winner_symbol'  => $room['winner_symbol'] ?? null,
-            'winner_user_id' => $room['winner_user_id'] ? (int) $room['winner_user_id'] : null,
-            'creator'        => $creator,
-            'opponent'       => $opponent,
-            'viewer_symbol'  => $viewerSymbol,
-            'is_my_turn'     => $isMyTurn,
-            'created_at'     => $room['created_at'] ?? null,
-            'updated_at'     => $room['updated_at'] ?? null,
-            'last_move_at'   => $room['last_move_at'] ?? null,
+            'id'                      => (int) $room['id'],
+            'code'                    => (string) $room['code'],
+            'name'                    => $room['name'] ?? null,
+            'has_password'            => !empty($room['password_hash']),
+            'visibility'              => (string) $room['visibility'],
+            'is_matchmaking'          => (bool) $room['is_matchmaking'],
+            'status'                  => (string) $room['status'],
+            'current_turn'            => (string) $room['current_turn'],
+            'board_size'              => (int) $room['board_size'],
+            'win_length'              => (int) $room['win_length'],
+            'move_count'              => (int) $room['move_count'],
+            'moves'                   => $moves,
+            'winner_symbol'           => $room['winner_symbol'] ?? null,
+            'winner_user_id'          => $room['winner_user_id'] ? (int) $room['winner_user_id'] : null,
+            'creator'                 => $creator,
+            'opponent'                => $opponent,
+            'viewer_symbol'           => $viewerSymbol,
+            'is_my_turn'              => $isMyTurn,
+            'rematch_room_id'         => !empty($room['rematch_room_id']) ? (int) $room['rematch_room_id'] : null,
+            'rematch_room_code'       => $rematchRoomCode,
+            'rematch_initiated_by_id' => $rematchInitiatedById,
+            'created_at'              => $room['created_at'] ?? null,
+            'updated_at'              => $room['updated_at'] ?? null,
+            'last_move_at'            => $room['last_move_at'] ?? null,
         ];
     }
 

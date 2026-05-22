@@ -3,6 +3,7 @@ import { useChat } from '../contexts/ChatContext';
 import { useAuth } from '../hooks/useAuth';
 import { getMyFriends } from '../services/graphql';
 import { getOrCreateConversation } from '../services/chat';
+import VerifiedBadge from './VerifiedBadge';
 import { API_ORIGIN } from '../config';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
@@ -36,6 +37,7 @@ export default function RightSidebar() {
       other_user_id: f.id,
       display_name: f.username,
       display_avatar: f.avatar,
+      other_is_verified: !!f.is_verified,
       is_online: false,
     }));
 
@@ -157,7 +159,12 @@ export default function RightSidebar() {
                 />
                 {contact.is_online && <span className="rsb-online-dot" />}
               </div>
-              <span className="rsb-name">{contact.display_name}</span>
+              <span className="rsb-name">
+                {contact.display_name}
+                {contact.other_is_verified && (
+                  <VerifiedBadge isVerified ownerId={contact.other_user_id} size={12} />
+                )}
+              </span>
             </button>
           );
         })}

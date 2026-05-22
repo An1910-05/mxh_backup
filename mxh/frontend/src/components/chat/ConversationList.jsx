@@ -224,14 +224,15 @@ export default function ConversationList({
                 <div className="conv-item-dropdown" role="menu">
                   <button
                     type="button"
-                    className="conv-item-dropdown-item"
+                    className="conv-item-dropdown-item conv-item-dropdown-item--danger"
                     role="menuitem"
                     onClick={() => {
                       setMenuId(null);
                       setConfirmHide(conv);
                     }}
                   >
-                    Xóa tất cả tin nhắn phía tôi
+                    <i className="bi bi-trash3"></i>
+                    Xóa đoạn chat
                   </button>
                   <button
                     type="button"
@@ -242,7 +243,8 @@ export default function ConversationList({
                       setConfirmClear(conv);
                     }}
                   >
-                    Thu hồi toàn bộ tin nhắn (cả hai bên)
+                    <i className="bi bi-arrow-counterclockwise"></i>
+                    Thu hồi toàn bộ tin nhắn
                   </button>
                 </div>
               )}
@@ -264,9 +266,9 @@ export default function ConversationList({
 
       {confirmHide && (
         <ConfirmDialog
-          title="Xóa tất cả tin nhắn phía bạn?"
-          message="Giống khi bạn ẩn từng tin nhắn, nhưng một lần cho cả cuộc trò chuyện: bạn sẽ không còn thấy tin ở thiết bị này; người kia vẫn giữ nguyên lịch sử phía họ."
-          confirmText={busy ? 'Đang xử lý...' : 'Xóa phía tôi'}
+          title="Xóa đoạn chat?"
+          message="Đoạn chat sẽ bị xóa khỏi danh sách của bạn. Người kia vẫn giữ nguyên lịch sử phía họ. Khi ai đó nhắn lại, đoạn chat sẽ hiện lại."
+          confirmText={busy ? 'Đang xóa...' : 'Xóa'}
           cancelText="Hủy"
           onConfirm={runHide}
           onCancel={() => !busy && setConfirmHide(null)}
