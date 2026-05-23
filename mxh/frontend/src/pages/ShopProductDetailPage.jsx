@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useShopCart } from '../hooks/useShopCart';
-import { getShopProduct } from '../services/shop';
+import {
+  getShopProduct,
+  getProductReviews,
+  getProductReviewStats,
+} from '../services/shop';
 import { API_ORIGIN } from '../config';
 import { TypewriterText, useLiquidMetalRipple } from '../components/JolyText';
 
@@ -170,8 +174,11 @@ export default function ShopProductDetailPage() {
           <h1 className="shop-lg-title-h1">{product.title}</h1>
 
           <div className="shop-lg-meta-row">
-            <span style={{ color: '#ffb800', letterSpacing: 1 }}>★★★★★</span>
-            <span>4.9 <span style={{ color: 'var(--slg-txt-3)' }}>({Number(product.viewCount || 0).toLocaleString('vi-VN')} lượt xem)</span></span>
+            <StarBar rating={product.ratingAvg || 0} />
+            <span>
+              {Number(product.ratingAvg || 0).toFixed(1)}
+              <span style={{ color: 'var(--slg-txt-3)' }}> ({Number(product.reviewCount || 0).toLocaleString('vi-VN')} đánh giá)</span>
+            </span>
             <span className="sep" />
             <span>Đã bán: <b>{Number(product.soldCount || 0).toLocaleString('vi-VN')}</b></span>
             <span className="sep" />
@@ -195,7 +202,12 @@ export default function ShopProductDetailPage() {
               </div>
             </div>
             <div className="shop-lg-seller-actions">
-              <Link to={`/${product.seller?.custom_url || product.seller?.username || ''}`} className="shop-lg-lq">
+              {user && product.seller?.id && product.seller.id !== user.id && (
+                <Link to={`/chat?userId=${product.seller.id}`} className="shop-lg-lq">
+                  💬 Nhắn shop
+                </Link>
+              )}
+              <Link to={`/shop/seller/${product.sellerId}`} className="shop-lg-lq">
                 Xem Shop
               </Link>
             </div>
@@ -262,6 +274,9 @@ export default function ShopProductDetailPage() {
           <button className={'shop-lg-lq ' + (tab === 'desc' ? 'is-on' : '')} onClick={() => setTab('desc')}>
             Mô tả sản phẩm
           </button>
+          <button className={'shop-lg-lq ' + (tab === 'reviews' ? 'is-on' : '')} onClick={() => setTab('reviews')}>
+            Đánh giá ({Number(product.reviewCount || 0).toLocaleString('vi-VN')})
+          </button>
           <button className={'shop-lg-lq ' + (tab === 'policy' ? 'is-on' : '')} onClick={() => setTab('policy')}>
             Bảo hành & Đổi trả
           </button>
@@ -275,6 +290,9 @@ export default function ShopProductDetailPage() {
                 ? product.description.split(/\n+/).map((p, i) => <p key={i}>{p}</p>)
                 : <p style={{ color: 'var(--slg-txt-2)' }}>Người bán chưa cập nhật mô tả chi tiết.</p>}
             </div>
+          )}
+          {tab === 'reviews' && (
+            <ProductReviewsTab productId={product.id} />
           )}
           {tab === 'policy' && (
             <div className="shop-lg-glass shop-lg-desc-main">
@@ -291,6 +309,148 @@ export default function ShopProductDetailPage() {
         </div>
       </div>
     </DetailShell>
+  );
+}
+
+function StarBar({ rating = 0, size = 14 }) {
+  const r = Math.max(0, Math.min(5, Number(rating) || 0));
+  const full = Math.floor(r);
+  const half = r - full >= 0.5;
+  const stars = [];
+  for (let i = 0; i < 5; i++) {
+    if (i < full) stars.push('full');
+    else if (i === full && half) stars.push('half');
+    else stars.push('empty');
+  }
+  return (
+    <span className="shop-stars-row" style={{ fontSize: size }} aria-label={`${r.toFixed(1)} sao`}>
+      {stars.map((t, i) => (
+        <span key={i} className={'shop-star-' + t}>★</span>
+      ))}
+    </span>
+  );
+}
+
+function ProductReviewsTab({ productId }) {
+  const [stats, setStats] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter]   = useState(0); // 0 = all, 1..5 = star filter
+
+  const load = useCallback(() => {
+    setLoading(true);
+    Promise.all([
+      getProductReviewStats(productId),
+      getProductReviews(productId, { rating: filter || null, limit: 30 }),
+    ])
+      .then(([s, r]) => { setStats(s); setReviews(r || []); })
+      .catch(err => console.error('[reviews] load failed', err))
+      .finally(() => setLoading(false));
+  }, [productId, filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading && !stats) {
+    return <div className="shop-lg-glass" style={{ padding: 30, textAlign: 'center', color: 'var(--slg-txt-2)' }}>Đang tải đánh giá…</div>;
+  }
+
+  const total = stats?.total || 0;
+  const avg   = stats?.avgRating || 0;
+  const buckets = [5, 4, 3, 2, 1].map(n => ({
+    star: n,
+    count: stats ? stats[`star${n}`] || 0 : 0,
+  }));
+
+  return (
+    <div className="shop-lg-glass shop-reviews-tab">
+      <div className="shop-reviews-summary">
+        <div className="left">
+          <div className="big-avg">{Number(avg).toFixed(1)}</div>
+          <StarBar rating={avg} size={22} />
+          <div className="big-sub">{total.toLocaleString('vi-VN')} đánh giá</div>
+        </div>
+        <div className="right">
+          {buckets.map(b => {
+            const pct = total > 0 ? Math.round((b.count / total) * 100) : 0;
+            return (
+              <button
+                key={b.star}
+                type="button"
+                className={'shop-review-bar ' + (filter === b.star ? 'is-on' : '')}
+                onClick={() => setFilter(filter === b.star ? 0 : b.star)}
+              >
+                <span className="lbl">{b.star} ★</span>
+                <span className="bar"><span className="fill" style={{ width: pct + '%' }} /></span>
+                <span className="cnt">{b.count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="shop-review-filter-chips">
+        <button
+          type="button"
+          className={'chip ' + (filter === 0 ? 'is-on' : '')}
+          onClick={() => setFilter(0)}
+        >Tất cả</button>
+        {[5,4,3,2,1].map(s => (
+          <button
+            key={s}
+            type="button"
+            className={'chip ' + (filter === s ? 'is-on' : '')}
+            onClick={() => setFilter(s)}
+          >{s} sao</button>
+        ))}
+      </div>
+
+      {reviews.length === 0 ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--slg-txt-2)' }}>
+          {filter ? `Chưa có đánh giá ${filter} sao.` : 'Sản phẩm chưa có đánh giá nào. Hãy là người đầu tiên!'}
+        </div>
+      ) : (
+        <div className="shop-review-list">
+          {reviews.map(r => <ReviewItem key={r.id} review={r} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReviewItem({ review }) {
+  return (
+    <div className="shop-review-item">
+      <div className="shop-review-head">
+        <div className="shop-review-ava">
+          {review.buyer?.avatar
+            ? <img src={mediaUrl(review.buyer.avatar)} alt="" />
+            : (review.buyer?.username || '?').slice(0, 1).toUpperCase()}
+        </div>
+        <div>
+          <div className="shop-review-name">{review.buyer?.username || 'Ẩn danh'}</div>
+          <div className="shop-review-stars-row">
+            <StarBar rating={review.rating} size={13} />
+            <span className="shop-review-date">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</span>
+          </div>
+        </div>
+      </div>
+      <div className="shop-review-content">{review.content}</div>
+      {Array.isArray(review.images) && review.images.length > 0 && (
+        <div className="shop-review-imgs">
+          {review.images.map((src, i) => (
+            <a key={i} href={mediaUrl(src)} target="_blank" rel="noreferrer">
+              <img src={mediaUrl(src)} alt={`Ảnh ${i + 1}`} />
+            </a>
+          ))}
+        </div>
+      )}
+      {review.sellerReply && (
+        <div className="shop-review-reply">
+          <div className="lbl">Phản hồi của Shop</div>
+          <div className="txt">{review.sellerReply}</div>
+        </div>
+      )}
+    </div>
   );
 }
 

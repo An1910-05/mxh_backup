@@ -185,6 +185,12 @@ class UserRepository
         return $stmt->rowCount() > 0;
     }
 
+    public function updateBalance(int $userId, int $delta): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET balance = balance + ? WHERE id = ?');
+        return $stmt->execute([$delta, $userId]);
+    }
+
     public function cancelVerified(int $userId): bool
     {
         $stmt = $this->db->prepare('UPDATE users SET is_verified = 0, verified_until = NULL WHERE id = ?');

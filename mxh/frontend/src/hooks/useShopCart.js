@@ -61,6 +61,7 @@ export function useShopCart() {
         sellerName: seller.username || 'Shop',
         sellerAvatar: seller.avatar || null,
         stockQuantity: product.stockQuantity ?? null,
+        productType: product.productType || 'physical',
       });
     }
     writeCart(next);

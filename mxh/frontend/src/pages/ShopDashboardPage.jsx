@@ -76,6 +76,7 @@ export default function ShopDashboardPage() {
         </div>
         <div className="shop-dashboard-actions">
           <Link to="/shop" className="shop-btn-secondary">Xem cửa hàng</Link>
+          <Link to="/shop/sales" className="shop-btn-secondary">📋 Đơn bán</Link>
           <button className="shop-btn-primary" onClick={() => setShowCreate(true)}>
             + Đăng sản phẩm mới
           </button>
@@ -164,8 +165,8 @@ function CreateProductModal({ categories, onClose, onCreated }) {
     setSubmitting(true);
     try {
       const upload = await uploadFile('/upload/media', 'media', imageFile);
-      const imageUrl = upload?.data?.url || upload?.url || upload?.data?.path;
-      if (!imageUrl) throw new Error('Upload ảnh thất bại');
+      const imageUrl = upload?.data?.media_url || upload?.data?.url;
+      if (!imageUrl) throw new Error('Upload ảnh thất bại — server không trả URL');
 
       const product = await createShopProduct({
         categoryId: parseInt(form.categoryId),

@@ -86,10 +86,16 @@ export default function ShopCartPage() {
     : 0;
   const total = Math.max(0, cart.subtotal - discountCoupon);
 
+  const needsAddress = cart.selectedItems.some(it => (it.productType || 'physical') !== 'digital');
+
   const handleCheckout = async () => {
     if (!user) { navigate('/login'); return; }
     if (cart.selectedItems.length === 0) {
       setError('Vui lòng chọn ít nhất một sản phẩm để đặt hàng.');
+      return;
+    }
+    if (needsAddress && !shippingAddress.trim()) {
+      setError('Vui lòng nhập địa chỉ giao hàng cho sản phẩm vật lý.');
       return;
     }
     setCheckingOut(true);
@@ -99,11 +105,12 @@ export default function ShopCartPage() {
     const ok = [];
     const fail = [];
     for (const item of cart.selectedItems) {
+      const isDigital = (item.productType || 'physical') === 'digital';
       try {
         const order = await createShopOrder({
           productId: Number(item.productId),
           quantity: Number(item.qty) || 1,
-          shippingAddress: shippingAddress.trim() || null,
+          shippingAddress: isDigital ? null : (shippingAddress.trim() || null),
           buyerNotes: buyerNotes.trim() || null,
         });
         ok.push({ item, order });
@@ -300,15 +307,20 @@ export default function ShopCartPage() {
                 />
               </div>
 
-              <h3 style={{ marginTop: 16 }}>Thông tin đặt hàng</h3>
+              <h3 style={{ marginTop: 16 }}>
+                Thông tin đặt hàng
+                {needsAddress && <span style={{ color: 'var(--slg-danger)', marginLeft: 6 }}>*</span>}
+              </h3>
               <textarea
                 rows={2}
-                placeholder="Địa chỉ / liên hệ nhận hàng (tuỳ chọn)"
+                placeholder={needsAddress
+                  ? 'Địa chỉ giao hàng + SĐT (bắt buộc cho sản phẩm vật lý)'
+                  : 'Địa chỉ / liên hệ nhận hàng (tuỳ chọn)'}
                 value={shippingAddress}
                 onChange={(e) => setShippingAddress(e.target.value)}
                 style={{
                   width: '100%', padding: 10, borderRadius: 12,
-                  border: '1px solid var(--slg-glass-hairline)',
+                  border: '1px solid ' + (needsAddress && !shippingAddress.trim() ? 'var(--slg-danger)' : 'var(--slg-glass-hairline)'),
                   background: 'var(--slg-glass-strong)', color: 'var(--slg-txt)',
                   font: '500 13px var(--sf)', outline: 'none', resize: 'vertical',
                 }}

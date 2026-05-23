@@ -122,7 +122,14 @@ export default function ShopPage() {
 
   const sellerCta = (() => {
     if (!user) return null;
-    if (user.is_seller) return <Link to="/shop/dashboard" className="shop-lg-seller-cta shop-lg-lq tinted">Quản lý cửa hàng</Link>;
+    if (user.is_seller) {
+      return (
+        <>
+          <Link to="/shop/dashboard" className="shop-lg-seller-cta shop-lg-lq tinted">Quản lý cửa hàng</Link>
+          <Link to="/shop/sales" className="shop-lg-seller-cta shop-lg-lq" style={{ marginTop: 6 }}>Đơn bán của tôi</Link>
+        </>
+      );
+    }
     if (myApp?.status === 'pending') return <span className="shop-lg-seller-cta ghost">Đơn đăng ký đang chờ duyệt</span>;
     if (myApp?.status === 'rejected') return <Link to="/shop/register" className="shop-lg-seller-cta ghost">Đơn bị từ chối — Xem lại</Link>;
     return <Link to="/shop/register" className="shop-lg-seller-cta shop-lg-lq tinted">+ Đăng ký bán hàng</Link>;
@@ -200,6 +207,11 @@ export default function ShopPage() {
             ))}
 
             <div className="shop-lg-side-sep" />
+            {user && (
+              <Link to="/shop/orders" className="shop-lg-seller-cta shop-lg-lq" style={{ marginBottom: 6 }}>
+                📦 Đơn mua của tôi
+              </Link>
+            )}
             {sellerCta}
 
             <div className="shop-lg-helpcard">

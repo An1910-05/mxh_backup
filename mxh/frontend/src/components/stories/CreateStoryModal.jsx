@@ -18,11 +18,18 @@ export default function CreateStoryModal({ onClose, onCreated }) {
     const file = e.target.files[0];
     if (!file) return;
 
-    const isImage = file.type.startsWith('image/');
-    const isVideo = file.type.startsWith('video/');
+    const ALLOWED_IMAGE = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const ALLOWED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime'];
+    const isImage = ALLOWED_IMAGE.includes(file.type);
+    const isVideo = ALLOWED_VIDEO.includes(file.type);
 
     if (!isImage && !isVideo) {
-      setError('Chỉ hỗ trợ ảnh hoặc video');
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      setError(
+        `Định dạng .${ext} không được hỗ trợ. ` +
+        `Server chỉ chấp nhận: ảnh (jpg/png/gif/webp) hoặc video (mp4/webm/mov). ` +
+        `Vui lòng chuyển đổi (ví dụ dùng HandBrake/FFmpeg sang mp4).`
+      );
       return;
     }
     if (isImage && file.size > 10 * 1024 * 1024) {

@@ -18,6 +18,7 @@ use App\Services\CaroService;
 use App\Services\ShopProductService;
 use App\Services\ShopOrderService;
 use App\Services\ShopSellerService;
+use App\Services\ShopReviewService;
 use App\Repositories\ShopCategoryRepository;
 use App\Validators\PostValidator;
 use App\Validators\ProfileValidator;
@@ -382,7 +383,17 @@ class MutationType extends ObjectType
                         self::requireAuth($context);
                         (new ShopSellerService())->requireSeller((int)$context['user']['id']);
                         $service = new ShopProductService();
-                        return $service->createProduct($context['user']['id'], $args);
+                        $data = [
+                            'category_id'      => $args['categoryId'],
+                            'title'            => $args['title'],
+                            'description'     => $args['description'],
+                            'product_type'    => $args['productType'],
+                            'price'           => $args['price'],
+                            'stock_quantity'  => $args['stockQuantity'] ?? null,
+                            'images'          => $args['images'],
+                            'digital_file_url'=> $args['digitalFileUrl'] ?? null,
+                        ];
+                        return $service->createProduct($context['user']['id'], $data);
                     },
                 ],
 
@@ -487,10 +498,20 @@ class MutationType extends ObjectType
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
                         $service = new ShopOrderService();
+                        $shipping = $args['shippingAddress'] ?? null;
+                        if (is_string($shipping)) {
+                            $trim = trim($shipping);
+                            if ($trim === '') {
+                                $shipping = null;
+                            } else {
+                                $decoded = json_decode($trim, true);
+                                $shipping = (is_array($decoded) && $decoded) ? $decoded : ['text' => $trim];
+                            }
+                        }
                         $data = [
                             'product_id' => $args['productId'],
                             'quantity' => $args['quantity'],
-                            'shipping_address' => isset($args['shippingAddress']) ? json_decode($args['shippingAddress'], true) : null,
+                            'shipping_address' => $shipping,
                             'buyer_notes' => $args['buyerNotes'] ?? null,
                         ];
                         return $service->createOrder($context['user']['id'], $data);
@@ -625,6 +646,70 @@ class MutationType extends ObjectType
 
                         $repo->update($categoryId, $updateData);
                         return $repo->findById($categoryId);
+                    },
+                ],
+
+                // ── Shop Reviews ──────────────────────────────────────
+                'createShopReview' => [
+                    'type' => TypeRegistry::shopReview(),
+                    'args' => [
+                        'orderId' => Type::nonNull(Type::int()),
+                        'rating'  => Type::nonNull(Type::int()),
+                        'content' => Type::nonNull(Type::string()),
+                        'images'  => Type::listOf(Type::nonNull(Type::string())),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopReviewService();
+                        return $service->createReview((int)$context['user']['id'], [
+                            'order_id' => (int)$args['orderId'],
+                            'rating'   => (int)$args['rating'],
+                            'content'  => (string)$args['content'],
+                            'images'   => $args['images'] ?? null,
+                        ]);
+                    },
+                ],
+
+                'updateShopReview' => [
+                    'type' => TypeRegistry::shopReview(),
+                    'args' => [
+                        'id'      => Type::nonNull(Type::int()),
+                        'rating'  => Type::int(),
+                        'content' => Type::string(),
+                        'images'  => Type::listOf(Type::nonNull(Type::string())),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopReviewService();
+                        $update = [];
+                        if (isset($args['rating']))  $update['rating']  = (int)$args['rating'];
+                        if (isset($args['content'])) $update['content'] = (string)$args['content'];
+                        if (array_key_exists('images', $args)) $update['images'] = $args['images'];
+                        return $service->updateReview((int)$args['id'], (int)$context['user']['id'], $update);
+                    },
+                ],
+
+                'replyShopReview' => [
+                    'type' => TypeRegistry::shopReview(),
+                    'args' => [
+                        'id'    => Type::nonNull(Type::int()),
+                        'reply' => Type::nonNull(Type::string()),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ShopReviewService();
+                        return $service->replyToReview((int)$args['id'], (int)$context['user']['id'], (string)$args['reply']);
+                    },
+                ],
+
+                'deleteShopReview' => [
+                    'type' => Type::boolean(),
+                    'args' => ['id' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $isAdmin = (($context['user']['role'] ?? 'user') === 'admin');
+                        $service = new ShopReviewService();
+                        return $service->deleteReview((int)$args['id'], (int)$context['user']['id'], $isAdmin);
                     },
                 ],
 

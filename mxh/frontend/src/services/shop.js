@@ -19,7 +19,7 @@ export async function getShopProducts(filters = {}) {
     query GetShopProducts($categoryId: Int, $sellerId: Int, $status: String, $productType: String, $search: String, $limit: Int, $page: Int) {
       shopProducts(categoryId: $categoryId, sellerId: $sellerId, status: $status, productType: $productType, search: $search, limit: $limit, page: $page) {
         id sellerId categoryId title description productType price stockQuantity
-        images status viewCount soldCount createdAt
+        images status viewCount soldCount createdAt ratingAvg reviewCount
         seller { id username avatar }
         category { id name slug }
       }
@@ -34,7 +34,7 @@ export async function getShopProduct(id) {
       shopProduct(id: $id) {
         id sellerId categoryId title description productType price stockQuantity
         images digitalFileUrl status rejectionReason viewCount soldCount
-        createdAt updatedAt approvedAt
+        createdAt updatedAt approvedAt ratingAvg reviewCount
         seller { id username avatar }
         category { id name slug }
       }
@@ -163,4 +163,147 @@ export async function rejectShopSeller(id, reason) {
   `, { id: parseInt(id), reason });
   return data.rejectShopSeller;
 }
+
+// ============== Orders (seller side) ==============
+export async function getMySales(filters = {}) {
+  const { status, limit = 20, page = 1 } = filters;
+  const data = await graphqlFetch(`
+    query GetMySales($status: String, $limit: Int, $page: Int) {
+      mySales(status: $status, limit: $limit, page: $page) {
+        id orderNumber buyerId sellerId productId quantity unitPrice totalPrice
+        status paymentStatus shippingAddress trackingNumber buyerNotes sellerNotes
+        commissionAmount sellerAmount cancellationReason cancelledBy
+        createdAt confirmedAt shippedAt deliveredAt completedAt cancelledAt
+        buyer { id username avatar }
+        seller { id username avatar }
+        productSnapshot
+      }
+    }
+  `, { status, limit, page });
+  return data.mySales;
+}
+
+export async function confirmShopOrder(orderId) {
+  const data = await graphqlFetch(`
+    mutation ConfirmShopOrder($orderId: Int!) {
+      confirmShopOrder(orderId: $orderId) {
+        id orderNumber status confirmedAt
+      }
+    }
+  `, { orderId: parseInt(orderId) });
+  return data.confirmShopOrder;
+}
+
+export async function shipShopOrder(orderId, trackingNumber) {
+  const data = await graphqlFetch(`
+    mutation ShipShopOrder($orderId: Int!, $trackingNumber: String) {
+      shipShopOrder(orderId: $orderId, trackingNumber: $trackingNumber) {
+        id orderNumber status trackingNumber shippedAt
+      }
+    }
+  `, { orderId: parseInt(orderId), trackingNumber: trackingNumber || null });
+  return data.shipShopOrder;
+}
+
+// ============== Reviews ==============
+const REVIEW_FIELDS = `
+  id orderId productId buyerId sellerId rating content images
+  sellerReply repliedAt createdAt updatedAt productTitle
+  buyer { id username avatar }
+`;
+
+export async function getProductReviews(productId, { rating = null, limit = 20, page = 1 } = {}) {
+  const data = await graphqlFetch(`
+    query ProductReviews($productId: Int!, $rating: Int, $limit: Int, $page: Int) {
+      productReviews(productId: $productId, rating: $rating, limit: $limit, page: $page) {
+        ${REVIEW_FIELDS}
+      }
+    }
+  `, { productId: parseInt(productId), rating, limit, page });
+  return data.productReviews;
+}
+
+export async function getProductReviewStats(productId) {
+  const data = await graphqlFetch(`
+    query ProductReviewStats($productId: Int!) {
+      productReviewStats(productId: $productId) {
+        total avgRating star5 star4 star3 star2 star1 withImages
+      }
+    }
+  `, { productId: parseInt(productId) });
+  return data.productReviewStats;
+}
+
+export async function getSellerReviewStats(sellerId) {
+  const data = await graphqlFetch(`
+    query SellerReviewStats($sellerId: Int!) {
+      sellerReviewStats(sellerId: $sellerId) {
+        total avgRating
+      }
+    }
+  `, { sellerId: parseInt(sellerId) });
+  return data.sellerReviewStats;
+}
+
+export async function getMyReviewForOrder(orderId) {
+  const data = await graphqlFetch(`
+    query MyReviewForOrder($orderId: Int!) {
+      myReviewForOrder(orderId: $orderId) { ${REVIEW_FIELDS} }
+    }
+  `, { orderId: parseInt(orderId) });
+  return data.myReviewForOrder;
+}
+
+export async function createShopReview({ orderId, rating, content, images = [] }) {
+  const data = await graphqlFetch(`
+    mutation CreateShopReview($orderId: Int!, $rating: Int!, $content: String!, $images: [String!]) {
+      createShopReview(orderId: $orderId, rating: $rating, content: $content, images: $images) {
+        ${REVIEW_FIELDS}
+      }
+    }
+  `, { orderId: parseInt(orderId), rating: parseInt(rating), content, images });
+  return data.createShopReview;
+}
+
+export async function updateShopReview({ id, rating, content, images }) {
+  const data = await graphqlFetch(`
+    mutation UpdateShopReview($id: Int!, $rating: Int, $content: String, $images: [String!]) {
+      updateShopReview(id: $id, rating: $rating, content: $content, images: $images) {
+        ${REVIEW_FIELDS}
+      }
+    }
+  `, { id: parseInt(id), rating: rating ? parseInt(rating) : null, content: content ?? null, images: images ?? null });
+  return data.updateShopReview;
+}
+
+export async function replyShopReview({ id, reply }) {
+  const data = await graphqlFetch(`
+    mutation ReplyShopReview($id: Int!, $reply: String!) {
+      replyShopReview(id: $id, reply: $reply) { ${REVIEW_FIELDS} }
+    }
+  `, { id: parseInt(id), reply });
+  return data.replyShopReview;
+}
+
+export async function deleteShopReview(id) {
+  const data = await graphqlFetch(`
+    mutation DeleteShopReview($id: Int!) {
+      deleteShopReview(id: $id)
+    }
+  `, { id: parseInt(id) });
+  return data.deleteShopReview;
+}
+
+// ============== Seller info ==============
+export async function getSellerInfo(sellerId) {
+  const data = await graphqlFetch(`
+    query SellerInfo($sellerId: Int!) {
+      user(id: $sellerId) {
+        id username avatar custom_url is_seller
+      }
+    }
+  `, { sellerId: parseInt(sellerId) });
+  return data.user;
+}
+
 

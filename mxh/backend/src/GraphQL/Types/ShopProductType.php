@@ -5,6 +5,7 @@ namespace App\GraphQL\Types;
 use GraphQL\Type\Definition\Type;
 use GraphQL\Type\Definition\ObjectType;
 use App\GraphQL\TypeRegistry;
+use App\Services\ShopReviewService;
 
 class ShopProductType extends ObjectType
 {
@@ -85,7 +86,23 @@ class ShopProductType extends ObjectType
                 'approvedBy' => [
                     'type' => Type::int(),
                     'resolve' => fn($root) => $root['approved_by']
-                ]
+                ],
+                'ratingAvg' => [
+                    'type' => Type::nonNull(Type::float()),
+                    'resolve' => function ($root) {
+                        $service = new ShopReviewService();
+                        $stats = $service->getStatsForProduct((int)$root['id']);
+                        return (float)($stats['avgRating'] ?? 0);
+                    },
+                ],
+                'reviewCount' => [
+                    'type' => Type::nonNull(Type::int()),
+                    'resolve' => function ($root) {
+                        $service = new ShopReviewService();
+                        $stats = $service->getStatsForProduct((int)$root['id']);
+                        return (int)($stats['total'] ?? 0);
+                    },
+                ],
             ]
         ]);
     }

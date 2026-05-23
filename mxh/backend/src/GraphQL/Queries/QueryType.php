@@ -16,6 +16,7 @@ use App\Services\CaroService;
 use App\Services\ShopProductService;
 use App\Services\ShopOrderService;
 use App\Services\ShopSellerService;
+use App\Services\ShopReviewService;
 use App\Repositories\ShopCategoryRepository;
 use App\Repositories\UserRepository;
 
@@ -508,6 +509,69 @@ class QueryType extends ObjectType
                         }
                         $service = new ShopSellerService();
                         return $service->listByStatus($args['status'], $args['limit'], $args['page']);
+                    },
+                ],
+
+                // ── Shop Reviews ──────────────────────────────────────
+                'productReviews' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopReview()))),
+                    'args' => [
+                        'productId' => Type::nonNull(Type::int()),
+                        'rating'    => Type::int(),
+                        'limit'     => ['type' => Type::int(), 'defaultValue' => 20],
+                        'page'      => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args) {
+                        $service = new ShopReviewService();
+                        return $service->getProductReviews(
+                            (int)$args['productId'],
+                            isset($args['rating']) ? (int)$args['rating'] : null,
+                            (int)$args['limit'],
+                            (int)$args['page']
+                        );
+                    },
+                ],
+
+                'productReviewStats' => [
+                    'type' => Type::nonNull(TypeRegistry::shopReviewStats()),
+                    'args' => ['productId' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args) {
+                        $service = new ShopReviewService();
+                        return $service->getStatsForProduct((int)$args['productId']);
+                    },
+                ],
+
+                'sellerReviews' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopReview()))),
+                    'args' => [
+                        'sellerId' => Type::nonNull(Type::int()),
+                        'limit'    => ['type' => Type::int(), 'defaultValue' => 20],
+                        'page'     => ['type' => Type::int(), 'defaultValue' => 1],
+                    ],
+                    'resolve' => function ($root, $args) {
+                        $service = new ShopReviewService();
+                        return $service->getSellerReviews((int)$args['sellerId'], (int)$args['limit'], (int)$args['page']);
+                    },
+                ],
+
+                'sellerReviewStats' => [
+                    'type' => Type::nonNull(TypeRegistry::shopReviewStats()),
+                    'args' => ['sellerId' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args) {
+                        $service = new ShopReviewService();
+                        $s = $service->getStatsForSeller((int)$args['sellerId']);
+                        // Bù field còn thiếu so với ShopReviewStats schema
+                        return $s + ['star5' => 0, 'star4' => 0, 'star3' => 0, 'star2' => 0, 'star1' => 0, 'withImages' => 0];
+                    },
+                ],
+
+                'myReviewForOrder' => [
+                    'type' => TypeRegistry::shopReview(),
+                    'args' => ['orderId' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        $service = new ShopReviewService();
+                        return $service->getMyReviewForOrder((int)$args['orderId'], (int)$context['user']['id']);
                     },
                 ],
 
