@@ -17,6 +17,7 @@ use App\Services\ShopProductService;
 use App\Services\ShopOrderService;
 use App\Services\ShopSellerService;
 use App\Services\ShopReviewService;
+use App\Services\GhnTrackingService;
 use App\Repositories\ShopCategoryRepository;
 use App\Repositories\UserRepository;
 
@@ -447,6 +448,41 @@ class QueryType extends ObjectType
                         }
 
                         return $order;
+                    },
+                ],
+
+                'orderTracking' => [
+                    'type' => Type::listOf(TypeRegistry::trackingStep()),
+                    'args' => ['orderId' => Type::nonNull(Type::int())],
+                    'resolve' => function ($root, $args, $context) {
+                        if (!$context['user']) throw new \GraphQL\Error\Error('Unauthorized');
+                        try {
+                            $service = new ShopOrderService();
+                            $order = $service->getOrderById($args['orderId']);
+                            if (!$order) throw new \Exception('Không tìm thấy đơn hàng', 404);
+
+                            $userId = $context['user']['id'];
+                            $isAdmin = ($context['user']['role'] ?? 'user') === 'admin';
+                            if ($order['buyer_id'] != $userId && $order['seller_id'] != $userId && !$isAdmin) {
+                                throw new \Exception('Bạn không có quyền xem đơn này', 403);
+                            }
+
+                            $tracking = trim((string)($order['tracking_number'] ?? ''));
+                            if ($tracking === '') throw new \Exception('Đơn chưa có mã vận đơn để tra cứu', 400);
+
+                            $carrier = (string)($order['shipping_carrier'] ?? '');
+                            if (stripos($carrier, 'GHN') !== false || stripos($carrier, 'Giao Hàng Nhanh') !== false) {
+                                return (new GhnTrackingService())->track($tracking);
+                            }
+                            throw new \Exception('Tra cứu lộ trình cho "' . ($carrier ?: 'đơn vị này') . '" chưa được hỗ trợ', 400);
+                        } catch (\GraphQL\Error\Error $e) {
+                            throw $e;
+                        } catch (\Throwable $e) {
+                            // Lỗi nghiệp vụ (4xx) hoặc lỗi gọi carrier (5xx) -> message sạch cho user.
+                            $code = (int) $e->getCode();
+                            if ($code >= 400 && $code < 600) throw new \GraphQL\Error\Error($e->getMessage());
+                            throw $e;
+                        }
                     },
                 ],
 

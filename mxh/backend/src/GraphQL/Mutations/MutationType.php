@@ -569,11 +569,19 @@ class MutationType extends ObjectType
                     'args' => [
                         'orderId' => Type::nonNull(Type::int()),
                         'trackingNumber' => Type::string(),
+                        'shippingCarrier' => Type::string(),
                     ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
-                        $service = new ShopOrderService();
-                        return $service->shipOrder($args['orderId'], $context['user']['id'], $args['trackingNumber'] ?? null);
+                        return self::clientSafe(function () use ($args, $context) {
+                            $service = new ShopOrderService();
+                            return $service->shipOrder(
+                                $args['orderId'],
+                                $context['user']['id'],
+                                $args['trackingNumber'] ?? null,
+                                $args['shippingCarrier'] ?? null
+                            );
+                        });
                     },
                 ],
 
@@ -696,13 +704,15 @@ class MutationType extends ObjectType
                     ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
-                        $service = new ShopReviewService();
-                        return $service->createReview((int)$context['user']['id'], [
-                            'order_id' => (int)$args['orderId'],
-                            'rating'   => (int)$args['rating'],
-                            'content'  => (string)$args['content'],
-                            'images'   => $args['images'] ?? null,
-                        ]);
+                        return self::clientSafe(function () use ($args, $context) {
+                            $service = new ShopReviewService();
+                            return $service->createReview((int)$context['user']['id'], [
+                                'order_id' => (int)$args['orderId'],
+                                'rating'   => (int)$args['rating'],
+                                'content'  => (string)$args['content'],
+                                'images'   => $args['images'] ?? null,
+                            ]);
+                        });
                     },
                 ],
 
@@ -716,12 +726,14 @@ class MutationType extends ObjectType
                     ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
-                        $service = new ShopReviewService();
-                        $update = [];
-                        if (isset($args['rating']))  $update['rating']  = (int)$args['rating'];
-                        if (isset($args['content'])) $update['content'] = (string)$args['content'];
-                        if (array_key_exists('images', $args)) $update['images'] = $args['images'];
-                        return $service->updateReview((int)$args['id'], (int)$context['user']['id'], $update);
+                        return self::clientSafe(function () use ($args, $context) {
+                            $service = new ShopReviewService();
+                            $update = [];
+                            if (isset($args['rating']))  $update['rating']  = (int)$args['rating'];
+                            if (isset($args['content'])) $update['content'] = (string)$args['content'];
+                            if (array_key_exists('images', $args)) $update['images'] = $args['images'];
+                            return $service->updateReview((int)$args['id'], (int)$context['user']['id'], $update);
+                        });
                     },
                 ],
 
@@ -733,8 +745,10 @@ class MutationType extends ObjectType
                     ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
-                        $service = new ShopReviewService();
-                        return $service->replyToReview((int)$args['id'], (int)$context['user']['id'], (string)$args['reply']);
+                        return self::clientSafe(function () use ($args, $context) {
+                            $service = new ShopReviewService();
+                            return $service->replyToReview((int)$args['id'], (int)$context['user']['id'], (string)$args['reply']);
+                        });
                     },
                 ],
 
@@ -743,9 +757,11 @@ class MutationType extends ObjectType
                     'args' => ['id' => Type::nonNull(Type::int())],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
-                        $isAdmin = (($context['user']['role'] ?? 'user') === 'admin');
-                        $service = new ShopReviewService();
-                        return $service->deleteReview((int)$args['id'], (int)$context['user']['id'], $isAdmin);
+                        return self::clientSafe(function () use ($args, $context) {
+                            $isAdmin = (($context['user']['role'] ?? 'user') === 'admin');
+                            $service = new ShopReviewService();
+                            return $service->deleteReview((int)$args['id'], (int)$context['user']['id'], $isAdmin);
+                        });
                     },
                 ],
 
@@ -880,6 +896,28 @@ class MutationType extends ObjectType
     {
         if (!$context['user']) {
             throw new \GraphQL\Error\Error('Unauthorized');
+        }
+    }
+
+    /**
+     * Chạy logic resolver và biến Exception "client" (code 4xx, ví dụ validate
+     * tiếng Việt từ Service) thành GraphQL\Error\Error (ClientAware) để message
+     * hiện thẳng cho user. Nếu không, graphql-php bọc thành "Internal server
+     * error" + nhét message vào debugMessage → UI hiện "lỗi hệ thống".
+     * Lỗi hệ thống thật (code 0 / 5xx, PDOException…) vẫn ném nguyên → giữ kín.
+     */
+    private static function clientSafe(callable $fn)
+    {
+        try {
+            return $fn();
+        } catch (\GraphQL\Error\Error $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $code = (int) $e->getCode();
+            if ($code >= 400 && $code < 500) {
+                throw new \GraphQL\Error\Error($e->getMessage());
+            }
+            throw $e;
         }
     }
 }

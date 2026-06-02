@@ -245,7 +245,7 @@ class ShopOrderService
         return $this->getOrderById($orderId);
     }
 
-    public function shipOrder(int $orderId, int $sellerId, ?string $trackingNumber = null): array
+    public function shipOrder(int $orderId, int $sellerId, ?string $trackingNumber = null, ?string $shippingCarrier = null): array
     {
         $order = $this->orderRepo->findById($orderId);
 
@@ -262,9 +262,22 @@ class ShopOrderService
             throw new Exception('Can only ship confirmed orders', 400);
         }
 
+        // Chỉ sản phẩm vật lý mới tới bước giao hàng (sản phẩm số auto-deliver khi
+        // xác nhận) → mã vận đơn bắt buộc.
+        $trackingNumber = $trackingNumber !== null ? trim($trackingNumber) : '';
+        if ($trackingNumber === '') {
+            throw new Exception('Vui lòng nhập mã vận đơn để giao hàng', 400);
+        }
+
+        $shippingCarrier = $shippingCarrier !== null ? trim($shippingCarrier) : '';
+        if ($shippingCarrier === '') {
+            $shippingCarrier = 'J&T Express';
+        }
+
         $this->orderRepo->update($orderId, [
             'status' => 'shipping',
             'tracking_number' => $trackingNumber,
+            'shipping_carrier' => $shippingCarrier,
             'shipped_at' => date('Y-m-d H:i:s')
         ]);
 

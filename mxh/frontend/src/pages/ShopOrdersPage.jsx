@@ -12,11 +12,11 @@ import {
 import { uploadFile } from '../services/api';
 import { API_ORIGIN } from '../config';
 import { useLiquidMetalRipple } from '../components/JolyText';
+import OrderTrackingModal from '../components/OrderTrackingModal';
 
 const STATUS_TABS = [
   { key: 'all',        label: 'Tất cả' },
   { key: 'pending',    label: 'Chờ xác nhận' },
-  { key: 'confirmed',  label: 'Đang chuẩn bị' },
   { key: 'shipping',   label: 'Đang giao' },
   { key: 'delivered',  label: 'Đã giao' },
   { key: 'completed',  label: 'Hoàn thành' },
@@ -66,6 +66,7 @@ export default function ShopOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviewing, setReviewing] = useState(null); // { order, existing }
+  const [trackingOrder, setTrackingOrder] = useState(null); // đơn đang xem lộ trình
 
   const reload = useCallback(() => {
     if (!user) return;
@@ -176,6 +177,7 @@ export default function ShopOrdersPage() {
                 onConfirmDelivery={handleConfirmDelivery}
                 onCancel={handleCancel}
                 onReview={openReviewModal}
+                onTrack={(o) => setTrackingOrder(o)}
               />
             ))}
           </div>
@@ -190,17 +192,22 @@ export default function ShopOrdersPage() {
           onSaved={() => { setReviewing(null); reload(); }}
         />
       )}
+
+      {trackingOrder && (
+        <OrderTrackingModal order={trackingOrder} onClose={() => setTrackingOrder(null)} />
+      )}
     </div>
   );
 }
 
-function OrderCard({ order, onConfirmDelivery, onCancel, onReview }) {
+function OrderCard({ order, onConfirmDelivery, onCancel, onReview, onTrack }) {
   const img  = snapshotImage(order.productSnapshot);
   const title = snapshotTitle(order.productSnapshot, `Sản phẩm #${order.productId}`);
   const st = STATUS_LABEL[order.status] || { text: order.status, tone: 'info' };
   const canConfirmReceive = ['shipping', 'delivered'].includes(order.status);
   const canCancel = ['pending', 'confirmed'].includes(order.status);
   const canReview = order.status === 'completed';
+  const canTrack = ['shipping', 'delivered', 'completed'].includes(order.status) && !!order.shippingCarrier;
 
   return (
     <div className="shop-lg-glass shop-order-card">
@@ -221,6 +228,8 @@ function OrderCard({ order, onConfirmDelivery, onCancel, onReview }) {
           <div className="shop-order-meta">
             <span>Số lượng: <b>{order.quantity}</b></span>
             <span>Đơn giá: <b>{formatPrice(order.unitPrice)}</b></span>
+            {order.shippingCarrier && <span>Đơn vị VC: <b>{order.shippingCarrier}</b></span>}
+            {order.trackingNumber && <span>Mã vận đơn: <b>{order.trackingNumber}</b></span>}
           </div>
           <div className="shop-order-num">#{order.orderNumber}</div>
         </div>
@@ -238,6 +247,11 @@ function OrderCard({ order, onConfirmDelivery, onCancel, onReview }) {
           {canConfirmReceive && (
             <button className="shop-btn-primary" onClick={() => onConfirmDelivery(order)}>
               ✓ Đã nhận hàng
+            </button>
+          )}
+          {canTrack && (
+            <button className="shop-btn-secondary" onClick={() => onTrack(order)}>
+              📍 Xem lộ trình
             </button>
           )}
           {canReview && (
@@ -267,6 +281,16 @@ function ReviewModal({ order, existing, onClose, onSaved }) {
   const [error, setError]     = useState('');
   const fileRef = useRef(null);
 
+  // Backend chỉ cho sửa đánh giá trong 7 ngày — khoá UI khi quá hạn (chỉ áp
+  // dụng với review đã tồn tại). Fail-open nếu không đọc được ngày (backend
+  // vẫn chặn ở tầng cuối).
+  const EDIT_WINDOW_DAYS = 7;
+  const editLocked = (() => {
+    if (!existing?.createdAt) return false;
+    const t = Date.parse(String(existing.createdAt).replace(' ', 'T'));
+    return Number.isFinite(t) && (Date.now() - t) > EDIT_WINDOW_DAYS * 86400000;
+  })();
+
   const handleAddImage = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -289,6 +313,7 @@ function ReviewModal({ order, existing, onClose, onSaved }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (editLocked) { setError(`Đã quá ${EDIT_WINDOW_DAYS} ngày — không thể chỉnh sửa đánh giá.`); return; }
     if (!content.trim()) { setError('Vui lòng viết nội dung đánh giá.'); return; }
     setSubmitting(true);
     try {
@@ -314,6 +339,11 @@ function ReviewModal({ order, existing, onClose, onSaved }) {
         </div>
 
         <form onSubmit={handleSubmit} className="shop-modal-form">
+          {editLocked && (
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff7ed', color: '#9a3412', fontSize: 14, lineHeight: 1.4 }}>
+              Đã quá {EDIT_WINDOW_DAYS} ngày kể từ khi đánh giá — bạn không thể chỉnh sửa nữa.
+            </div>
+          )}
           <div className="shop-form-row">
             <label>Chất lượng sản phẩm</label>
             <div className="shop-review-stars">
@@ -322,7 +352,8 @@ function ReviewModal({ order, existing, onClose, onSaved }) {
                   type="button"
                   key={n}
                   className={'star ' + (n <= rating ? 'on' : '')}
-                  onClick={() => setRating(n)}
+                  onClick={() => !editLocked && setRating(n)}
+                  disabled={editLocked}
                   aria-label={`${n} sao`}
                 >★</button>
               ))}
@@ -340,7 +371,7 @@ function ReviewModal({ order, existing, onClose, onSaved }) {
               onChange={e => setContent(e.target.value)}
               placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm (chất lượng, đóng gói, giao hàng)…"
               maxLength={2000}
-              disabled={submitting}
+              disabled={submitting || editLocked}
             />
           </div>
 
@@ -350,10 +381,10 @@ function ReviewModal({ order, existing, onClose, onSaved }) {
               {images.map((src, i) => (
                 <div key={i} className="thumb">
                   <img src={mediaUrl(src)} alt={`Ảnh ${i + 1}`} />
-                  <button type="button" onClick={() => removeImage(i)} aria-label="Xoá">×</button>
+                  <button type="button" onClick={() => removeImage(i)} aria-label="Xoá" disabled={editLocked}>×</button>
                 </div>
               ))}
-              {images.length < 5 && (
+              {images.length < 5 && !editLocked && (
                 <button type="button" className="thumb add" onClick={() => fileRef.current?.click()}>
                   + Ảnh
                 </button>
@@ -366,7 +397,7 @@ function ReviewModal({ order, existing, onClose, onSaved }) {
 
           <div className="shop-modal-footer">
             <button type="button" className="shop-btn-secondary" onClick={onClose} disabled={submitting}>Huỷ</button>
-            <button type="submit" className="shop-btn-primary" disabled={submitting}>
+            <button type="submit" className="shop-btn-primary" disabled={submitting || editLocked}>
               {submitting ? 'Đang gửi…' : (existing ? 'Lưu thay đổi' : 'Gửi đánh giá')}
             </button>
           </div>

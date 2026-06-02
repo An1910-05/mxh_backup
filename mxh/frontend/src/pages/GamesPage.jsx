@@ -31,15 +31,6 @@ export default function GamesPage() {
             </div>
             <div className="game-card-play">Chơi</div>
           </button>
-
-          <div className="game-card game-card--soon">
-            <div className="game-card-icon">🎰</div>
-            <div className="game-card-info">
-              <strong>Slot</strong>
-              <span>Sắp ra mắt</span>
-            </div>
-            <div className="game-card-play game-card-play--soon">Sớm thôi</div>
-          </div>
         </div>
       </div>
     </div>

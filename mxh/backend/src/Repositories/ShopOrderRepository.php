@@ -161,6 +161,10 @@ class ShopOrderRepository
             $fields[] = 'tracking_number = ?';
             $values[] = $data['tracking_number'];
         }
+        if (isset($data['shipping_carrier'])) {
+            $fields[] = 'shipping_carrier = ?';
+            $values[] = $data['shipping_carrier'];
+        }
         if (isset($data['seller_notes'])) {
             $fields[] = 'seller_notes = ?';
             $values[] = $data['seller_notes'];

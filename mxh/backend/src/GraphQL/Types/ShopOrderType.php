@@ -92,6 +92,10 @@ class ShopOrderType extends ObjectType
                     'type' => Type::string(),
                     'resolve' => fn($root) => $root['tracking_number']
                 ],
+                'shippingCarrier' => [
+                    'type' => Type::string(),
+                    'resolve' => fn($root) => $root['shipping_carrier'] ?? null
+                ],
                 'buyerNotes' => [
                     'type' => Type::string(),
                     'resolve' => fn($root) => $root['buyer_notes']

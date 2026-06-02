@@ -30,6 +30,7 @@ use App\GraphQL\Types\ShopReviewStatsType;
 use App\GraphQL\Types\CaroRoomType;
 use App\GraphQL\Types\CaroPlayerType;
 use App\GraphQL\Types\CaroMoveType;
+use App\GraphQL\Types\TrackingStepType;
 
 class TypeRegistry
 {
@@ -58,6 +59,7 @@ class TypeRegistry
     private static ?ShopSellerApplicationType $shopSellerApplication = null;
     private static ?ShopReviewType $shopReview = null;
     private static ?ShopReviewStatsType $shopReviewStats = null;
+    private static ?TrackingStepType $trackingStep = null;
     private static ?CaroRoomType $caroRoom = null;
     private static ?CaroPlayerType $caroPlayer = null;
     private static ?CaroMoveType $caroMove = null;
@@ -87,6 +89,7 @@ class TypeRegistry
     public static function shopSellerApplication(): ShopSellerApplicationType { return self::$shopSellerApplication ??= new ShopSellerApplicationType(); }
     public static function shopReview(): ShopReviewType { return self::$shopReview ??= new ShopReviewType(); }
     public static function shopReviewStats(): ShopReviewStatsType { return self::$shopReviewStats ??= new ShopReviewStatsType(); }
+    public static function trackingStep(): TrackingStepType { return self::$trackingStep ??= new TrackingStepType(); }
     public static function caroRoom(): CaroRoomType { return self::$caroRoom ??= new CaroRoomType(); }
     public static function caroPlayer(): CaroPlayerType { return self::$caroPlayer ??= new CaroPlayerType(); }
     public static function caroMove(): CaroMoveType { return self::$caroMove ??= new CaroMoveType(); }

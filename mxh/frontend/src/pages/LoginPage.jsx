@@ -1,13 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthShell from '../components/AuthShell';
+import AuthIntroSplash from '../components/AuthIntroSplash';
+import AnimatedLoginFace from '../components/AnimatedLoginFace';
 import { useAuth } from '../hooks/useAuth';
 import { BorderBeam } from '../components/ui/border-beam';
-import { Meteors } from '../components/ui/meteors';
 import { ShimmerButton } from '../components/ui/shimmer-button';
 import { MagicCard } from '../components/ui/magic-card';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+const INTRO_SEEN_KEY = 'ipock_intro_seen';
+
+// Chỉ phát intro nếu: chưa xem trong phiên này VÀ người dùng không bật "giảm chuyển động".
+function shouldShowIntro() {
+  if (typeof window === 'undefined') return false;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
+  try {
+    return sessionStorage.getItem(INTRO_SEEN_KEY) !== '1';
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+}
 
 function mapAuthError(message) {
   if (!message) return 'Đã xảy ra lỗi. Vui lòng thử lại.';
@@ -37,7 +52,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showIntro, setShowIntro] = useState(shouldShowIntro);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const googleBtnRef = useRef(null);
+
+  // Gấu che mắt khi đang focus ô mật khẩu.
+  const faceCovering = passwordFocused;
+
+  const handleIntroFinish = () => {
+    try {
+      sessionStorage.setItem(INTRO_SEEN_KEY, '1');
+    } catch (err) {
+      console.error(err);
+    }
+    setShowIntro(false);
+  };
 
   // Google profile completion state
   const [googleCredential, setGoogleCredential] = useState(null);
@@ -154,7 +183,6 @@ export default function LoginPage() {
           gradientTo="#1877f2"
           gradientColor="#82c4ff"
         >
-          <Meteors number={10} />
           <BorderBeam size={220} duration={11} colorFrom="#42b72a" colorTo="#1877f2" />
           <div className="auth-card-head">
             <h2 className="auth-card-title auth-card-title--gradient">Thông tin cá nhân</h2>
@@ -234,19 +262,21 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell
+    <>
+      {showIntro && <AuthIntroSplash onFinish={handleIntroFinish} />}
+      <AuthShell
       mode="login"
       headline="Kết nối với bạn bè và cộng đồng trên iPock."
       subcopy="iPock giúp bạn chia sẻ khoảnh khắc, trò chuyện thời gian thực và theo dõi mọi điều đang diễn ra quanh mình."
-      footnote={<><strong>Tạo Trang</strong> cho cộng đồng, thương hiệu hoặc doanh nghiệp của bạn trên iPock.</>}
     >
+      <AnimatedLoginFace covering={faceCovering} />
+
       <MagicCard
         className="auth-card auth-card--login auth-card--joly"
         gradientFrom="#1877f2"
         gradientTo="#9c40ff"
         gradientColor="#82c4ff"
       >
-        <Meteors number={14} />
         <BorderBeam size={250} duration={10} colorFrom="#1877f2" colorTo="#9c40ff" />
 
         {error ? (
@@ -279,6 +309,8 @@ export default function LoginPage() {
             className="auth-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onFocus={() => setPasswordFocused(true)}
+            onBlur={() => setPasswordFocused(false)}
             placeholder="Mật khẩu"
             autoComplete="current-password"
             required
@@ -326,6 +358,7 @@ export default function LoginPage() {
         {' '}
         <code>password123</code>
       </div>
-    </AuthShell>
+      </AuthShell>
+    </>
   );
 }

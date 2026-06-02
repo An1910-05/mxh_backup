@@ -72,6 +72,9 @@ services:
       BACKEND_URL: ${BACKEND_URL:-http://${MXH_PUBLIC_HOST:-localhost}:8000}
       PAYMENT_MOCK: ${PAYMENT_MOCK:-0}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GHN_API_BASE: ${GHN_API_BASE:-https://online-gateway.ghn.vn/shiip/public-api}
+      GHN_TOKEN: ${GHN_TOKEN:-}
+      GHN_SHOP_ID: ${GHN_SHOP_ID:-}
     restart: unless-stopped
 
   websocket:

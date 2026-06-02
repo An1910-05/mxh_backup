@@ -9,6 +9,16 @@ import {
   deleteShopProduct,
 } from '../services/shop';
 import { uploadFile } from '../services/api';
+import { API_ORIGIN } from '../config';
+
+// Ảnh có thể là path server (/uploads/...), URL ngoài (http), hoặc blob/data
+// (xem trước khi upload). Chỉ prefix API_ORIGIN cho path server tương đối —
+// nếu không, trình duyệt xin ảnh ở origin frontend (5173) và nhận về index.html.
+function mediaUrl(u) {
+  if (!u) return null;
+  if (/^(https?:|blob:|data:)/i.test(u)) return u;
+  return `${API_ORIGIN}${u.startsWith('/') ? '' : '/'}${u}`;
+}
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -100,7 +110,7 @@ export default function ShopDashboardPage() {
           {products.map(p => (
             <div key={p.id} className="shop-dashboard-row">
               <div className="shop-row-img">
-                {p.images?.[0] ? <img src={p.images[0]} alt="" /> : <div className="shop-row-noimg" />}
+                {p.images?.[0] ? <img src={mediaUrl(p.images[0])} alt="" /> : <div className="shop-row-noimg" />}
               </div>
               <div className="shop-row-main">
                 <div className="shop-row-title">{p.title}</div>
@@ -288,7 +298,7 @@ function ProductModal({ categories, product, onClose, onSaved }) {
             <label>Ảnh sản phẩm {isEdit ? '' : '*'}</label>
             <input type="file" accept="image/*" onChange={handleImageChange} disabled={submitting} />
             {isEdit && <small className="shop-form-hint">Để trống nếu muốn giữ ảnh hiện tại.</small>}
-            {imagePreview && <img src={imagePreview} alt="" className="shop-form-preview" />}
+            {imagePreview && <img src={mediaUrl(imagePreview)} alt="" className="shop-form-preview" />}
           </div>
           <div className="shop-form-row">
             <label>Tên sản phẩm *</label>
@@ -349,7 +359,7 @@ function ProductModal({ categories, product, onClose, onSaved }) {
                   <div className="shop-variant-row" key={i}>
                     <label className="shop-variant-img" title="Ảnh phân loại">
                       {v.imagePreview
-                        ? <img src={v.imagePreview} alt="" />
+                        ? <img src={mediaUrl(v.imagePreview)} alt="" />
                         : <span>+ Ảnh</span>}
                       <input type="file" accept="image/*" hidden disabled={submitting}
                         onChange={e => handleVariantImage(i, e.target.files?.[0])} />

@@ -97,7 +97,7 @@ export async function getMyPurchases(filters = {}) {
     query GetMyPurchases($status: String, $limit: Int, $page: Int) {
       myPurchases(status: $status, limit: $limit, page: $page) {
         id orderNumber buyerId sellerId productId quantity unitPrice totalPrice
-        status paymentStatus shippingAddress trackingNumber createdAt
+        status paymentStatus shippingAddress trackingNumber shippingCarrier createdAt
         buyer { id username avatar }
         seller { id username avatar }
         productSnapshot
@@ -188,7 +188,7 @@ export async function getMySales(filters = {}) {
     query GetMySales($status: String, $limit: Int, $page: Int) {
       mySales(status: $status, limit: $limit, page: $page) {
         id orderNumber buyerId sellerId productId quantity unitPrice totalPrice
-        status paymentStatus shippingAddress trackingNumber buyerNotes sellerNotes
+        status paymentStatus shippingAddress trackingNumber shippingCarrier buyerNotes sellerNotes
         commissionAmount sellerAmount cancellationReason cancelledBy
         createdAt confirmedAt shippedAt deliveredAt completedAt cancelledAt
         buyer { id username avatar }
@@ -211,15 +211,24 @@ export async function confirmShopOrder(orderId) {
   return data.confirmShopOrder;
 }
 
-export async function shipShopOrder(orderId, trackingNumber) {
+export async function shipShopOrder(orderId, trackingNumber, shippingCarrier) {
   const data = await graphqlFetch(`
-    mutation ShipShopOrder($orderId: Int!, $trackingNumber: String) {
-      shipShopOrder(orderId: $orderId, trackingNumber: $trackingNumber) {
-        id orderNumber status trackingNumber shippedAt
+    mutation ShipShopOrder($orderId: Int!, $trackingNumber: String, $shippingCarrier: String) {
+      shipShopOrder(orderId: $orderId, trackingNumber: $trackingNumber, shippingCarrier: $shippingCarrier) {
+        id orderNumber status trackingNumber shippingCarrier shippedAt
       }
     }
-  `, { orderId: parseInt(orderId), trackingNumber: trackingNumber || null });
+  `, { orderId: parseInt(orderId), trackingNumber: trackingNumber || null, shippingCarrier: shippingCarrier || null });
   return data.shipShopOrder;
+}
+
+export async function getOrderTracking(orderId) {
+  const data = await graphqlFetch(`
+    query OrderTracking($orderId: Int!) {
+      orderTracking(orderId: $orderId) { time status label }
+    }
+  `, { orderId: parseInt(orderId) });
+  return data.orderTracking || [];
 }
 
 // ============== Reviews ==============

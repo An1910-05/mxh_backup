@@ -170,23 +170,18 @@ function FloatingChatItem({ conv, index }) {
         </div>
         <div className="fcw-header-actions" onClick={e => e.stopPropagation()}>
           {!conv.isAI && (
-            <>
-              <button
-                className="fcw-btn"
-                title="Gọi điện thoại"
-                disabled={callState !== 'idle'}
-                onClick={() => startCall({
-                  id: live.other_user_id,
-                  username: live.display_name,
-                  avatar: live.display_avatar || null,
-                })}
-              >
-                <i className="bi bi-telephone-fill" aria-hidden="true" />
-              </button>
-              <button className="fcw-btn" title="Gọi video">
-                <i className="bi bi-camera-video-fill" aria-hidden="true" />
-              </button>
-            </>
+            <button
+              className="fcw-btn"
+              title="Gọi điện thoại"
+              disabled={callState !== 'idle'}
+              onClick={() => startCall({
+                id: live.other_user_id,
+                username: live.display_name,
+                avatar: live.display_avatar || null,
+              })}
+            >
+              <i className="bi bi-telephone-fill" aria-hidden="true" />
+            </button>
           )}
           <button
             className="fcw-btn"

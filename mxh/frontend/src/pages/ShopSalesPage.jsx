@@ -9,6 +9,7 @@ import {
 } from '../services/shop';
 import { API_ORIGIN } from '../config';
 import { useLiquidMetalRipple } from '../components/JolyText';
+import OrderTrackingModal from '../components/OrderTrackingModal';
 
 const STATUS_TABS = [
   { key: 'all',        label: 'Tất cả' },
@@ -52,6 +53,7 @@ export default function ShopSalesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionModal, setActionModal] = useState(null); // { action: 'confirm'|'ship'|'cancel', order }
+  const [trackingOrder, setTrackingOrder] = useState(null); // đơn đang xem lộ trình
 
   useEffect(() => {
     if (user && !user.is_seller) navigate('/shop/register', { replace: true });
@@ -139,6 +141,7 @@ export default function ShopSalesPage() {
                 onConfirm={(o) => openAction('confirm', o)}
                 onShip={(o) => openAction('ship', o)}
                 onCancel={(o) => openAction('cancel', o)}
+                onTrack={(o) => setTrackingOrder(o)}
               />
             ))}
           </div>
@@ -153,12 +156,21 @@ export default function ShopSalesPage() {
           onDone={() => { setActionModal(null); reload(); }}
         />
       )}
+
+      {trackingOrder && (
+        <OrderTrackingModal order={trackingOrder} onClose={() => setTrackingOrder(null)} />
+      )}
     </div>
   );
 }
 
+// GHN để đầu (mặc định) vì có tra cứu lộ trình realtime; giá trị chứa "GHN" để
+// backend route đúng sang GhnTrackingService.
+const SHIP_CARRIERS = ['Giao Hàng Nhanh (GHN)', 'J&T Express'];
+
 function OrderActionModal({ action, order, onClose, onDone }) {
   const [tracking, setTracking] = useState('');
+  const [carrier, setCarrier] = useState(SHIP_CARRIERS[0]);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -175,10 +187,13 @@ function OrderActionModal({ action, order, onClose, onDone }) {
     if (action === 'cancel' && !reason.trim()) {
       setError('Vui lòng nhập lý do huỷ đơn.'); return;
     }
+    if (action === 'ship' && !tracking.trim()) {
+      setError('Vui lòng nhập mã vận đơn.'); return;
+    }
     setSubmitting(true);
     try {
       if (action === 'confirm') await confirmShopOrder(order.id);
-      else if (action === 'ship') await shipShopOrder(order.id, tracking.trim() || null);
+      else if (action === 'ship') await shipShopOrder(order.id, tracking.trim(), carrier);
       else if (action === 'cancel') await cancelShopOrder(order.id, reason.trim());
       onDone();
     } catch (err) {
@@ -202,14 +217,23 @@ function OrderActionModal({ action, order, onClose, onDone }) {
             </p>
           )}
           {action === 'ship' && (
-            <div className="shop-form-row">
-              <label>Mã vận đơn</label>
-              <input
-                type="text" value={tracking} placeholder="Có thể bỏ trống"
-                onChange={e => setTracking(e.target.value)} disabled={submitting} autoFocus
-              />
-              <small className="shop-form-hint">Nhập mã vận đơn từ đơn vị vận chuyển (nếu có).</small>
-            </div>
+            <>
+              <div className="shop-form-row">
+                <label>Đơn vị vận chuyển *</label>
+                <select value={carrier} onChange={e => setCarrier(e.target.value)} disabled={submitting}>
+                  {SHIP_CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <small className="shop-form-hint">GHN hỗ trợ tra cứu lộ trình realtime trong app.</small>
+              </div>
+              <div className="shop-form-row">
+                <label>Mã vận đơn *</label>
+                <input
+                  type="text" value={tracking} placeholder={`Nhập mã vận đơn từ ${carrier}`}
+                  onChange={e => setTracking(e.target.value)} disabled={submitting} autoFocus
+                />
+                <small className="shop-form-hint">Bắt buộc với sản phẩm giao hàng — lấy mã trên vận đơn của đơn vị vận chuyển.</small>
+              </div>
+            </>
           )}
           {action === 'cancel' && (
             <div className="shop-form-row">
@@ -235,7 +259,7 @@ function OrderActionModal({ action, order, onClose, onDone }) {
   );
 }
 
-function SaleOrderCard({ order, onConfirm, onShip, onCancel }) {
+function SaleOrderCard({ order, onConfirm, onShip, onCancel, onTrack }) {
   const snap = parseSnapshot(order.productSnapshot);
   const img  = Array.isArray(snap.images) && snap.images.length ? snap.images[0] : null;
   const title = snap.title || `Sản phẩm #${order.productId}`;
@@ -245,6 +269,7 @@ function SaleOrderCard({ order, onConfirm, onShip, onCancel }) {
   const canConfirm = order.status === 'pending';
   const canShip    = order.status === 'confirmed' && !isDigital;
   const canCancel  = order.status === 'pending';
+  const canTrack   = ['shipping', 'delivered', 'completed'].includes(order.status) && !!order.shippingCarrier;
 
   return (
     <div className="shop-lg-glass shop-order-card">
@@ -269,6 +294,7 @@ function SaleOrderCard({ order, onConfirm, onShip, onCancel }) {
                 Giao đến: <b>{order.shippingAddress}</b>
               </span>
             )}
+            {order.shippingCarrier && <span>Đơn vị VC: <b>{order.shippingCarrier}</b></span>}
             {order.trackingNumber && <span>Mã vận đơn: <b>{order.trackingNumber}</b></span>}
           </div>
           {order.buyerNotes && <div className="shop-order-notes">Ghi chú khách: <i>{order.buyerNotes}</i></div>}
@@ -297,6 +323,11 @@ function SaleOrderCard({ order, onConfirm, onShip, onCancel }) {
           {canCancel && (
             <button className="shop-btn-danger" onClick={() => onCancel(order)}>
               Huỷ đơn
+            </button>
+          )}
+          {canTrack && (
+            <button className="shop-btn-secondary" onClick={() => onTrack(order)}>
+              📍 Xem lộ trình
             </button>
           )}
         </div>
