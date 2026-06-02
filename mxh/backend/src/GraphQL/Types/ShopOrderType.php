@@ -46,6 +46,14 @@ class ShopOrderType extends ObjectType
                     'type' => Type::nonNull(Type::int()),
                     'resolve' => fn($root) => $root['product_id']
                 ],
+                'variantId' => [
+                    'type' => Type::int(),
+                    'resolve' => fn($root) => isset($root['variant_id']) ? (int) $root['variant_id'] : null
+                ],
+                'variantName' => [
+                    'type' => Type::string(),
+                    'resolve' => fn($root) => $root['variant_name'] ?? null
+                ],
                 'productSnapshot' => [
                     'type' => Type::nonNull(Type::string()),
                     'resolve' => fn($root) => json_encode($root['product_snapshot'])

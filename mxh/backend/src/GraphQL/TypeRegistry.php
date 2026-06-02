@@ -21,6 +21,8 @@ use App\GraphQL\Types\TaiXiuCurrentRoundType;
 use App\GraphQL\Types\TaiXiuPlaceBetResultType;
 use App\GraphQL\Types\ShopCategoryType;
 use App\GraphQL\Types\ShopProductType;
+use App\GraphQL\Types\ShopProductVariantType;
+use App\GraphQL\Types\ShopProductVariantInputType;
 use App\GraphQL\Types\ShopOrderType;
 use App\GraphQL\Types\ShopSellerApplicationType;
 use App\GraphQL\Types\ShopReviewType;
@@ -50,6 +52,8 @@ class TypeRegistry
     private static ?TaiXiuPlaceBetResultType $taiXiuPlaceBetResult = null;
     private static ?ShopCategoryType $shopCategory = null;
     private static ?ShopProductType $shopProduct = null;
+    private static ?ShopProductVariantType $shopProductVariant = null;
+    private static ?ShopProductVariantInputType $shopProductVariantInput = null;
     private static ?ShopOrderType $shopOrder = null;
     private static ?ShopSellerApplicationType $shopSellerApplication = null;
     private static ?ShopReviewType $shopReview = null;
@@ -77,6 +81,8 @@ class TypeRegistry
     public static function taiXiuPlaceBetResult(): TaiXiuPlaceBetResultType { return self::$taiXiuPlaceBetResult ??= new TaiXiuPlaceBetResultType(); }
     public static function shopCategory(): ShopCategoryType { return self::$shopCategory ??= new ShopCategoryType(); }
     public static function shopProduct(): ShopProductType { return self::$shopProduct ??= new ShopProductType(); }
+    public static function shopProductVariant(): ShopProductVariantType { return self::$shopProductVariant ??= new ShopProductVariantType(); }
+    public static function shopProductVariantInput(): ShopProductVariantInputType { return self::$shopProductVariantInput ??= new ShopProductVariantInputType(); }
     public static function shopOrder(): ShopOrderType { return self::$shopOrder ??= new ShopOrderType(); }
     public static function shopSellerApplication(): ShopSellerApplicationType { return self::$shopSellerApplication ??= new ShopSellerApplicationType(); }
     public static function shopReview(): ShopReviewType { return self::$shopReview ??= new ShopReviewType(); }

@@ -4,17 +4,57 @@ namespace App\Services;
 
 use App\Repositories\ShopProductRepository;
 use App\Repositories\ShopCategoryRepository;
+use App\Repositories\ShopProductVariantRepository;
 use Exception;
 
 class ShopProductService
 {
     private ShopProductRepository $productRepo;
     private ShopCategoryRepository $categoryRepo;
+    private ShopProductVariantRepository $variantRepo;
 
     public function __construct()
     {
         $this->productRepo = new ShopProductRepository();
         $this->categoryRepo = new ShopCategoryRepository();
+        $this->variantRepo = new ShopProductVariantRepository();
+    }
+
+    /**
+     * Validate + normalise an incoming variant list (single-tier "Phân loại").
+     * Returns clean rows ready for the repository; throws on invalid input.
+     */
+    private function normalizeVariants(array $variants, string $productType): array
+    {
+        if (count($variants) > 20) {
+            throw new Exception('Tối đa 20 phân loại cho mỗi sản phẩm', 400);
+        }
+        $clean = [];
+        foreach (array_values($variants) as $i => $v) {
+            $name = trim($v['name'] ?? '');
+            if ($name === '' || mb_strlen($name) > 120) {
+                throw new Exception('Tên phân loại không hợp lệ (bắt buộc, tối đa 120 ký tự)', 400);
+            }
+            $price = (int) ($v['price'] ?? 0);
+            if ($price <= 0) {
+                throw new Exception("Giá phân loại \"{$name}\" phải lớn hơn 0", 400);
+            }
+            $stock = null;
+            if ($productType === 'physical') {
+                $stock = (int) ($v['stock_quantity'] ?? 0);
+                if ($stock < 0) {
+                    throw new Exception("Tồn kho phân loại \"{$name}\" không hợp lệ", 400);
+                }
+            }
+            $clean[] = [
+                'name'           => $name,
+                'price'          => $price,
+                'stock_quantity' => $stock,
+                'image'          => !empty($v['image']) ? $v['image'] : null,
+                'display_order'  => $i,
+            ];
+        }
+        return $clean;
     }
 
     public function getProducts(array $filters = [], int $limit = 20, int $page = 1): array
@@ -22,10 +62,12 @@ class ShopProductService
         $offset = ($page - 1) * $limit;
         $products = $this->productRepo->findAll($filters, $limit, $offset);
 
-        // Parse JSON fields
+        // Parse JSON fields + attach variants
         foreach ($products as &$product) {
             $product['images'] = json_decode($product['images'] ?? '[]', true);
+            $product['variants'] = $this->variantRepo->findByProduct((int) $product['id']);
         }
+        unset($product);
 
         return $products;
     }
@@ -44,8 +86,9 @@ class ShopProductService
             $product['view_count']++;
         }
 
-        // Parse JSON fields
+        // Parse JSON fields + attach variants
         $product['images'] = json_decode($product['images'] ?? '[]', true);
+        $product['variants'] = $this->variantRepo->findByProduct((int) $product['id']);
 
         return $product;
     }
@@ -67,22 +110,35 @@ class ShopProductService
             throw new Exception('Description is required', 400);
         }
 
-        if (!isset($data['price']) || $data['price'] <= 0) {
-            throw new Exception('Price must be greater than 0', 400);
-        }
-
         if (!in_array($data['product_type'], ['physical', 'digital'])) {
             throw new Exception('Product type must be physical or digital', 400);
         }
 
-        // Validate stock for physical products
-        if ($data['product_type'] === 'physical') {
-            if (!isset($data['stock_quantity']) || $data['stock_quantity'] < 0) {
-                throw new Exception('Stock quantity is required for physical products', 400);
-            }
+        // Variants (optional single-tier "Phân loại"). When present, base price/stock
+        // are derived from them (min price / sum stock); per-product price/stock
+        // validation is skipped.
+        $variants = (isset($data['variants']) && is_array($data['variants'])) ? $data['variants'] : [];
+        $hasVariants = count($variants) > 0;
+
+        if ($hasVariants) {
+            $variants = $this->normalizeVariants($variants, $data['product_type']);
+            $data['price'] = min(array_map(fn($v) => $v['price'], $variants));
+            $data['stock_quantity'] = $data['product_type'] === 'physical'
+                ? array_sum(array_map(fn($v) => (int) $v['stock_quantity'], $variants))
+                : null;
         } else {
-            // Digital products have unlimited stock
-            $data['stock_quantity'] = null;
+            if (!isset($data['price']) || $data['price'] <= 0) {
+                throw new Exception('Price must be greater than 0', 400);
+            }
+            // Validate stock for physical products
+            if ($data['product_type'] === 'physical') {
+                if (!isset($data['stock_quantity']) || $data['stock_quantity'] < 0) {
+                    throw new Exception('Stock quantity is required for physical products', 400);
+                }
+            } else {
+                // Digital products have unlimited stock
+                $data['stock_quantity'] = null;
+            }
         }
 
         // Validate images
@@ -109,6 +165,9 @@ class ShopProductService
         ];
 
         $productId = $this->productRepo->create($productData);
+        if ($hasVariants) {
+            $this->variantRepo->bulkInsert($productId, $variants);
+        }
         return $this->getProductById($productId);
     }
 
@@ -125,9 +184,10 @@ class ShopProductService
             throw new Exception('You can only update your own products', 403);
         }
 
-        // Cannot update approved/pending products
-        if (in_array($product['status'], ['pending', 'approved'])) {
-            throw new Exception('Cannot update product that is pending or approved', 400);
+        // Seller may edit their product (incl. approved ones) — status is kept as-is.
+        // Archived products are read-only.
+        if ($product['status'] === 'archived') {
+            throw new Exception('Cannot edit an archived product', 400);
         }
 
         // Validate category if provided
@@ -141,6 +201,24 @@ class ShopProductService
         // Validate title length
         if (isset($data['title']) && strlen($data['title']) > 255) {
             throw new Exception('Title must be less than 255 characters', 400);
+        }
+
+        // Handle variants if provided (single-tier). product_type cannot change on edit,
+        // so derive base price/stock from the existing product's type.
+        if (array_key_exists('variants', $data)) {
+            $rawVariants = is_array($data['variants']) ? $data['variants'] : [];
+            unset($data['variants']);
+            if (count($rawVariants) > 0) {
+                $clean = $this->normalizeVariants($rawVariants, $product['product_type']);
+                $this->variantRepo->replaceForProduct($productId, $clean);
+                $data['price'] = min(array_map(fn($v) => $v['price'], $clean));
+                $data['stock_quantity'] = $product['product_type'] === 'physical'
+                    ? array_sum(array_map(fn($v) => (int) $v['stock_quantity'], $clean))
+                    : null;
+            } else {
+                // Seller removed all variants -> back to a simple product.
+                $this->variantRepo->deleteByProduct($productId);
+            }
         }
 
         // Validate price

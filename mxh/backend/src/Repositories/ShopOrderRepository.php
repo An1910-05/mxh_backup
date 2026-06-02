@@ -113,16 +113,18 @@ class ShopOrderRepository
     {
         $stmt = $this->db->prepare("
             INSERT INTO shop_orders (
-                order_number, buyer_id, seller_id, product_id, product_snapshot,
+                order_number, buyer_id, seller_id, product_id, variant_id, variant_name, product_snapshot,
                 quantity, unit_price, total_price, commission_rate, commission_amount,
                 seller_amount, status, payment_status, shipping_address, buyer_notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $data['order_number'],
             $data['buyer_id'],
             $data['seller_id'],
             $data['product_id'],
+            $data['variant_id'] ?? null,
+            $data['variant_name'] ?? null,
             json_encode($data['product_snapshot']),
             $data['quantity'],
             $data['unit_price'],

@@ -268,6 +268,17 @@ conversations ──1:N──> messages
 - Env vars: đọc từ `.env` ở root project
 - **KHÔNG sửa Dockerfile** trừ khi thêm system dependency
 - **KHÔNG thêm service mới** vào docker-compose mà không hỏi user
+- **Backend & websocket chạy từ IMAGE, KHÔNG bind-mount code** (chỉ mount `backend/uploads`). → Sửa code backend (PHP) chỉ có hiệu lực sau khi **rebuild image** (`docker compose build` / bước 2 trong `start.cmd`), hoặc tạm thời `docker compose cp <file> backend:/app/...` vào container đang chạy để test. "Khởi động nhanh" (bước 1) KHÔNG rebuild → không nạp thay đổi backend. Frontend thì có bind-mount nên Vite HMR tự cập nhật.
+
+### 6.1 start.cmd — BẮT BUỘC giữ đồng bộ
+
+> `mxh/start.cmd` là launcher chính (menu: 1 Khởi động nhanh / 2 Rebuild / 3 Reset DB / 4 Migrate+seed / 5 Restore uploads / 6 Log / 7 Stop). Luồng khởi tạo: `wait_mysql` → `wait_backend` → `do_migrate` → seed (`auto_seed_if_empty`/`do_seed`) → `do_restore_uploads`.
+
+- **Mọi thay đổi liên quan tới khởi động lại docker PHẢI cập nhật `start.cmd` cho khớp.** Ví dụ:
+  - Thêm script init/setup backend mới (kiểu `database/*.php`) → thêm label `:do_xxx` và gọi nó trong các nhánh phù hợp (`start_quick`, `start_build`, `reset_db`).
+  - Thêm migration/seed mới cần chạy lúc khởi động → đảm bảo nằm trong luồng `do_migrate`/seed.
+  - Thay đổi backend cần rebuild mới có hiệu lực → nhắc user dùng **bước 2 (Rebuild)**, không phải bước 1.
+- Thiếu bước này = user chạy menu nhưng dữ liệu/tính năng mới không được nạp.
 
 ---
 
@@ -373,4 +384,6 @@ Luôn ghi vào mục **"Cập nhật gần đây"** ở đầu README.md. Mỗi 
 - [ ] UI label bằng tiếng Việt?
 - [ ] Không nuốt lỗi bằng `catch {}` trống?
 - [ ] Không tạo file/thư mục mới khi có thể thêm vào file hiện có?
+- [ ] Thay đổi liên quan khởi động lại docker (init/migrate/seed/restore mới, cần rebuild) → đã cập nhật `start.cmd` chưa? (mục 6.1)
+- [ ] Sửa code backend → đã rebuild image hoặc `docker compose cp` rồi test thực tế chưa? (mục 6)
 - [ ] **README.md đã cập nhật theo quy tắc mục 8?** ← KHÔNG ĐƯỢC BỎ QUA

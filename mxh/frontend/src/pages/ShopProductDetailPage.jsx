@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useShopCart } from '../hooks/useShopCart';
@@ -61,6 +62,7 @@ export default function ShopProductDetailPage() {
   const [error, setError] = useState('');
   const [qty, setQty] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState(null);
   const [tab, setTab] = useState('desc');
   const [addedToast, setAddedToast] = useState('');
 
@@ -68,7 +70,7 @@ export default function ShopProductDetailPage() {
     setLoading(true);
     setError('');
     getShopProduct(productId)
-      .then((p) => { setProduct(p); setActiveImage(0); setQty(1); })
+      .then((p) => { setProduct(p); setActiveImage(0); setQty(1); setSelectedVariant(null); })
       .catch((err) => {
         console.error('[shop product] load failed', err);
         setError(err?.message || 'Không tải được sản phẩm');
@@ -90,18 +92,21 @@ export default function ShopProductDetailPage() {
   const handleAddToCart = () => {
     if (!user) { navigate('/login'); return; }
     if (!product) return;
-    addItem(product, qty);
-    setAddedToast(`Đã thêm ${qty} × ${product.title} vào giỏ`);
+    const vs = Array.isArray(product.variants) ? product.variants : [];
+    if (vs.length > 0 && !selectedVariant) { setAddedToast('Vui lòng chọn phân loại trước'); return; }
+    addItem(product, qty, selectedVariant);
+    setAddedToast(`Đã thêm ${qty} × ${product.title}${selectedVariant ? ' - ' + selectedVariant.name : ''} vào giỏ`);
   };
 
   const handleBuyNow = () => {
     if (!user) { navigate('/login'); return; }
     if (!product) return;
-    addItem(product, qty);
+    const vs = Array.isArray(product.variants) ? product.variants : [];
+    if (vs.length > 0 && !selectedVariant) { setAddedToast('Vui lòng chọn phân loại trước'); return; }
+    addItem(product, qty, selectedVariant);
     navigate('/shop/cart');
   };
 
-  const totalPrice = useMemo(() => (Number(product?.price) || 0) * Math.max(1, qty), [product, qty]);
   const stockLabel = product?.stockQuantity == null
     ? 'Thủ công'
     : Number(product.stockQuantity).toLocaleString('vi-VN');
@@ -135,6 +140,24 @@ export default function ShopProductDetailPage() {
   const sellerInitials = initialsOf(product.seller?.username);
   const [sc1, sc2] = pickGradient(product.seller?.username || product.sellerId);
 
+  // Variants ("Phân loại")
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+  const hasVariants = variants.length > 0;
+  const variantPrices = variants.map(v => Number(v.price) || 0);
+  const minVariantPrice = hasVariants ? Math.min(...variantPrices) : 0;
+  const maxVariantPrice = hasVariants ? Math.max(...variantPrices) : 0;
+  const effectivePrice = selectedVariant
+    ? Number(selectedVariant.price)
+    : (hasVariants ? minVariantPrice : Number(product.price));
+  const effectiveTotal = effectivePrice * Math.max(1, qty);
+  const effectiveStock = selectedVariant ? selectedVariant.stockQuantity : product.stockQuantity;
+  const effectiveStockLabel = effectiveStock == null
+    ? 'Thủ công'
+    : Number(effectiveStock).toLocaleString('vi-VN');
+  const mainImageSrc = (selectedVariant && selectedVariant.image)
+    ? mediaUrl(selectedVariant.image)
+    : (hasImages ? mediaUrl(images[activeImage] || images[0]) : null);
+
   return (
     <DetailShell cartCount={cartCount} crumbTitle={product.title}>
       <Link to="/shop" className="shop-lg-back-link">← Quay lại Shop</Link>
@@ -142,8 +165,8 @@ export default function ShopProductDetailPage() {
       <section className="shop-lg-hero">
         <div className="shop-lg-glass shop-lg-gallery">
           <div className="main">
-            {hasImages
-              ? <img src={mediaUrl(images[activeImage] || images[0])} alt={product.title} />
+            {mainImageSrc
+              ? <img src={mainImageSrc} alt={product.title} />
               : <div className="placeholder" style={{ background: `linear-gradient(135deg, ${pc1}, ${pc2})`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', clipPath: 'none', filter: 'none', borderRadius: 12 }}>
                   <span style={{ padding: 16, textAlign: 'center', fontWeight: 700, fontSize: 18 }}>{product.title}</span>
                 </div>}
@@ -214,8 +237,41 @@ export default function ShopProductDetailPage() {
           </div>
 
           <div className="shop-lg-price-block">
-            <span className="price">{formatPrice(product.price)}</span>
+            {hasVariants && !selectedVariant ? (
+              <span className="price">
+                {minVariantPrice === maxVariantPrice
+                  ? formatPrice(minVariantPrice)
+                  : `${formatPrice(minVariantPrice)} – ${formatPrice(maxVariantPrice)}`}
+              </span>
+            ) : (
+              <span className="price">{formatPrice(effectivePrice)}</span>
+            )}
           </div>
+
+          {hasVariants && (
+            <div className="shop-lg-variant-block">
+              <span className="shop-lg-variant-label">Phân loại</span>
+              <div className="shop-lg-variant-grid">
+                {variants.map((v) => {
+                  const out = v.stockQuantity != null && Number(v.stockQuantity) <= 0;
+                  const on = selectedVariant?.id === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      className={'shop-lg-variant-chip shop-lg-lq' + (on ? ' is-on' : '') + (out ? ' is-out' : '')}
+                      disabled={out}
+                      onClick={() => { setSelectedVariant(on ? null : v); setQty(1); }}
+                      title={v.name}
+                    >
+                      {v.image && <img src={mediaUrl(v.image)} alt="" />}
+                      <span className="nm">{v.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="shop-lg-qty-row">
             <span className="l">Số lượng</span>
@@ -225,9 +281,12 @@ export default function ShopProductDetailPage() {
                 value={qty}
                 onChange={(e) => setQty(Math.max(1, parseInt(e.target.value || '1', 10)))}
               />
-              <button type="button" onClick={() => setQty(qty + 1)}>+</button>
+              <button
+                type="button"
+                onClick={() => setQty(q => (effectiveStock != null ? Math.min(Number(effectiveStock) || 1, q + 1) : q + 1))}
+              >+</button>
             </div>
-            <span className="shop-lg-stock-line">Còn <b style={{ color: 'var(--slg-txt)' }}>{stockLabel}</b></span>
+            <span className="shop-lg-stock-line">Còn <b style={{ color: 'var(--slg-txt)' }}>{effectiveStockLabel}</b></span>
           </div>
 
           <div className="shop-lg-cta-row">
@@ -239,7 +298,7 @@ export default function ShopProductDetailPage() {
               Thêm vào giỏ
             </button>
             <button type="button" className="shop-lg-btn-buy shop-lg-lq tinted" onClick={handleBuyNow}>
-              Mua ngay · {formatPrice(totalPrice)}
+              Mua ngay · {formatPrice(effectiveTotal)}
             </button>
           </div>
 
@@ -418,6 +477,8 @@ function ProductReviewsTab({ productId }) {
 }
 
 function ReviewItem({ review }) {
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const reviewImages = Array.isArray(review.images) ? review.images.filter(Boolean) : [];
   return (
     <div className="shop-review-item">
       <div className="shop-review-head">
@@ -435,12 +496,18 @@ function ReviewItem({ review }) {
         </div>
       </div>
       <div className="shop-review-content">{review.content}</div>
-      {Array.isArray(review.images) && review.images.length > 0 && (
+      {reviewImages.length > 0 && (
         <div className="shop-review-imgs">
-          {review.images.map((src, i) => (
-            <a key={i} href={mediaUrl(src)} target="_blank" rel="noreferrer">
+          {reviewImages.map((src, i) => (
+            <button
+              key={i}
+              type="button"
+              className="shop-review-img-btn"
+              onClick={() => setLightboxIndex(i)}
+              aria-label={`Xem ảnh ${i + 1}`}
+            >
               <img src={mediaUrl(src)} alt={`Ảnh ${i + 1}`} />
-            </a>
+            </button>
           ))}
         </div>
       )}
@@ -450,7 +517,64 @@ function ReviewItem({ review }) {
           <div className="txt">{review.sellerReply}</div>
         </div>
       )}
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={reviewImages}
+          index={lightboxIndex}
+          onChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function ImageLightbox({ images, index, onChange, onClose }) {
+  const many = images.length > 1;
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowRight' && images.length > 1) onChange((index + 1) % images.length);
+      else if (e.key === 'ArrowLeft' && images.length > 1) onChange((index - 1 + images.length) % images.length);
+    };
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [index, images.length, onChange, onClose]);
+
+  return createPortal(
+    <div className="shop-lightbox" onClick={onClose} role="dialog" aria-modal="true">
+      <button className="shop-lightbox-close" type="button" onClick={onClose} aria-label="Đóng">×</button>
+      {many && (
+        <button
+          className="shop-lightbox-nav prev"
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onChange((index - 1 + images.length) % images.length); }}
+          aria-label="Ảnh trước"
+        >‹</button>
+      )}
+      <img
+        className="shop-lightbox-img"
+        src={mediaUrl(images[index])}
+        alt={`Ảnh ${index + 1}`}
+        onClick={(e) => e.stopPropagation()}
+      />
+      {many && (
+        <button
+          className="shop-lightbox-nav next"
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onChange((index + 1) % images.length); }}
+          aria-label="Ảnh sau"
+        >›</button>
+      )}
+      {many && <div className="shop-lightbox-count">{index + 1} / {images.length}</div>}
+    </div>,
+    document.body
   );
 }
 

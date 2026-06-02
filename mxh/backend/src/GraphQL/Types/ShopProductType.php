@@ -58,6 +58,10 @@ class ShopProductType extends ObjectType
                     'type' => Type::string(),
                     'resolve' => fn($root) => $root['digital_file_url']
                 ],
+                'variants' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(TypeRegistry::shopProductVariant()))),
+                    'resolve' => fn($root) => $root['variants'] ?? []
+                ],
                 'status' => Type::nonNull(Type::string()),
                 'rejectionReason' => [
                     'type' => Type::string(),

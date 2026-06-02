@@ -109,6 +109,7 @@ export default function ShopCartPage() {
       try {
         const order = await createShopOrder({
           productId: Number(item.productId),
+          variantId: item.variantId != null ? Number(item.variantId) : null,
           quantity: Number(item.qty) || 1,
           shippingAddress: isDigital ? null : (shippingAddress.trim() || null),
           buyerNotes: buyerNotes.trim() || null,
@@ -122,7 +123,7 @@ export default function ShopCartPage() {
 
     if (ok.length > 0) {
       // Remove successfully ordered items from cart
-      for (const { item } of ok) cart.removeItem(item.productId);
+      for (const { item } of ok) cart.removeItem(item.id);
       setSuccessMsg(`Đã tạo ${ok.length} đơn hàng. Vào trang Lịch sử mua hàng để xem chi tiết.`);
     }
     if (fail.length > 0) {
@@ -215,12 +216,12 @@ export default function ShopCartPage() {
                     {group.items.map(item => {
                       const [pc1, pc2] = pickGradient(item.title);
                       return (
-                        <div className="shop-lg-row" key={item.productId}>
+                        <div className="shop-lg-row" key={item.id}>
                           <input
                             type="checkbox"
                             className="shop-lg-ck"
                             checked={!!item.selected}
-                            onChange={() => cart.toggleSelect(item.productId)}
+                            onChange={() => cart.toggleSelect(item.id)}
                           />
                           <div className="shop-lg-thumb">
                             {item.image
@@ -235,21 +236,24 @@ export default function ShopCartPage() {
                             >
                               {item.title}
                             </Link>
+                            {item.variantName && (
+                              <div className="shop-lg-variant-tag">Phân loại: {item.variantName}</div>
+                            )}
                           </div>
                           <div className="shop-lg-unit">{formatPrice(item.price)}</div>
                           <div className="shop-lg-qty">
-                            <button type="button" onClick={() => cart.setQty(item.productId, item.qty - 1)}>−</button>
+                            <button type="button" onClick={() => cart.setQty(item.id, item.qty - 1)}>−</button>
                             <input
                               value={item.qty}
-                              onChange={(e) => cart.setQty(item.productId, parseInt(e.target.value || '1', 10))}
+                              onChange={(e) => cart.setQty(item.id, parseInt(e.target.value || '1', 10))}
                             />
-                            <button type="button" onClick={() => cart.setQty(item.productId, item.qty + 1)}>+</button>
+                            <button type="button" onClick={() => cart.setQty(item.id, item.qty + 1)}>+</button>
                           </div>
                           <div className="shop-lg-subtotal">{formatPrice(item.price * item.qty)}</div>
                           <button
                             type="button"
                             className="shop-lg-del"
-                            onClick={() => cart.removeItem(item.productId)}
+                            onClick={() => cart.removeItem(item.id)}
                             aria-label="Xoá"
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

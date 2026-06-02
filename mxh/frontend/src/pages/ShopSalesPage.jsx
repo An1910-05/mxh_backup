@@ -51,6 +51,7 @@ export default function ShopSalesPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionModal, setActionModal] = useState(null); // { action: 'confirm'|'ship'|'cancel', order }
 
   useEffect(() => {
     if (user && !user.is_seller) navigate('/shop/register', { replace: true });
@@ -71,37 +72,7 @@ export default function ShopSalesPage() {
 
   useEffect(() => { reload(); }, [reload]);
 
-  const handleConfirm = async (order) => {
-    if (!window.confirm(`Xác nhận đơn #${order.orderNumber}?`)) return;
-    try {
-      await confirmShopOrder(order.id);
-      reload();
-    } catch (err) {
-      alert(err?.message || 'Không xác nhận được');
-    }
-  };
-
-  const handleShip = async (order) => {
-    const tracking = window.prompt('Nhập mã vận đơn (có thể bỏ trống):', '');
-    if (tracking === null) return;
-    try {
-      await shipShopOrder(order.id, tracking.trim() || null);
-      reload();
-    } catch (err) {
-      alert(err?.message || 'Không cập nhật được trạng thái giao hàng');
-    }
-  };
-
-  const handleCancel = async (order) => {
-    const reason = window.prompt('Lý do huỷ đơn (sẽ gửi cho người mua):', '');
-    if (!reason || !reason.trim()) return;
-    try {
-      await cancelShopOrder(order.id, reason.trim());
-      reload();
-    } catch (err) {
-      alert(err?.message || 'Không huỷ được đơn');
-    }
-  };
+  const openAction = (action, order) => setActionModal({ action, order });
 
   if (!user || !user.is_seller) {
     return <div className="apple-main" style={{ padding: 32 }}>Đang chuyển hướng…</div>;
@@ -165,14 +136,101 @@ export default function ShopSalesPage() {
               <SaleOrderCard
                 key={order.id}
                 order={order}
-                onConfirm={handleConfirm}
-                onShip={handleShip}
-                onCancel={handleCancel}
+                onConfirm={(o) => openAction('confirm', o)}
+                onShip={(o) => openAction('ship', o)}
+                onCancel={(o) => openAction('cancel', o)}
               />
             ))}
           </div>
         )}
       </main>
+
+      {actionModal && (
+        <OrderActionModal
+          action={actionModal.action}
+          order={actionModal.order}
+          onClose={() => setActionModal(null)}
+          onDone={() => { setActionModal(null); reload(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function OrderActionModal({ action, order, onClose, onDone }) {
+  const [tracking, setTracking] = useState('');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const meta = {
+    confirm: { title: `Xác nhận đơn #${order.orderNumber}`, submit: 'Xác nhận đơn',     btnClass: 'shop-btn-primary' },
+    ship:    { title: `Giao đơn #${order.orderNumber}`,     submit: 'Đánh dấu đã giao',  btnClass: 'shop-btn-primary' },
+    cancel:  { title: `Huỷ đơn #${order.orderNumber}`,      submit: 'Huỷ đơn',           btnClass: 'shop-btn-danger'  },
+  }[action];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (action === 'cancel' && !reason.trim()) {
+      setError('Vui lòng nhập lý do huỷ đơn.'); return;
+    }
+    setSubmitting(true);
+    try {
+      if (action === 'confirm') await confirmShopOrder(order.id);
+      else if (action === 'ship') await shipShopOrder(order.id, tracking.trim() || null);
+      else if (action === 'cancel') await cancelShopOrder(order.id, reason.trim());
+      onDone();
+    } catch (err) {
+      console.error('[sales] action failed', err);
+      setError(err?.message || 'Thao tác thất bại');
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="shop-modal-backdrop" onClick={onClose}>
+      <div className="shop-modal" onClick={e => e.stopPropagation()}>
+        <div className="shop-modal-header">
+          <h2>{meta.title}</h2>
+          <button className="shop-modal-close" onClick={onClose} type="button">×</button>
+        </div>
+        <form onSubmit={handleSubmit} className="shop-modal-form">
+          {action === 'confirm' && (
+            <p style={{ margin: 0, color: 'var(--text-secondary, #4a4d57)' }}>
+              Xác nhận đơn này? Với sản phẩm số, đơn sẽ được giao tự động cho người mua.
+            </p>
+          )}
+          {action === 'ship' && (
+            <div className="shop-form-row">
+              <label>Mã vận đơn</label>
+              <input
+                type="text" value={tracking} placeholder="Có thể bỏ trống"
+                onChange={e => setTracking(e.target.value)} disabled={submitting} autoFocus
+              />
+              <small className="shop-form-hint">Nhập mã vận đơn từ đơn vị vận chuyển (nếu có).</small>
+            </div>
+          )}
+          {action === 'cancel' && (
+            <div className="shop-form-row">
+              <label>Lý do huỷ *</label>
+              <textarea
+                rows={3} value={reason} placeholder="Lý do sẽ được gửi cho người mua"
+                onChange={e => setReason(e.target.value)} disabled={submitting} autoFocus
+              />
+            </div>
+          )}
+
+          {error && <div className="shop-form-error">{error}</div>}
+
+          <div className="shop-modal-footer">
+            <button type="button" className="shop-btn-secondary" onClick={onClose} disabled={submitting}>Đóng</button>
+            <button type="submit" className={meta.btnClass} disabled={submitting}>
+              {submitting ? 'Đang xử lý…' : meta.submit}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

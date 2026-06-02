@@ -63,6 +63,29 @@ function scanByUser(string $dir, string $prefix): array
     return $latest;
 }
 
+/**
+ * Quét TẤT CẢ file media theo prefix (khác scanByUser: không gộp về 1 file/user).
+ * Trả mảng record [uid, ts, name, type, url, path] để map từng file vào từng post.
+ */
+function scanAllMedia(string $dir, string $prefix, string $mediaType, string $subDir): array
+{
+    if (!is_dir($dir)) return [];
+    $out = [];
+    foreach (scandir($dir) as $name) {
+        if ($name === '.' || $name === '..') continue;
+        if (!preg_match("/^{$prefix}_(\d+)_(\d+)_[^.]+\.[A-Za-z0-9]+$/", $name, $m)) continue;
+        $out[] = [
+            'uid'  => (int) $m[1],
+            'ts'   => (int) $m[2],
+            'name' => $name,
+            'type' => $mediaType,
+            'url'  => '/uploads/' . $subDir . '/' . $name,
+            'path' => $dir . '/' . $name,
+        ];
+    }
+    return $out;
+}
+
 // ── AVATARS ────────────────────────────────────────────────────────
 echo "== Avatars ==\n";
 $avatars = scanByUser($uploadsRoot . '/avatars', 'avatar');
@@ -110,18 +133,67 @@ if (!$hasCoverCol) {
     echo "  Đã cập nhật {$coverUpdated} cover.\n\n";
 }
 
-// ── POSTS MEDIA (chỉ báo cáo, không can thiệp) ─────────────────────
-$postDir = $uploadsRoot . '/posts';
-if (is_dir($postDir)) {
-    $count = count(array_filter(scandir($postDir), fn($f) => $f !== '.' && $f !== '..'));
-    echo "== Posts media ==\n  {$count} files (không tự link vì cần user upload qua API).\n\n";
+// ── POST MEDIA + VIDEOS: relink file mồ côi vào post có media_url NULL ──
+// Tên file chỉ chứa user_id (post_{userId}_{ts}_...), KHÔNG có post_id → không
+// map tuyệt đối được. Chiến lược thận trọng: với mỗi post đang thiếu media, tìm
+// file CÙNG user_id có timestamp gần nhất, nằm trong cửa sổ [created_at - 30',
+// created_at + 2'] (user upload file rồi mới đăng post vài giây→phút sau).
+// Mỗi file dùng 1 lần, chỉ điền vào post có media_url NULL → idempotent, không
+// đè media sẵn có, tránh gắn nhầm ảnh cho post text.
+echo "== Post media & videos (relink) ==\n";
+
+$candidates = array_merge(
+    scanAllMedia($uploadsRoot . '/posts', 'post', 'image', 'posts'),
+    scanAllMedia($uploadsRoot . '/videos', 'video', 'video', 'videos')
+);
+
+$nullPosts = $pdo->query(
+    "SELECT id, user_id, UNIX_TIMESTAMP(created_at) AS epoch
+     FROM posts WHERE media_url IS NULL OR media_url = ''
+     ORDER BY created_at ASC, id ASC"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+$windowBefore = 1800; // 30 phút trước khi đăng
+$windowAfter  = 120;  // 2 phút sau (dự phòng lệch giờ)
+$used = [];
+$linked = 0;
+
+foreach ($nullPosts as $post) {
+    $uid = (int) $post['user_id'];
+    $epoch = (int) $post['epoch'];
+    $best = null;
+    $bestDiff = PHP_INT_MAX;
+
+    foreach ($candidates as $c) {
+        if ($c['uid'] !== $uid || isset($used[$c['name']])) continue;
+        if ($c['ts'] < $epoch - $windowBefore || $c['ts'] > $epoch + $windowAfter) continue;
+        $diff = abs($epoch - $c['ts']);
+        if ($diff < $bestDiff) { $bestDiff = $diff; $best = $c; }
+    }
+
+    if ($best === null) continue;
+
+    $w = null; $h = null;
+    if ($best['type'] === 'image' && function_exists('getimagesize')) {
+        $info = @getimagesize($best['path']);
+        if ($info) { $w = $info[0]; $h = $info[1]; }
+    }
+
+    $stmt = $pdo->prepare(
+        "UPDATE posts SET media_url = ?, media_type = ?, media_width = ?, media_height = ?
+         WHERE id = ? AND (media_url IS NULL OR media_url = '')"
+    );
+    $stmt->execute([$best['url'], $best['type'], $w, $h, (int) $post['id']]);
+    if ($stmt->rowCount() > 0) {
+        $used[$best['name']] = true;
+        $linked++;
+        echo "  post#{$post['id']} (user {$uid}) → {$best['url']}\n";
+    }
 }
 
-// ── VIDEOS ─────────────────────────────────────────────────────────
-$videoDir = $uploadsRoot . '/videos';
-if (is_dir($videoDir)) {
-    $count = count(array_filter(scandir($videoDir), fn($f) => $f !== '.' && $f !== '..'));
-    echo "== Videos ==\n  {$count} files.\n\n";
-}
+$imgCount = count(scanAllMedia($uploadsRoot . '/posts', 'post', 'image', 'posts'));
+$vidCount = count(scanAllMedia($uploadsRoot . '/videos', 'video', 'video', 'videos'));
+echo "  Đã link {$linked} post media.\n";
+echo "  (Tổng: {$imgCount} ảnh post + {$vidCount} video. File không khớp post nào là mồ côi từ post đã xoá — bỏ qua.)\n\n";
 
 echo "Done.\n";

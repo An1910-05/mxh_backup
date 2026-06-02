@@ -26,8 +26,8 @@ function writeCart(items) {
 
 /**
  * Mỗi item trong cart:
- *   { id, productId, title, price, image, qty, sellerId, sellerName }
- * `id` = `${productId}` (chỉ 1 dòng / 1 sản phẩm) — cộng dồn qty nếu thêm trùng.
+ *   { id, productId, variantId, variantName, title, price, image, qty, sellerId, sellerName }
+ * `id` = `${productId}:${variantId||'base'}` — mỗi phân loại là 1 dòng riêng; cộng dồn qty nếu thêm trùng dòng.
  */
 export function useShopCart() {
   const [items, setItems] = useState(readCart);
@@ -39,28 +39,33 @@ export function useShopCart() {
     return () => window.removeEventListener('mxh-shop-cart-changed', onChange);
   }, []);
 
-  const addItem = useCallback((product, qty = 1) => {
+  const addItem = useCallback((product, qty = 1, variant = null) => {
     const productId = Number(product.id);
+    const variantId = variant ? Number(variant.id) : null;
+    const lineId = `${productId}:${variantId ?? 'base'}`;
     const cur = readCart();
-    const idx = cur.findIndex(i => Number(i.productId) === productId);
+    const idx = cur.findIndex(i => i.id === lineId);
     const seller = product.seller || {};
-    const image = Array.isArray(product.images) && product.images.length ? product.images[0] : null;
+    const image = variant?.image
+      || (Array.isArray(product.images) && product.images.length ? product.images[0] : null);
     const next = [...cur];
     if (idx >= 0) {
       next[idx] = { ...next[idx], qty: Math.max(1, (next[idx].qty || 1) + qty) };
     } else {
       next.push({
-        id: String(productId),
+        id: lineId,
         productId,
+        variantId,
+        variantName: variant ? variant.name : null,
         title: product.title,
-        price: Number(product.price) || 0,
+        price: variant ? Number(variant.price) || 0 : Number(product.price) || 0,
         image,
         qty: Math.max(1, qty),
         selected: true,
         sellerId: seller.id || null,
         sellerName: seller.username || 'Shop',
         sellerAvatar: seller.avatar || null,
-        stockQuantity: product.stockQuantity ?? null,
+        stockQuantity: variant ? (variant.stockQuantity ?? null) : (product.stockQuantity ?? null),
         productType: product.productType || 'physical',
       });
     }
@@ -68,16 +73,16 @@ export function useShopCart() {
     setItems(next);
   }, []);
 
-  const setQty = useCallback((productId, qty) => {
+  const setQty = useCallback((lineId, qty) => {
     const cur = readCart();
-    const next = cur.map(i => Number(i.productId) === Number(productId) ? { ...i, qty: Math.max(1, qty) } : i);
+    const next = cur.map(i => i.id === lineId ? { ...i, qty: Math.max(1, qty) } : i);
     writeCart(next);
     setItems(next);
   }, []);
 
-  const toggleSelect = useCallback((productId) => {
+  const toggleSelect = useCallback((lineId) => {
     const cur = readCart();
-    const next = cur.map(i => Number(i.productId) === Number(productId) ? { ...i, selected: !i.selected } : i);
+    const next = cur.map(i => i.id === lineId ? { ...i, selected: !i.selected } : i);
     writeCart(next);
     setItems(next);
   }, []);
@@ -99,9 +104,9 @@ export function useShopCart() {
     setItems(next);
   }, []);
 
-  const removeItem = useCallback((productId) => {
+  const removeItem = useCallback((lineId) => {
     const cur = readCart();
-    const next = cur.filter(i => Number(i.productId) !== Number(productId));
+    const next = cur.filter(i => i.id !== lineId);
     writeCart(next);
     setItems(next);
   }, []);

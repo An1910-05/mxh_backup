@@ -20,6 +20,7 @@ export async function getShopProducts(filters = {}) {
       shopProducts(categoryId: $categoryId, sellerId: $sellerId, status: $status, productType: $productType, search: $search, limit: $limit, page: $page) {
         id sellerId categoryId title description productType price stockQuantity
         images status viewCount soldCount createdAt ratingAvg reviewCount
+        variants { id name price stockQuantity image }
         seller { id username avatar }
         category { id name slug }
       }
@@ -35,6 +36,7 @@ export async function getShopProduct(id) {
         id sellerId categoryId title description productType price stockQuantity
         images digitalFileUrl status rejectionReason viewCount soldCount
         createdAt updatedAt approvedAt ratingAvg reviewCount
+        variants { id name price stockQuantity image }
         seller { id username avatar }
         category { id name slug }
       }
@@ -45,13 +47,28 @@ export async function getShopProduct(id) {
 
 export async function createShopProduct(productData) {
   const data = await graphqlFetch(`
-    mutation CreateShopProduct($categoryId: Int!, $title: String!, $description: String!, $productType: String!, $price: Int!, $stockQuantity: Int, $images: [String!]!, $digitalFileUrl: String) {
-      createShopProduct(categoryId: $categoryId, title: $title, description: $description, productType: $productType, price: $price, stockQuantity: $stockQuantity, images: $images, digitalFileUrl: $digitalFileUrl) {
+    mutation CreateShopProduct($categoryId: Int!, $title: String!, $description: String!, $productType: String!, $price: Int!, $stockQuantity: Int, $images: [String!]!, $digitalFileUrl: String, $variants: [ShopProductVariantInput!]) {
+      createShopProduct(categoryId: $categoryId, title: $title, description: $description, productType: $productType, price: $price, stockQuantity: $stockQuantity, images: $images, digitalFileUrl: $digitalFileUrl, variants: $variants) {
         id title status
       }
     }
   `, productData);
   return data.createShopProduct;
+}
+
+export async function updateShopProduct(id, productData) {
+  const data = await graphqlFetch(`
+    mutation UpdateShopProduct($id: Int!, $categoryId: Int, $title: String, $description: String, $price: Int, $stockQuantity: Int, $images: [String!], $digitalFileUrl: String, $variants: [ShopProductVariantInput!]) {
+      updateShopProduct(id: $id, categoryId: $categoryId, title: $title, description: $description, price: $price, stockQuantity: $stockQuantity, images: $images, digitalFileUrl: $digitalFileUrl, variants: $variants) {
+        id sellerId categoryId title description productType price stockQuantity
+        images status viewCount soldCount createdAt
+        variants { id name price stockQuantity image }
+        seller { id username avatar }
+        category { id name slug }
+      }
+    }
+  `, { id: parseInt(id), ...productData });
+  return data.updateShopProduct;
 }
 
 export async function deleteShopProduct(id) {
@@ -65,8 +82,8 @@ export async function deleteShopProduct(id) {
 
 export async function createShopOrder(orderData) {
   const data = await graphqlFetch(`
-    mutation CreateShopOrder($productId: Int!, $quantity: Int!, $shippingAddress: String, $buyerNotes: String) {
-      createShopOrder(productId: $productId, quantity: $quantity, shippingAddress: $shippingAddress, buyerNotes: $buyerNotes) {
+    mutation CreateShopOrder($productId: Int!, $variantId: Int, $quantity: Int!, $shippingAddress: String, $buyerNotes: String) {
+      createShopOrder(productId: $productId, variantId: $variantId, quantity: $quantity, shippingAddress: $shippingAddress, buyerNotes: $buyerNotes) {
         id orderNumber status
       }
     }

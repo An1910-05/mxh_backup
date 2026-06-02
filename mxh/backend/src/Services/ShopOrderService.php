@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Repositories\ShopOrderRepository;
 use App\Repositories\ShopProductRepository;
+use App\Repositories\ShopProductVariantRepository;
 use App\Repositories\ShopEscrowRepository;
 use App\Repositories\UserRepository;
 use App\Config\Database;
@@ -14,6 +15,7 @@ class ShopOrderService
 {
     private ShopOrderRepository $orderRepo;
     private ShopProductRepository $productRepo;
+    private ShopProductVariantRepository $variantRepo;
     private ShopEscrowRepository $escrowRepo;
     private UserRepository $userRepo;
     private PDO $db;
@@ -22,6 +24,7 @@ class ShopOrderService
     {
         $this->orderRepo = new ShopOrderRepository();
         $this->productRepo = new ShopProductRepository();
+        $this->variantRepo = new ShopProductVariantRepository();
         $this->escrowRepo = new ShopEscrowRepository();
         $this->userRepo = new UserRepository();
         $this->db = Database::getConnection();
@@ -82,9 +85,27 @@ class ShopOrderService
             throw new Exception('Quantity must be at least 1', 400);
         }
 
+        // Resolve variant ("Phân loại"). If the product has variants, buyer must pick one.
+        $variants = $this->variantRepo->findByProduct((int) $product['id']);
+        $hasVariants = count($variants) > 0;
+        $variantId = isset($data['variant_id']) ? (int) $data['variant_id'] : null;
+        $variant = null;
+        if ($hasVariants) {
+            if (!$variantId) {
+                throw new Exception('Vui lòng chọn phân loại sản phẩm', 400);
+            }
+            foreach ($variants as $v) {
+                if ((int) $v['id'] === $variantId) { $variant = $v; break; }
+            }
+            if (!$variant) {
+                throw new Exception('Phân loại sản phẩm không hợp lệ', 400);
+            }
+        }
+
         // Check stock for physical products
         if ($product['product_type'] === 'physical') {
-            if ($product['stock_quantity'] !== null && $product['stock_quantity'] < $quantity) {
+            $availableStock = $variant ? $variant['stock_quantity'] : $product['stock_quantity'];
+            if ($availableStock !== null && $availableStock < $quantity) {
                 throw new Exception('Insufficient stock', 400);
             }
 
@@ -94,8 +115,8 @@ class ShopOrderService
             }
         }
 
-        // Calculate prices
-        $unitPrice = (int) $product['price'];
+        // Calculate prices (variant price is authoritative when a variant is selected)
+        $unitPrice = (int) ($variant ? $variant['price'] : $product['price']);
         $totalPrice = $unitPrice * $quantity;
         $commissionRate = (float) ($_ENV['SHOP_COMMISSION_RATE'] ?? 5.0);
         $commissionAmount = (int) ($totalPrice * ($commissionRate / 100));
@@ -118,11 +139,13 @@ class ShopOrderService
             $productSnapshot = [
                 'id' => $product['id'],
                 'title' => $product['title'],
-                'price' => $product['price'],
+                'price' => $unitPrice,
                 'images' => json_decode($product['images'] ?? '[]', true),
                 'productType' => $product['product_type'],
                 'categoryName' => $product['category_name'],
-                'sellerName' => $product['seller_username']
+                'sellerName' => $product['seller_username'],
+                'variantId' => $variant ? (int) $variant['id'] : null,
+                'variantName' => $variant ? $variant['name'] : null,
             ];
 
             // Create order
@@ -131,6 +154,8 @@ class ShopOrderService
                 'buyer_id' => $buyerId,
                 'seller_id' => $product['seller_id'],
                 'product_id' => $product['id'],
+                'variant_id' => $variant ? (int) $variant['id'] : null,
+                'variant_name' => $variant ? $variant['name'] : null,
                 'product_snapshot' => $productSnapshot,
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
@@ -166,9 +191,14 @@ class ShopOrderService
                 'payment_status' => 'held'
             ]);
 
-            // Decrement stock for physical products
-            if ($product['product_type'] === 'physical' && $product['stock_quantity'] !== null) {
-                $this->productRepo->decrementStock($product['id'], $quantity);
+            // Decrement stock for physical products (variant stock + product aggregate)
+            if ($product['product_type'] === 'physical') {
+                if ($variant) {
+                    $this->variantRepo->decrementStock((int) $variant['id'], $quantity);
+                }
+                if ($product['stock_quantity'] !== null) {
+                    $this->productRepo->decrementStock($product['id'], $quantity);
+                }
             }
 
             $this->db->commit();
@@ -353,9 +383,12 @@ class ShopOrderService
                 $this->userRepo->updateBalance($order['buyer_id'], (int) $order['total_price']);
             }
 
-            // Restore stock for physical products
+            // Restore stock for physical products (variant + product aggregate)
             $productSnapshot = json_decode($order['product_snapshot'], true);
-            if ($productSnapshot['productType'] === 'physical') {
+            if (($productSnapshot['productType'] ?? null) === 'physical') {
+                if (!empty($order['variant_id'])) {
+                    $this->variantRepo->incrementStock((int) $order['variant_id'], (int) $order['quantity']);
+                }
                 $this->productRepo->incrementStock($order['product_id'], (int) $order['quantity']);
             }
 

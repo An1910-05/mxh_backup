@@ -378,6 +378,7 @@ class MutationType extends ObjectType
                         'stockQuantity' => Type::int(),
                         'images' => Type::nonNull(Type::listOf(Type::nonNull(Type::string()))),
                         'digitalFileUrl' => Type::string(),
+                        'variants' => Type::listOf(Type::nonNull(TypeRegistry::shopProductVariantInput())),
                     ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
@@ -393,6 +394,14 @@ class MutationType extends ObjectType
                             'images'          => $args['images'],
                             'digital_file_url'=> $args['digitalFileUrl'] ?? null,
                         ];
+                        if (!empty($args['variants'])) {
+                            $data['variants'] = array_map(fn($v) => [
+                                'name'           => $v['name'],
+                                'price'          => $v['price'],
+                                'stock_quantity' => $v['stockQuantity'] ?? null,
+                                'image'          => $v['image'] ?? null,
+                            ], $args['variants']);
+                        }
                         return $service->createProduct($context['user']['id'], $data);
                     },
                 ],
@@ -457,13 +466,38 @@ class MutationType extends ObjectType
                         'stockQuantity' => Type::int(),
                         'images' => Type::listOf(Type::nonNull(Type::string())),
                         'digitalFileUrl' => Type::string(),
+                        'variants' => Type::listOf(Type::nonNull(TypeRegistry::shopProductVariantInput())),
                     ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);
                         $service = new ShopProductService();
                         $productId = $args['id'];
-                        unset($args['id']);
-                        return $service->updateProduct($productId, $context['user']['id'], $args);
+                        // Map camelCase args -> snake_case keys the Service/Repository expect.
+                        // Only include keys actually provided so partial updates stay partial.
+                        $map = [
+                            'categoryId'     => 'category_id',
+                            'title'          => 'title',
+                            'description'    => 'description',
+                            'price'          => 'price',
+                            'stockQuantity'  => 'stock_quantity',
+                            'images'         => 'images',
+                            'digitalFileUrl' => 'digital_file_url',
+                        ];
+                        $data = [];
+                        foreach ($map as $camel => $snake) {
+                            if (array_key_exists($camel, $args)) {
+                                $data[$snake] = $args[$camel];
+                            }
+                        }
+                        if (array_key_exists('variants', $args)) {
+                            $data['variants'] = is_array($args['variants']) ? array_map(fn($v) => [
+                                'name'           => $v['name'],
+                                'price'          => $v['price'],
+                                'stock_quantity' => $v['stockQuantity'] ?? null,
+                                'image'          => $v['image'] ?? null,
+                            ], $args['variants']) : [];
+                        }
+                        return $service->updateProduct($productId, $context['user']['id'], $data);
                     },
                 ],
 
@@ -491,6 +525,7 @@ class MutationType extends ObjectType
                     'type' => TypeRegistry::shopOrder(),
                     'args' => [
                         'productId' => Type::nonNull(Type::int()),
+                        'variantId' => Type::int(),
                         'quantity' => Type::nonNull(Type::int()),
                         'shippingAddress' => Type::string(),
                         'buyerNotes' => Type::string(),
@@ -510,6 +545,7 @@ class MutationType extends ObjectType
                         }
                         $data = [
                             'product_id' => $args['productId'],
+                            'variant_id' => $args['variantId'] ?? null,
                             'quantity' => $args['quantity'],
                             'shipping_address' => $shipping,
                             'buyer_notes' => $args['buyerNotes'] ?? null,
