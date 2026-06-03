@@ -1,9 +1,10 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useChat } from '../contexts/ChatContext';
 import { useCall } from '../contexts/CallContext';
 import { useAIMessages } from '../hooks/useAIMessages';
 import ChatWindow from './chat/ChatWindow';
+import GroupInfoDrawer from './chat/GroupInfoDrawer';
 import VerifiedBadge from './VerifiedBadge';
 import { API_ORIGIN } from '../config';
 
@@ -114,6 +115,8 @@ function FloatingChatItem({ conv, index }) {
   const rightOffset = 248 + index * 328;
 
   const avatarSrc = live.display_avatar ? `${API_ORIGIN}${live.display_avatar}` : DEFAULT_AVATAR;
+  const isGroup = !conv.isAI && live.type === 'group';
+  const [showGroupDrawer, setShowGroupDrawer] = useState(false);
 
   return (
     <div
@@ -142,6 +145,23 @@ function FloatingChatItem({ conv, index }) {
                 <span className="fcw-status" style={{ color: 'rgba(255,255,255,0.8)' }}>Trợ lý AI</span>
               </div>
             </>
+          ) : isGroup ? (
+            <button
+              type="button"
+              className="fcw-header-profile-link fcw-header-group-btn"
+              onClick={e => { e.stopPropagation(); setShowGroupDrawer(true); }}
+              title="Xem thành viên nhóm"
+            >
+              <div className="fcw-avatar-wrap">
+                <img src={avatarSrc} alt="" className="fcw-avatar" onError={e => { e.target.src = DEFAULT_AVATAR; }} />
+              </div>
+              <div className="fcw-header-info">
+                <span className="fcw-name-row">
+                  <span className="fcw-name">{live.display_name}</span>
+                </span>
+                <span className="fcw-status">Xem thành viên</span>
+              </div>
+            </button>
           ) : (
             <Link
               to={`/${live.other_custom_url || live.display_name}`}
@@ -210,6 +230,16 @@ function FloatingChatItem({ conv, index }) {
         conv.isAI
           ? <AIFloatingBody />
           : <div className="fcw-body"><ChatWindow conversation={live} /></div>
+      )}
+
+      {showGroupDrawer && isGroup && (
+        <GroupInfoDrawer
+          conversation={live}
+          onClose={() => setShowGroupDrawer(false)}
+          onChanged={() => {}}
+          onLeft={() => { setShowGroupDrawer(false); closeChat(conv.id); }}
+          onDissolved={() => { setShowGroupDrawer(false); closeChat(conv.id); }}
+        />
       )}
     </div>
   );

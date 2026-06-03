@@ -143,7 +143,7 @@ function formatSentTime(dateStr) {
   if (diffDays === 0) return `Đã gửi lúc ${hhmm}`;
   if (diffDays === 1) return `Đã gửi hôm qua lúc ${hhmm}`;
   if (diffDays < 7) return `Đã gửi ${days[d.getDay()]} lúc ${hhmm}`;
-  return `Đã gửi ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })} lúc ${hhmm}`;
+  return `Đã gửi ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })} lúc ${hhmm}`;
 }
 
 function formatChatDivider(dateStr) {

@@ -95,6 +95,18 @@ class ProfileService
 
     public function updateProfile(int $userId, array $data): array
     {
+        // Tên hiển thị (users.username) — cột UNIQUE nên check trùng trước khi đổi
+        if (isset($data['username'])) {
+            $name = trim($data['username']);
+            if ($name !== '') {
+                $existing = $this->userRepo->findByUsername($name);
+                if ($existing && (int)$existing['id'] !== $userId) {
+                    throw new \GraphQL\Error\Error('Tên này đã có người dùng, vui lòng chọn tên khác');
+                }
+                $this->userRepo->updateProfile($userId, ['username' => $name]);
+            }
+        }
+
         $profile = $this->profileRepo->findByUserId($userId);
 
         if (!$profile) {

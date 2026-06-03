@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
-  followUser, unfollowUser, updateProfile, updateCustomUrl, clearAvatar,
+  followUser, unfollowUser, clearAvatar,
   sendFriendRequest, acceptFriendRequest, rejectFriendRequest, cancelFriendRequest, cancelFriendRequestByUser, unfriend,
   getUserFriends, getUserFollowers, getUserFollowing,
 } from '../services/graphql';
@@ -12,6 +12,7 @@ import { formatJoinMonthYear } from '../utils/time';
 import { formatHandleDisplay } from '../utils/userDisplay';
 import { API_ORIGIN } from '../config';
 import VerifiedBadge from './VerifiedBadge';
+import ProfileEditModal from './ProfileEditModal';
 const DEFAULT_AVATAR = '/default-avatar.png';
 
 function bumpFriendRequestsBadge() {
@@ -30,11 +31,7 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
   const [friendStatus, setFriendStatus] = useState(profile.friendship_status || 'none');
   const [friendshipId, setFriendshipId] = useState(profile.friendship_id);
   const [isSender, setIsSender] = useState(profile.friendship_is_sender);
-  const [editingBio, setEditingBio] = useState(false);
-  const [bio, setBio] = useState(profile.bio || '');
-  const [editingUrl, setEditingUrl] = useState(false);
-  const [customUrl, setCustomUrl] = useState(profile.custom_url || '');
-  const [urlError, setUrlError] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [handleCopied, setHandleCopied] = useState(false);
 
@@ -162,33 +159,6 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
       bumpFriendRequestsBadge();
     } catch (err) { console.error(err.message); }
     finally { setLoading(false); }
-  };
-
-  const handleUpdateBio = async () => {
-    setLoading(true);
-    try {
-      const updated = await updateProfile(bio);
-      setEditingBio(false);
-      if (onProfileUpdate) onProfileUpdate(updated);
-    } catch (err) { console.error(err.message); }
-    finally { setLoading(false); }
-  };
-
-  const handleUpdateUrl = async () => {
-    setUrlError('');
-    if (!/^[a-zA-Z0-9._]{3,30}$/.test(customUrl)) {
-      setUrlError('3-30 ký tự, chỉ chữ, số, dấu chấm và gạch dưới');
-      return;
-    }
-    setLoading(true);
-    try {
-      const newUrl = await updateCustomUrl(customUrl);
-      setEditingUrl(false);
-      setCustomUrl(newUrl);
-      if (onProfileUpdate) onProfileUpdate({ ...profile, custom_url: newUrl });
-    } catch (err) {
-      setUrlError(err.message);
-    } finally { setLoading(false); }
   };
 
   const handleAvatarUpload = async (e) => {
@@ -362,7 +332,7 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
         <div className="profile-x-toolbar-actions">
           {isOwn && (
             <div className="profile-x-own-actions">
-              <button type="button" className="profile-x-edit-btn" onClick={() => document.getElementById('profile-x-details')?.scrollIntoView({ behavior: 'smooth' })}>
+              <button type="button" className="profile-x-edit-btn" onClick={() => setShowEditModal(true)}>
                 Chỉnh sửa hồ sơ
               </button>
             </div>
@@ -547,24 +517,9 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
           </span>
         </button>
 
-        {editingBio ? (
-          <div className="profile-edit-bio profile-edit-bio--x">
-            <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Giới thiệu về bạn..." />
-            <div className="profile-edit-actions profile-edit-actions--x">
-              <button type="button" onClick={handleUpdateBio} className="apple-btn apple-btn-primary apple-btn-sm" disabled={loading}>Lưu</button>
-              <button type="button" onClick={() => setEditingBio(false)} className="apple-btn apple-btn-ghost apple-btn-sm">Hủy</button>
-            </div>
-          </div>
-        ) : (
-          <p className="profile-bio profile-bio--x">
-            {profile.bio || <span className="profile-bio-empty">Chưa có tiểu sử</span>}
-            {isOwn && (
-              <button type="button" onClick={() => setEditingBio(true)} className="profile-bio-edit-link">
-                Sửa
-              </button>
-            )}
-          </p>
-        )}
+        <p className="profile-bio profile-bio--x">
+          {profile.bio || <span className="profile-bio-empty">Chưa có tiểu sử</span>}
+        </p>
 
         <button type="button" className="profile-join-row" onClick={() => setShowAbout(true)}>
           <svg className="profile-join-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
@@ -604,38 +559,20 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
         </div>
 
         <div className="profile-x-meta">
-          {isOwn && (
-            <div className="profile-url-section profile-url-section--x">
-              {editingUrl ? (
-                <div className="profile-edit-bio profile-edit-bio--x">
-                  <div className="profile-url-edit-row">
-                    <span className="profile-url-prefix">{window.location.origin}/</span>
-                    <input
-                      type="text"
-                      value={customUrl}
-                      onChange={(e) => setCustomUrl(e.target.value)}
-                      placeholder="ten.trang"
-                    />
-                  </div>
-                  {urlError && <div className="apple-alert apple-alert-danger profile-url-alert">{urlError}</div>}
-                  <div className="profile-edit-actions profile-edit-actions--x">
-                    <button type="button" onClick={handleUpdateUrl} className="apple-btn apple-btn-primary apple-btn-sm" disabled={loading}>Lưu</button>
-                    <button type="button" onClick={() => { setEditingUrl(false); setUrlError(''); }} className="apple-btn apple-btn-ghost apple-btn-sm">Hủy</button>
-                  </div>
-                </div>
-              ) : (
-                <button type="button" onClick={() => setEditingUrl(true)} className="profile-x-meta-link">
-                  {customUrl ? 'Đổi link trang cá nhân' : 'Tạo link trang cá nhân'}
-                </button>
-              )}
-            </div>
-          )}
           {isOwn && <div className="profile-email profile-email--x">{profile.email}</div>}
           {isOwn && (
             <span className="profile-x-meta-id">ID: {profile.user_id}</span>
           )}
         </div>
       </div>
+
+      {showEditModal && isOwn && (
+        <ProfileEditModal
+          profile={profile}
+          onClose={() => setShowEditModal(false)}
+          onSaved={(updated) => { onProfileUpdate?.(updated); setShowEditModal(false); }}
+        />
+      )}
 
       {listPanel &&
         createPortal(
@@ -705,7 +642,7 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
                             {canMsg && (
                               <button
                                 type="button"
-                                className="profile-list-btn"
+                                className="apple-btn apple-btn-primary apple-btn-sm"
                                 onClick={() => handleMessageInList(uid)}
                               >
                                 Nhắn tin
@@ -714,7 +651,7 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
                             {showUnfriend && (
                               <button
                                 type="button"
-                                className="profile-list-btn profile-list-btn--danger"
+                                className="apple-btn apple-btn-danger apple-btn-sm"
                                 disabled={listActionId === uid}
                                 onClick={() => handleUnfriendInList(uid)}
                               >

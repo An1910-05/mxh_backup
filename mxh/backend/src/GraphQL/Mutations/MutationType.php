@@ -36,6 +36,7 @@ class MutationType extends ObjectType
                     'args' => [
                         'bio' => Type::string(),
                         'avatar' => Type::string(),
+                        'username' => Type::string(),
                     ],
                     'resolve' => function ($root, $args, $context) {
                         self::requireAuth($context);

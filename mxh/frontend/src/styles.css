@@ -4143,38 +4143,6 @@ button.profile-stat-clickable {
     flex-shrink: 0;
 }
 
-.profile-list-btn {
-    padding: 6px 10px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 8px;
-    border: 1px solid #cfd9de;
-    background: #fff;
-    color: #0f1419;
-    cursor: pointer;
-    font-family: inherit;
-    white-space: nowrap;
-    transition: background 0.12s, border-color 0.12s;
-}
-
-.profile-list-btn:hover:not(:disabled) {
-    background: #f7f9f9;
-}
-
-.profile-list-btn--danger {
-    border-color: #f0b4b4;
-    color: #c41e3a;
-}
-
-.profile-list-btn--danger:hover:not(:disabled) {
-    background: #fff5f5;
-}
-
-.profile-list-btn:disabled {
-    opacity: 0.65;
-    cursor: wait;
-}
-
 .profile-list-name {
     font-weight: 500;
     color: #1d1d1f;
@@ -10090,6 +10058,20 @@ body.theme-dark .profile-name--x,
 body[data-theme='dark'] .profile-name--x {
     color: #f5f7fb;
 }
+/* Dark mode: số thống kê + tên trong danh sách (trước hardcode đen → tàng hình) */
+body.theme-dark .profile-stat-number,
+body[data-theme='dark'] .profile-stat-number {
+    color: #f5f7fb;
+}
+body.theme-dark .profile-list-name,
+body[data-theme='dark'] .profile-list-name {
+    color: #f5f7fb;
+}
+/* Hover item danh sách: nền sáng → đổi sang lớp phủ sáng mờ cho nền tối */
+body.theme-dark .profile-list-item:hover,
+body[data-theme='dark'] .profile-list-item:hover {
+    background: rgba(255,255,255,0.06);
+}
 
 body.theme-dark .profile-handle,
 body[data-theme='dark'] .profile-handle {
@@ -12741,7 +12723,7 @@ body[data-theme='dark'] .lsb-wallet-balance {
   border: 1.5px solid #c8921a; border-radius: 30px;
   padding: 6px 10px; cursor: grab; box-shadow: 0 4px 18px rgba(0,0,0,0.6);
   -webkit-user-select: none; user-select: none; min-width: 190px;
-  font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--app-font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -12789,7 +12771,7 @@ body[data-theme='dark'] .lsb-wallet-balance {
 .tx-jackpot-label {
   font-size: 0.7rem; font-weight: 900; letter-spacing: 4px;
   color: #f5c842; text-shadow: 0 0 10px rgba(245,200,66,0.8);
-  font-family: Impact, Arial Black, sans-serif;
+  font-family: var(--app-font);
 }
 .tx-jackpot-pill {
   background: linear-gradient(180deg, #2a1a06 0%, #1a0e02 100%);
@@ -12811,7 +12793,7 @@ body[data-theme='dark'] .lsb-wallet-balance {
   padding: 14px 16px 10px;
   display: flex; flex-direction: column; gap: 8px;
   position: relative; overflow: hidden;
-  font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-family: var(--app-font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -12917,15 +12899,18 @@ body[data-theme='dark'] .lsb-wallet-balance {
   min-height: 168px;
 }
 
-/* Side title shared — Be Vietnam Pro 900 hỗ trợ dấu Ỉ, À đẹp hơn Impact */
+/* Side title shared — dùng font app (Be Vietnam Pro) cho dấu tiếng Việt (Ỉ, À)
+   hiển thị đúng; tránh fallback Impact/Archivo Black/Oswald vốn không có dấu tiếng Việt */
 .tx-title-tai,
 .tx-title-xiu {
   font-size: 2.6rem;
   font-weight: 900;
-  line-height: 1;
-  font-family: 'Be Vietnam Pro', 'Archivo Black', 'Oswald', 'Segoe UI Black', Impact, sans-serif;
+  /* line-height + padding-top rộng để dấu tiếng Việt hoa (Ỉ, À) không bị cắt:
+     nền gradient (background-clip:text) cần đủ vùng vẽ phía trên glyph */
+  line-height: 1.3;
+  font-family: var(--app-font);
   letter-spacing: 1px;
-  padding: 2px 4px;
+  padding: 8px 4px 2px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -12977,11 +12962,9 @@ body[data-theme='dark'] .lsb-wallet-balance {
   padding: 0 22px;
   border-radius: 30px;
   background: linear-gradient(180deg, #cc2200 0%, #880000 100%);
-  border-style: solid;
-  border-width: 2px;
-  border-color: #ff5533 #660000 #440000 #ff5533;
+  border: none;
   color: #fff;
-  font-weight: 900;
+  font-weight: 700;
   font-size: 0.92rem;
   line-height: 1;
   letter-spacing: 2.5px;
@@ -12989,7 +12972,6 @@ body[data-theme='dark'] .lsb-wallet-balance {
   box-shadow: 0 4px 14px rgba(150,0,0,0.6), inset 0 1px 0 rgba(255,120,100,0.35);
   transition: transform 0.1s, box-shadow 0.15s, filter 0.15s;
   margin-top: 2px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
   -webkit-font-smoothing: antialiased;
 }
 .tx-cuoc-btn:hover:not(:disabled)  { background: linear-gradient(180deg, #ee2200, #aa0000); box-shadow: 0 5px 18px rgba(200,0,0,0.7), inset 0 1px 0 rgba(255,140,120,0.4); }
@@ -13019,7 +13001,7 @@ body[data-theme='dark'] .lsb-wallet-balance {
 /* Total number */
 .tx-total-num {
   font-size: 4rem; font-weight: 900; color: #fff; line-height: 1;
-  font-family: 'Be Vietnam Pro', 'Archivo Black', 'Segoe UI Black', Impact, sans-serif;
+  font-family: var(--app-font);
   text-shadow: 0 2px 12px rgba(255,255,255,0.5);
   font-variant-numeric: tabular-nums;
   letter-spacing: -1px;
@@ -13531,10 +13513,12 @@ body[data-theme='dark'] .lsb-wallet-balance {
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
 }
 .tx-menu-rail-icon {
-  font-size: 1.35rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  width: 40px;
+  height: 40px;
+  background-color: currentColor;
+  -webkit-mask: var(--rail-mask) center / contain no-repeat;
+  mask: var(--rail-mask) center / contain no-repeat;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
 }
 .tx-menu-panel {
   display: flex;
@@ -14187,6 +14171,14 @@ body.theme-dark .rsb-no-result {
   min-width: 0;
   text-decoration: none;
   color: inherit;
+}
+.fcw-header-group-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 .fcw-header-profile-link:hover .fcw-avatar { opacity: 0.85; }
 .fcw-avatar-wrap {
@@ -15398,6 +15390,9 @@ body.theme-dark .loc-picker-search-result-item:hover {
 }
 .conv-create-row:hover { background: #f5f6f7; }
 .conv-create-row:active { background: #ebedef; }
+body.theme-dark .conv-create-row { border-bottom-color: #3a3b3c; }
+body.theme-dark .conv-create-row:hover { background: #3a3b3c; }
+body.theme-dark .conv-create-row:active { background: #4e4f50; }
 .conv-avatar.conv-avatar--create {
   background: linear-gradient(135deg, #0084ff 0%, #00c6ff 100%);
   color: #fff;
@@ -15885,6 +15880,100 @@ body.theme-dark .loc-picker-search-result-item:hover {
 .cg-btn--primary:hover:not(:disabled) { background: #0071f0; }
 .cg-btn--ghost { background: #f2f2f7; color: #1d1d1f; }
 .cg-btn--ghost:hover:not(:disabled) { background: #e5e5ea; }
+
+/* ===== Dark mode — modal Tạo nhóm chat (scope .create-group-modal để không
+   ảnh hưởng các modal khác chưa hỗ trợ dark) ===== */
+body.theme-dark .create-group-modal,
+body[data-theme='dark'] .create-group-modal { background: #242526; }
+body.theme-dark .create-group-modal .modal-header,
+body.theme-dark .create-group-modal .modal-footer,
+body[data-theme='dark'] .create-group-modal .modal-header,
+body[data-theme='dark'] .create-group-modal .modal-footer { border-color: #3a3b3c; }
+body.theme-dark .create-group-modal .modal-header h3,
+body.theme-dark .create-group-modal .modal-close,
+body[data-theme='dark'] .create-group-modal .modal-header h3,
+body[data-theme='dark'] .create-group-modal .modal-close { color: #e4e6eb; }
+body.theme-dark .cg-avatar,
+body[data-theme='dark'] .cg-avatar { background: #3a3b3c; }
+body.theme-dark .cg-title-input,
+body.theme-dark .cg-search,
+body[data-theme='dark'] .cg-title-input,
+body[data-theme='dark'] .cg-search { background: #3a3b3c; border-color: #4e4f50; color: #e4e6eb; }
+body.theme-dark .cg-title-input:focus,
+body.theme-dark .cg-search:focus,
+body[data-theme='dark'] .cg-title-input:focus,
+body[data-theme='dark'] .cg-search:focus { background: #404142; border-color: #0a84ff; }
+body.theme-dark .cg-friend-list,
+body[data-theme='dark'] .cg-friend-list { background: #1c1d1e; }
+body.theme-dark .cg-friend-row,
+body[data-theme='dark'] .cg-friend-row { border-bottom-color: rgba(255,255,255,0.06); }
+body.theme-dark .cg-friend-row:hover,
+body[data-theme='dark'] .cg-friend-row:hover { background: #2c2d2e; }
+body.theme-dark .cg-friend-row--checked,
+body[data-theme='dark'] .cg-friend-row--checked { background: rgba(10,132,255,0.16); }
+body.theme-dark .cg-friend-row--checked:hover,
+body[data-theme='dark'] .cg-friend-row--checked:hover { background: rgba(10,132,255,0.24); }
+body.theme-dark .cg-friend-name,
+body[data-theme='dark'] .cg-friend-name { color: #e4e6eb; }
+body.theme-dark .cg-check,
+body[data-theme='dark'] .cg-check { background: #3a3b3c; border-color: #5a5b5c; }
+body.theme-dark .cg-chip,
+body[data-theme='dark'] .cg-chip { background: rgba(10,132,255,0.2); color: #9cc4ff; }
+body.theme-dark .cg-chip button,
+body[data-theme='dark'] .cg-chip button { background: rgba(10,132,255,0.3); color: #9cc4ff; }
+body.theme-dark .cg-btn--ghost,
+body[data-theme='dark'] .cg-btn--ghost { background: #3a3b3c; color: #e4e6eb; }
+body.theme-dark .cg-btn--ghost:hover:not(:disabled),
+body[data-theme='dark'] .cg-btn--ghost:hover:not(:disabled) { background: #4e4f50; }
+body.theme-dark .cg-error,
+body[data-theme='dark'] .cg-error { background: rgba(192,57,43,0.16); color: #ff8b80; border-color: rgba(192,57,43,0.35); }
+
+/* ===== Modal Chỉnh sửa hồ sơ ===== */
+.profile-edit-modal .modal-body { gap: 16px; }
+.pe-field { display: flex; flex-direction: column; gap: 6px; }
+.pe-label { font-size: 11.5px; font-weight: 600; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.04em; }
+.pe-textarea,
+.pe-input {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 0.95rem;
+  border: 1.5px solid #d2d2d7;
+  border-radius: 12px;
+  font-family: var(--app-font, inherit);
+  outline: none;
+  background: #f9f9f9;
+  color: #1d1d1f;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.pe-textarea { resize: vertical; min-height: 76px; line-height: 1.4; }
+.pe-textarea:focus,
+.pe-input:focus { border-color: #007AFF; background: #fff; box-shadow: 0 0 0 3px rgba(0,122,255,0.12); }
+.pe-count { align-self: flex-end; font-size: 11px; color: #c7c7cc; }
+.pe-url-row { display: flex; align-items: center; gap: 6px; }
+.pe-url-prefix { font-size: 0.82rem; color: #8e8e93; white-space: nowrap; max-width: 48%; overflow: hidden; text-overflow: ellipsis; }
+.pe-url-row .pe-input { flex: 1; min-width: 0; }
+.pe-error { font-size: 0.82rem; color: #c0392b; }
+body.theme-dark .profile-edit-modal,
+body[data-theme='dark'] .profile-edit-modal { background: #242526; }
+body.theme-dark .profile-edit-modal .modal-header,
+body.theme-dark .profile-edit-modal .modal-footer,
+body[data-theme='dark'] .profile-edit-modal .modal-header,
+body[data-theme='dark'] .profile-edit-modal .modal-footer { border-color: #3a3b3c; }
+body.theme-dark .profile-edit-modal .modal-header h3,
+body.theme-dark .profile-edit-modal .modal-close,
+body[data-theme='dark'] .profile-edit-modal .modal-header h3,
+body[data-theme='dark'] .profile-edit-modal .modal-close { color: #e4e6eb; }
+body.theme-dark .pe-textarea,
+body.theme-dark .pe-input,
+body[data-theme='dark'] .pe-textarea,
+body[data-theme='dark'] .pe-input { background: #3a3b3c; border-color: #4e4f50; color: #e4e6eb; }
+body.theme-dark .pe-textarea:focus,
+body.theme-dark .pe-input:focus,
+body[data-theme='dark'] .pe-textarea:focus,
+body[data-theme='dark'] .pe-input:focus { background: #404142; border-color: #0a84ff; }
+body.theme-dark .pe-error,
+body[data-theme='dark'] .pe-error { color: #ff8b80; }
 
 /* ===== Group info drawer ===== */
 .group-drawer-backdrop {

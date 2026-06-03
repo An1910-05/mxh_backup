@@ -12,6 +12,15 @@ class ProfileValidator
             $errors[] = 'Bio must not exceed 500 characters';
         }
 
+        if (isset($data['username'])) {
+            $name = trim($data['username']);
+            if ($name === '') {
+                $errors[] = 'Tên không được để trống';
+            } elseif (mb_strlen($name) > 50) {
+                $errors[] = 'Tên tối đa 50 ký tự';
+            }
+        }
+
         return $errors;
     }
 }

@@ -8,10 +8,10 @@ const DEFAULT_POS = { right: 20, bottom: 80 };
 const WIDGET_W = 440;
 const WIDGET_H = 560;
 const MENU_TABS = [
-  { key: 'guide', label: 'Hướng dẫn', icon: 'i' },
-  { key: 'bets', label: 'Lịch sử cược', icon: '↺' },
-  { key: 'rounds', label: 'Lịch sử phiên', icon: '◉' },
-  { key: 'jackpot', label: 'Lịch sử nổ hũ', icon: 'JP' },
+  { key: 'guide', label: 'Hướng dẫn', railIcon: '/icons/tx-rail-person.svg' },
+  { key: 'bets', label: 'Lịch sử cược', railIcon: '/icons/tx-rail-refresh.svg' },
+  { key: 'rounds', label: 'Lịch sử phiên', railIcon: '/icons/tx-rail-network.svg' },
+  { key: 'jackpot', label: 'Lịch sử nổ hũ', railIcon: '/icons/tx-rail-jackpot.svg' },
 ];
 const MENU_PAGE_SIZE = 4;
 const JACKPOT_PAGE_SIZE = 5;
@@ -667,7 +667,7 @@ export default function TaiXiuFloatingWidget() {
                 onClick={() => setMenuTab(tab.key)}
                 title={tab.label}
               >
-                <span className="tx-menu-rail-icon">{tab.icon}</span>
+                <span className="tx-menu-rail-icon" style={{ '--rail-mask': `url(${tab.railIcon})` }} />
               </button>
             ))}
           </aside>
@@ -699,12 +699,6 @@ export default function TaiXiuFloatingWidget() {
                     <span className="tx-menu-formula-op">×</span>
                     <span>Tiền Jackpot</span>
                   </div>
-                  <MenuPager
-                    currentPage={activeMenuIndex}
-                    totalPages={MENU_TABS.length}
-                    onPrev={() => setMenuTab(MENU_TABS[Math.max(0, activeMenuIndex - 1)].key)}
-                    onNext={() => setMenuTab(MENU_TABS[Math.min(MENU_TABS.length - 1, activeMenuIndex + 1)].key)}
-                  />
                 </div>
               )}
 
@@ -717,9 +711,9 @@ export default function TaiXiuFloatingWidget() {
                     <span>Kết quả</span>
                   </div>
                   <div className="tx-menu-table-head tx-menu-table-head--hidden">
-                    <span>Thá»i gian</span>
-                    <span>Tiá»n ná»• hÅ©</span>
-                    <span>Káº¿t quáº£</span>
+                    <span>Thời gian</span>
+                    <span>Tiền nổ hũ</span>
+                    <span>Kết quả</span>
                   </div>
                   <div className="tx-menu-list">
                     {visibleBetRows.length ? visibleBetRows.map((bet) => (
@@ -806,9 +800,9 @@ export default function TaiXiuFloatingWidget() {
                     </div>
                   </div>
                   <div className="tx-menu-table-head tx-menu-table-head--jackpot">
-                    <span>Thá»i gian</span>
-                    <span>Tiá»n ná»• hÅ©</span>
-                    <span>Káº¿t quáº£</span>
+                    <span>Thời gian</span>
+                    <span>Tiền nổ hũ</span>
+                    <span>Kết quả</span>
                   </div>
                   <div className="tx-menu-list tx-menu-list--jackpot">
                     {visibleJackpotRows.length ? visibleJackpotRows.map((item) => (
@@ -896,7 +890,7 @@ export default function TaiXiuFloatingWidget() {
         <div className="tx-play-area">
           <div className="tx-side-col tx-side-col--tai">
             <div className="tx-side-title tx-title-tai">TỈU</div>
-            <div className="tx-players"><span>👤</span>{round?.tai_count || 0}</div>
+            <div className="tx-players"><span><i className="bi bi-person-fill" aria-hidden="true" /></span>{round?.tai_count || 0}</div>
             <div className="tx-side-amount">{fmt(round?.tai_total || 0)}</div>
             {!alreadyBet && isBetting ? (
               selectedSide === 'tai'
@@ -931,7 +925,7 @@ export default function TaiXiuFloatingWidget() {
 
           <div className="tx-side-col tx-side-col--xiu">
             <div className="tx-side-title tx-title-xiu">XÀI</div>
-            <div className="tx-players"><span>👤</span>{round?.xiu_count || 0}</div>
+            <div className="tx-players"><span><i className="bi bi-person-fill" aria-hidden="true" /></span>{round?.xiu_count || 0}</div>
             <div className="tx-side-amount">{fmt(round?.xiu_total || 0)}</div>
             {!alreadyBet && isBetting ? (
               selectedSide === 'xiu'

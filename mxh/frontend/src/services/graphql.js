@@ -92,8 +92,8 @@ export async function deleteComment(commentId) {
   return data.deleteComment;
 }
 
-export async function updateProfile(bio) {
-  const data = await graphqlFetch(`mutation UpdateProfile(`+`$bio: String) { updateProfile(bio: $bio) { user_id username bio avatar post_count follower_count following_count } }`, { bio });
+export async function updateProfile(bio, username) {
+  const data = await graphqlFetch(`mutation UpdateProfile(`+`$bio: String, $username: String) { updateProfile(bio: $bio, username: $username) { user_id username bio avatar post_count follower_count following_count } }`, { bio, username });
   return data.updateProfile;
 }
 
