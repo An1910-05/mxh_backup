@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useShopCart } from '../hooks/useShopCart';
 import { createShopOrder } from '../services/shop';
+import { getBalance } from '../services/auth';
 import { API_ORIGIN } from '../config';
 import { useLiquidMetalRipple } from '../components/JolyText';
 
@@ -57,11 +58,57 @@ export default function ShopCartPage() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [balance, setBalance] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState('');
 
   useEffect(() => {
     const el = document.getElementById('shop-lg-root-cart');
     return attachPointerTracking(el);
   }, []);
+
+  useEffect(() => {
+    getBalance().then(d => setBalance(d?.balance ?? 0)).catch(() => setBalance(null));
+  }, []);
+
+  const handleGetGPS = () => {
+    if (!navigator.geolocation) {
+      setGpsError('Trình duyệt không hỗ trợ định vị GPS.');
+      return;
+    }
+    setGpsLoading(true);
+    setGpsError('');
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&accept-language=vi`,
+            { headers: { 'Accept-Language': 'vi' } }
+          );
+          const data = await res.json();
+          const a = data.address || {};
+          const parts = [
+            a.house_number && a.road ? `${a.house_number} ${a.road}` : a.road,
+            a.suburb || a.neighbourhood || a.quarter,
+            a.city_district || a.district,
+            a.city || a.town || a.village || a.county,
+            a.state,
+          ].filter(Boolean);
+          setShippingAddress(parts.join(', '));
+        } catch {
+          setGpsError('Không lấy được địa chỉ, vui lòng thử lại.');
+        } finally {
+          setGpsLoading(false);
+        }
+      },
+      (err) => {
+        setGpsLoading(false);
+        if (err.code === 1) setGpsError('Bạn đã từ chối quyền truy cập vị trí.');
+        else setGpsError('Không lấy được vị trí, vui lòng thử lại.');
+      },
+      { timeout: 10000, maximumAge: 60000 }
+    );
+  };
 
   // Group items by seller
   const groups = useMemo(() => {
@@ -140,7 +187,7 @@ export default function ShopCartPage() {
 
       <header className="shop-lg-topbar">
         <div className="shop-lg-brand">
-          <div className="shop-lg-brand-dot" />
+          <img src="/iPock.svg" alt="iPock" className="shop-lg-brand-logo" />
           <span>iPock Shop</span>
         </div>
         <div className="shop-lg-crumbs">
@@ -164,7 +211,7 @@ export default function ShopCartPage() {
       </header>
 
       <main className="shop-lg-page">
-        <Link to="/shop" className="shop-lg-back-link"><i className="bi bi-arrow-left" /> Tiếp tục mua sắm</Link>
+        <Link to="/shop" className="shop-lg-back-link"><i className="bi bi-chevron-left" /> Tiếp tục mua sắm</Link>
 
         <div style={{ margin: '8px 4px 22px' }}>
           <h1 style={{ margin: 0, font: '700 26px var(--sf)', letterSpacing: '-0.02em', color: 'var(--slg-txt)' }}>
@@ -192,8 +239,7 @@ export default function ShopCartPage() {
             <section className="shop-lg-glass shop-lg-cart-list">
               <div className="shop-lg-row shop-lg-row-head" style={{ borderBottom: '1px solid var(--slg-glass-hairline)' }}>
                 <div />
-                <div style={{ gridColumn: 'span 2' }}>Sản phẩm</div>
-                <div className="col-unit">Đơn giá</div>
+                <div>Sản phẩm</div>
                 <div>Số lượng</div>
                 <div className="col-sub" style={{ textAlign: 'right' }}>Thành tiền</div>
                 <div />
@@ -229,24 +275,27 @@ export default function ShopCartPage() {
                             checked={!!item.selected}
                             onChange={() => cart.toggleSelect(item.id)}
                           />
-                          <div className="shop-lg-thumb">
-                            {item.image
-                              ? <img src={mediaUrl(item.image)} alt={item.title} />
-                              : <div className="ph" style={{ '--c1': pc1, '--c2': pc2 }}>{(item.title || '?').slice(0, 14)}</div>}
+                          <div className="shop-lg-product">
+                            <div className="shop-lg-thumb">
+                              {item.image
+                                ? <img src={mediaUrl(item.image)} alt={item.title} />
+                                : <div className="ph" style={{ '--c1': pc1, '--c2': pc2 }}>{(item.title || '?').slice(0, 14)}</div>}
+                            </div>
+                            <div className="shop-lg-info">
+                              <Link
+                                to={`/shop/product/${item.productId}`}
+                                className="name"
+                                style={{ color: 'inherit', textDecoration: 'none' }}
+                                title={item.title}
+                              >
+                                {item.title}
+                              </Link>
+                              {item.variantName && (
+                                <div className="shop-lg-variant-tag" title={`Phân loại: ${item.variantName}`}>Phân loại: {item.variantName}</div>
+                              )}
+                              <div className="shop-lg-unit-inline">{formatPrice(item.price)}</div>
+                            </div>
                           </div>
-                          <div className="shop-lg-info">
-                            <Link
-                              to={`/shop/product/${item.productId}`}
-                              className="name"
-                              style={{ color: 'inherit', textDecoration: 'none' }}
-                            >
-                              {item.title}
-                            </Link>
-                            {item.variantName && (
-                              <div className="shop-lg-variant-tag">Phân loại: {item.variantName}</div>
-                            )}
-                          </div>
-                          <div className="shop-lg-unit">{formatPrice(item.price)}</div>
                           <div className="shop-lg-qty">
                             <button type="button" onClick={() => cart.setQty(item.id, item.qty - 1)}>−</button>
                             <input
@@ -317,10 +366,28 @@ export default function ShopCartPage() {
                 />
               </div>
 
-              <h3 style={{ marginTop: 16 }}>
-                Thông tin đặt hàng
-                {needsAddress && <span style={{ color: 'var(--slg-danger)', marginLeft: 6 }}>*</span>}
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+                <h3 style={{ margin: 0 }}>
+                  Thông tin đặt hàng
+                  {needsAddress && <span style={{ color: 'var(--slg-danger)', marginLeft: 6 }}>*</span>}
+                </h3>
+                <button
+                  type="button"
+                  className="shop-cart-gps-btn"
+                  onClick={handleGetGPS}
+                  disabled={gpsLoading}
+                  title="Lấy vị trí hiện tại"
+                >
+                  {gpsLoading
+                    ? <><i className="bi bi-arrow-repeat shop-cart-gps-spin" /> Đang lấy vị trí…</>
+                    : <><i className="bi bi-geo-alt-fill" /> Dùng GPS</>}
+                </button>
+              </div>
+              {gpsError && (
+                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--slg-danger)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <i className="bi bi-exclamation-circle-fill" style={{ fontSize: 11 }} /> {gpsError}
+                </div>
+              )}
               <textarea
                 rows={2}
                 placeholder={needsAddress
@@ -329,7 +396,7 @@ export default function ShopCartPage() {
                 value={shippingAddress}
                 onChange={(e) => setShippingAddress(e.target.value)}
                 style={{
-                  width: '100%', padding: 10, borderRadius: 12,
+                  width: '100%', padding: 10, borderRadius: 12, marginTop: 6,
                   border: '1px solid ' + (needsAddress && !shippingAddress.trim() ? 'var(--slg-danger)' : 'var(--slg-glass-hairline)'),
                   background: 'var(--slg-glass-strong)', color: 'var(--slg-txt)',
                   font: '500 13px var(--sf)', outline: 'none', resize: 'vertical',
@@ -354,6 +421,22 @@ export default function ShopCartPage() {
                 <span className="l">Tổng cộng</span>
                 <span className="r">{formatPrice(total)}</span>
               </div>
+
+              {balance !== null && (
+                <div className="shop-lg-sline" style={{ paddingTop: 6 }}>
+                  <span>Số dư ví</span>
+                  <strong style={{ color: balance < total ? 'var(--slg-danger)' : 'var(--slg-ok)' }}>
+                    {formatPrice(balance)}
+                  </strong>
+                </div>
+              )}
+              {balance !== null && balance < total && cart.selectedItems.length > 0 && (
+                <div className="shop-cart-balance-warn">
+                  <i className="bi bi-exclamation-triangle-fill" />
+                  <span>Số dư không đủ, cần thêm <b>{formatPrice(total - balance)}</b></span>
+                  <Link to="/wallet">Nạp tiền</Link>
+                </div>
+              )}
 
               {error && (
                 <div style={{ marginTop: 12, padding: 10, borderRadius: 10, background: 'rgba(255,69,58,0.08)', color: 'var(--slg-danger)', fontSize: 13, whiteSpace: 'pre-line' }}>

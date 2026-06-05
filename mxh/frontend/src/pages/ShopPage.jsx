@@ -315,8 +315,7 @@ function ProductCard({ product }) {
   return (
     <Link to={`/shop/product/${product.id}`} className="shop-lg-card shop-lg-lq">
       <div className="shop-lg-card-img">
-        <span className="shop-lg-badge-corner">KHÔNG TRÙNG</span>
-        {img
+{img
           ? <img src={mediaUrl(img)} alt={product.title} />
           : <div className="shop-lg-ph ph" style={{ '--c1': c1, '--c2': c2 }}><span>{(product.title || '?').slice(0, 20)}</span></div>}
         <div className="shop-lg-stock-chip">

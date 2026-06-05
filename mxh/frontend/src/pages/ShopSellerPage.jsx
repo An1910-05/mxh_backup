@@ -90,7 +90,7 @@ export default function ShopSellerPage() {
 
       <header className="shop-lg-topbar">
         <div className="shop-lg-brand">
-          <div className="shop-lg-brand-dot" />
+          <img src="/iPock.svg" alt="iPock" className="shop-lg-brand-logo" />
           <span>{seller?.username || 'Shop'}</span>
         </div>
         <div className="shop-lg-crumbs">

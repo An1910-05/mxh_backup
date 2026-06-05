@@ -125,8 +125,8 @@ export default function ShopDashboardPage() {
                 </div>
               </div>
               <div className="shop-row-actions">
-                <button className="shop-btn-secondary" onClick={() => setEditingProduct(p)}><i className="bi bi-pencil" /> Sửa</button>
-                <button className="shop-btn-danger" onClick={() => handleDelete(p.id)}><i className="bi bi-trash" /> Xóa</button>
+                <button className="shop-btn-secondary" onClick={() => setEditingProduct(p)}><i className="bi bi-pencil-square" /> Sửa</button>
+                <button className="shop-btn-danger" onClick={() => handleDelete(p.id)}><i className="bi bi-trash3" /> Xóa</button>
               </div>
             </div>
           ))}

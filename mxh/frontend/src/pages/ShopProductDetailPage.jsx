@@ -65,6 +65,7 @@ export default function ShopProductDetailPage() {
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [tab, setTab] = useState('desc');
   const [addedToast, setAddedToast] = useState('');
+  const [toastType, setToastType] = useState('success');
 
   useEffect(() => {
     setLoading(true);
@@ -93,8 +94,9 @@ export default function ShopProductDetailPage() {
     if (!user) { navigate('/login'); return; }
     if (!product) return;
     const vs = Array.isArray(product.variants) ? product.variants : [];
-    if (vs.length > 0 && !selectedVariant) { setAddedToast('Vui lòng chọn phân loại trước'); return; }
+    if (vs.length > 0 && !selectedVariant) { setToastType('warn'); setAddedToast('Vui lòng chọn phân loại trước'); return; }
     addItem(product, qty, selectedVariant);
+    setToastType('success');
     setAddedToast(`Đã thêm ${qty} × ${product.title}${selectedVariant ? ' - ' + selectedVariant.name : ''} vào giỏ`);
   };
 
@@ -102,7 +104,7 @@ export default function ShopProductDetailPage() {
     if (!user) { navigate('/login'); return; }
     if (!product) return;
     const vs = Array.isArray(product.variants) ? product.variants : [];
-    if (vs.length > 0 && !selectedVariant) { setAddedToast('Vui lòng chọn phân loại trước'); return; }
+    if (vs.length > 0 && !selectedVariant) { setToastType('warn'); setAddedToast('Vui lòng chọn phân loại trước'); return; }
     addItem(product, qty, selectedVariant);
     navigate('/shop/cart');
   };
@@ -160,7 +162,7 @@ export default function ShopProductDetailPage() {
 
   return (
     <DetailShell cartCount={cartCount} crumbTitle={product.title}>
-      <Link to="/shop" className="shop-lg-back-link">← Quay lại Shop</Link>
+      <Link to="/shop" className="shop-lg-back-link"><i className="bi bi-chevron-left" /> Quay lại Shop</Link>
 
       <section className="shop-lg-hero">
         <div className="shop-lg-glass shop-lg-gallery">
@@ -289,6 +291,13 @@ export default function ShopProductDetailPage() {
             <span className="shop-lg-stock-line">Còn <b style={{ color: 'var(--slg-txt)' }}>{effectiveStockLabel}</b></span>
           </div>
 
+          {addedToast && (
+            <div className={`shop-product-toast ${toastType === 'warn' ? 'toast-warn' : 'toast-success'}`}>
+              <i className={`toast-icon bi ${toastType === 'warn' ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill'}`} />
+              <span>{addedToast}</span>
+            </div>
+          )}
+
           <div className="shop-lg-cta-row">
             <button type="button" className="shop-lg-btn-cart shop-lg-lq" onClick={handleAddToCart}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -302,11 +311,6 @@ export default function ShopProductDetailPage() {
             </button>
           </div>
 
-          {addedToast && (
-            <div className="shop-lg-glass" style={{ padding: 10, fontSize: 13, color: 'var(--slg-ok)', background: 'rgba(48,194,102,0.10)' }}>
-              ✓ {addedToast}
-            </div>
-          )}
 
           <div className="shop-lg-promises">
             <div className="shop-lg-promise">
@@ -589,7 +593,7 @@ function DetailShell({ children, cartCount = 0, crumbTitle }) {
       </div>
       <header className="shop-lg-topbar">
         <div className="shop-lg-brand">
-          <div className="shop-lg-brand-dot" />
+          <img src="/iPock.svg" alt="iPock" className="shop-lg-brand-logo" />
           <span>iPock Shop</span>
         </div>
         <div className="shop-lg-crumbs">

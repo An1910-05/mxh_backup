@@ -34,9 +34,9 @@ const CURRENCY_PAIRS = [
 ];
 
 const MODES = [
-  { id: 'clock', icon: '🕐', label: 'Đồng hồ' },
-  { id: 'currency', icon: '💱', label: 'Tỷ giá' },
-  { id: 'gold', icon: '🥇', label: 'Giá vàng' },
+  { id: 'clock',    icon: 'bi-clock-fill',        label: 'Đồng hồ' },
+  { id: 'currency', icon: 'bi-currency-exchange',  label: 'Tỷ giá' },
+  { id: 'gold',     icon: 'bi-gem',                label: 'Giá vàng' },
 ];
 
 function loadSaved() {
@@ -161,23 +161,21 @@ export default function NavInfoWidget() {
       const city = CLOCK_CITIES.find((c) => c.id === clockTz) || CLOCK_CITIES[0];
       const time = new Intl.DateTimeFormat('vi-VN', {
         timeZone: city.id,
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
       }).format(now);
-      return { icon: '🕐', main: time, sub: city.label, change: null };
+      return { icon: 'bi-clock-fill', main: time, sub: city.label, change: null };
     }
     if (mode === 'currency') {
       const pair = CURRENCY_PAIRS.find((p) => p.from === currencyFrom) || CURRENCY_PAIRS[0];
       return {
-        icon: '💱',
+        icon: 'bi-currency-exchange',
         main: market ? `${formatVnd(market.value)} ₫` : '…',
         sub: pair.label,
         change: market?.change ?? null,
       };
     }
     return {
-      icon: '🥇',
+      icon: 'bi-gem',
       main: market ? `$${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(market.value)}` : '…',
       sub: 'XAU/oz',
       change: market?.change ?? null,
@@ -200,7 +198,10 @@ export default function NavInfoWidget() {
         aria-expanded={open}
         title={title}
       >
-        <span className="nav-info-widget-icon" aria-hidden="true">{display.icon}</span>
+        <span className="nav-info-widget-icon" aria-hidden="true">
+          <i className={`bi ${display.icon}`} />
+          {mode === 'clock' && <span className="nav-info-live-dot" />}
+        </span>
         <span className="nav-info-widget-body">
           <span className="nav-info-widget-main">
             {display.main}
@@ -222,7 +223,7 @@ export default function NavInfoWidget() {
                 className={`nav-info-mode-btn${mode === m.id ? ' nav-info-mode-btn--active' : ''}`}
                 onClick={() => setMode(m.id)}
               >
-                <span aria-hidden="true">{m.icon}</span>
+                <i className={`bi ${m.icon}`} aria-hidden="true" />
                 <span>{m.label}</span>
               </button>
             ))}
