@@ -1,6 +1,6 @@
 import { graphqlFetch } from './api';
 
-const POST_FIELDS = `id user_id username user_avatar user_is_verified content media_url media_type media_width media_height location_label latitude longitude like_count comment_count is_liked top_reactions created_at`;
+const POST_FIELDS = `id user_id username user_avatar user_is_verified content media_url media_type media_width media_height location_label latitude longitude like_count comment_count is_liked user_reaction_type top_reactions created_at`;
 const COMMENT_FIELDS = `id post_id parent_id user_id username user_avatar content created_at media_url media_type media_width media_height`;
 
 

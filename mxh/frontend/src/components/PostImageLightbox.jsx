@@ -6,11 +6,42 @@ import { timeAgo, timeAgoShort } from '../utils/time';
 import { API_ORIGIN } from '../config';
 import CommentMediaAttachment from './CommentMediaAttachment';
 import CommentMediaViewer from './CommentMediaViewer';
+import FacebookEmoji from './FacebookEmoji';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3;
 const ZOOM_STEP = 0.25;
+
+const REACTIONS = [
+  { key: 'like',  label: 'Thích',     color: '#0866ff' },
+  { key: 'love',  label: 'Yêu thích', color: '#f55064' },
+  { key: 'haha',  label: 'Haha',      color: '#f7b125' },
+  { key: 'wow',   label: 'Wow',       color: '#f7b125' },
+  { key: 'sad',   label: 'Buồn',      color: '#f7b125' },
+  { key: 'angry', label: 'Phẫn nộ',  color: '#e9710f' },
+];
+
+function ReactionPicker({ onReact }) {
+  return (
+    <div className="reaction-picker">
+      {REACTIONS.map((r) => (
+        <button
+          key={r.key}
+          className="reaction-picker-btn"
+          title={r.label}
+          onClick={(e) => { e.stopPropagation(); onReact(r); }}
+          type="button"
+        >
+          <span className="reaction-picker-emoji">
+            <FacebookEmoji type={r.key} size="sm" />
+          </span>
+          <span className="reaction-picker-label">{r.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function PostImageLightbox({
   post,
@@ -18,7 +49,9 @@ export default function PostImageLightbox({
   onClose,
   liked,
   likeCount,
+  reaction,
   onLike,
+  onReact,
   onCommentAdded,
   onShare,
 }) {
@@ -30,10 +63,21 @@ export default function PostImageLightbox({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [activeMediaComment, setActiveMediaComment] = useState(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const pickerTimerRef = useRef(null);
+  const likeWrapRef = useRef(null);
   const stageRef = useRef(null);
   const listRef = useRef(null);
   const composeInputRef = useRef(null);
   const newIds = useRef(new Set());
+
+  const handleLikeMouseEnter = useCallback(() => {
+    pickerTimerRef.current = setTimeout(() => setShowPicker(true), 500);
+  }, []);
+
+  const handleLikeMouseLeave = useCallback(() => {
+    clearTimeout(pickerTimerRef.current);
+  }, []);
 
   const loadComments = useCallback(async () => {
     setLoadingComments(true);
@@ -155,12 +199,33 @@ export default function PostImageLightbox({
             </div>
 
             <div className="post-lightbox-actions">
-              <button type="button" className={`post-lightbox-action${liked ? ' post-lightbox-action--on' : ''}`} onClick={onLike}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
-                  <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" />
-                </svg>
-                <span>Thích{likeCount > 0 ? ` (${likeCount})` : ''}</span>
-              </button>
+              <div
+                className="post-fb-action-wrap"
+                ref={likeWrapRef}
+                onMouseEnter={handleLikeMouseEnter}
+                onMouseLeave={handleLikeMouseLeave}
+              >
+                {showPicker && onReact && (
+                  <ReactionPicker onReact={(r) => { setShowPicker(false); onReact(r); }} />
+                )}
+                <button
+                  type="button"
+                  className={`post-lightbox-action${liked ? ' post-lightbox-action--on' : ''}`}
+                  style={liked && reaction ? { color: reaction.color } : {}}
+                  onClick={onLike}
+                >
+                  {liked && reaction ? (
+                    <span className="post-fb-action-reaction-emoji">
+                      <FacebookEmoji type={reaction.key} size="xs" />
+                    </span>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                      <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" />
+                    </svg>
+                  )}
+                  <span>{liked && reaction ? reaction.label : `Thích${likeCount > 0 ? ` (${likeCount})` : ''}`}</span>
+                </button>
+              </div>
               <button type="button" className="post-lightbox-action" onClick={() => composeInputRef.current?.focus()}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" /></svg>
                 <span>Bình luận</span>

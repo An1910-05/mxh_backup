@@ -44,7 +44,7 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthShell
-      mode="login"
+      mode="reset-password"
       headline="Tạo mật khẩu mới cho tài khoản."
       subcopy="Nhập mật khẩu mới bạn muốn sử dụng."
     >

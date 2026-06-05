@@ -62,7 +62,7 @@ class MailService
             $mail->addAddress($toEmail, $toName ?: '');
 
             $mail->isHTML(true);
-            $mail->Subject = 'Dat lai mat khau iPock';
+            $mail->Subject = '=?UTF-8?B?' . base64_encode('Đặt lại mật khẩu iPock') . '?=';
             $mail->Body = $this->buildResetPasswordHtml($toName, $resetLink);
             $mail->AltBody = $this->buildResetPasswordText($resetLink);
 
@@ -74,42 +74,100 @@ class MailService
 
     private function buildResetPasswordHtml(?string $toName, string $resetLink): string
     {
-        $safeLink = htmlspecialchars($resetLink, ENT_QUOTES, 'UTF-8');
-        $displayName = htmlspecialchars($toName ?: 'ban', ENT_QUOTES, 'UTF-8');
+        $safeLink    = htmlspecialchars($resetLink, ENT_QUOTES, 'UTF-8');
+        $displayName = htmlspecialchars($toName ?: 'bạn', ENT_QUOTES, 'UTF-8');
 
         return <<<HTML
 <!doctype html>
 <html lang="vi">
-  <body style="margin:0;padding:24px;background:#f4f7fb;font-family:Arial,sans-serif;color:#0f172a;">
-    <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;padding:32px;">
-      <div style="font-size:24px;font-weight:700;margin-bottom:12px;">Dat lai mat khau</div>
-      <p style="margin:0 0 16px;line-height:1.6;">Xin chao {$displayName},</p>
-      <p style="margin:0 0 16px;line-height:1.6;">
-        Chung toi nhan duoc yeu cau dat lai mat khau cho tai khoan iPock cua ban.
-        Bam vao nut ben duoi de tao mat khau moi.
-      </p>
-      <p style="margin:24px 0;">
-        <a href="{$safeLink}" style="display:inline-block;padding:12px 18px;border-radius:12px;background:#1877f2;color:#ffffff;text-decoration:none;font-weight:700;">
-          Dat lai mat khau
-        </a>
-      </p>
-      <p style="margin:0 0 12px;line-height:1.6;">Neu nut khong hoat dong, hay mo link nay:</p>
-      <p style="margin:0 0 16px;word-break:break-all;">
-        <a href="{$safeLink}" style="color:#1877f2;">{$safeLink}</a>
-      </p>
-      <p style="margin:0;line-height:1.6;color:#475569;">
-        Link nay se het han sau 1 gio. Neu ban khong yeu cau dat lai mat khau, ban co the bo qua email nay.
-      </p>
-    </div>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Đặt lại mật khẩu iPock</title>
+</head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0f172a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">
+    <tr>
+      <td align="center">
+
+        <!-- Logo -->
+        <div style="margin-bottom:28px;">
+          <span style="font-size:28px;font-weight:800;letter-spacing:-0.5px;color:#0f172a;">iPock</span>
+        </div>
+
+        <!-- Card -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,0.07);overflow:hidden;">
+
+          <!-- Blue header bar -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0071e3 0%,#2d9cdb 100%);padding:28px 36px;">
+              <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.75);">Bảo mật tài khoản</p>
+              <h1 style="margin:6px 0 0;font-size:22px;font-weight:700;color:#ffffff;">Đặt lại mật khẩu</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 36px;">
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#334155;">
+                Xin chào <strong>{$displayName}</strong>,
+              </p>
+              <p style="margin:0 0 28px;font-size:15px;line-height:1.7;color:#475569;">
+                Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản <strong>iPock</strong> của bạn.
+                Nhấn vào nút bên dưới để tạo mật khẩu mới.
+              </p>
+
+              <!-- CTA Button -->
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+                <tr>
+                  <td style="border-radius:12px;background:#0071e3;">
+                    <a href="{$safeLink}"
+                       style="display:inline-block;padding:14px 32px;border-radius:12px;background:#0071e3;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:-0.1px;">
+                      Đặt lại mật khẩu
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 24px;" />
+
+              <p style="margin:0 0 8px;font-size:13px;color:#64748b;line-height:1.6;">
+                Nếu nút không hoạt động, hãy sao chép và dán link sau vào trình duyệt:
+              </p>
+              <p style="margin:0 0 24px;word-break:break-all;">
+                <a href="{$safeLink}" style="color:#0071e3;font-size:13px;text-decoration:underline;">{$safeLink}</a>
+              </p>
+
+              <p style="margin:0;font-size:13px;line-height:1.6;color:#94a3b8;">
+                Link này sẽ hết hạn sau <strong>1 giờ</strong>.
+                Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này — tài khoản của bạn vẫn an toàn.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:18px 36px;border-radius:0 0 20px 20px;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.6;">
+                Email này được gửi tự động từ hệ thống <strong>iPock</strong>. Vui lòng không trả lời email này.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
 </html>
 HTML;
     }
 
     private function buildResetPasswordText(string $resetLink): string
     {
-        return "Ban da yeu cau dat lai mat khau iPock.\n\n"
-            . "Mo link sau de tao mat khau moi:\n{$resetLink}\n\n"
-            . "Link nay se het han sau 1 gio. Neu ban khong thuc hien yeu cau nay, hay bo qua email.";
+        return "Bạn đã yêu cầu đặt lại mật khẩu iPock.\n\n"
+            . "Mở link sau để tạo mật khẩu mới:\n{$resetLink}\n\n"
+            . "Link này sẽ hết hạn sau 1 giờ. Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email.";
     }
 }

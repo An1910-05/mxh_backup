@@ -94,6 +94,34 @@ class LikeRepository
     }
 
     /**
+     * Batch: lấy reaction_type của user cho từng post.
+     * Trả về [post_id => reaction_type].
+     */
+    public function userReactionsByPostIds(array $postIds, int $userId): array
+    {
+        if (empty($postIds)) return [];
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT post_id, reaction_type FROM likes WHERE user_id = ? AND post_id IN ($placeholders)"
+        );
+        $stmt->execute(array_merge([$userId], $postIds));
+        $result = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $result[(int)$row['post_id']] = $row['reaction_type'];
+        }
+        return $result;
+    }
+
+    /**
+     * Single: lấy reaction_type của user cho 1 post.
+     */
+    public function getUserReactionForPost(int $postId, int $userId): ?string
+    {
+        $row = $this->findByPostAndUser($postId, $userId);
+        return $row ? $row['reaction_type'] : null;
+    }
+
+    /**
      * Batch: top 2 reaction types per post.
      * Returns [post_id => ['like', 'love', ...]].
      */

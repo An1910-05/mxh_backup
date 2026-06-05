@@ -228,7 +228,7 @@ export default function ShopProductDetailPage() {
             </div>
             <div className="shop-lg-seller-actions">
               {user && product.seller?.id && product.seller.id !== user.id && (
-                <Link to={`/chat?userId=${product.seller.id}`} className="shop-lg-lq shop-lg-seller-cta">
+                <Link to={`/chat?user=${product.seller.id}`} className="shop-lg-lq shop-lg-seller-cta">
                   <i className="bi bi-chat-dots-fill" />Nhắn shop
                 </Link>
               )}

@@ -99,25 +99,28 @@ class PostService
         $likeCounts    = $this->likeRepo->countByPostIds($postIds);
         $commentCounts = $this->commentRepo->countByPostIds($postIds);
         $likedSet      = $currentUserId ? $this->likeRepo->likedPostsByUser($postIds, $currentUserId) : [];
+        $userReactions = $currentUserId ? $this->likeRepo->userReactionsByPostIds($postIds, $currentUserId) : [];
         $topReactions  = $this->likeRepo->topReactionsByPostIds($postIds, 2);
 
-        return array_map(function ($post) use ($likeCounts, $commentCounts, $likedSet, $topReactions, $currentUserId) {
+        return array_map(function ($post) use ($likeCounts, $commentCounts, $likedSet, $userReactions, $topReactions, $currentUserId) {
             $id = $post['id'];
-            $post['like_count']    = $likeCounts[$id]    ?? 0;
-            $post['comment_count'] = $commentCounts[$id] ?? 0;
-            $post['is_liked']      = $currentUserId ? ($likedSet[$id] ?? false) : null;
-            $post['top_reactions'] = $topReactions[$id]  ?? [];
+            $post['like_count']         = $likeCounts[$id]    ?? 0;
+            $post['comment_count']      = $commentCounts[$id] ?? 0;
+            $post['is_liked']           = $currentUserId ? ($likedSet[$id] ?? false) : null;
+            $post['user_reaction_type'] = $currentUserId ? ($userReactions[$id] ?? null) : null;
+            $post['top_reactions']      = $topReactions[$id]  ?? [];
             return $post;
         }, $posts);
     }
 
     private function enrichPost(array $post, ?int $currentUserId = null): array
     {
-        $post['like_count']    = $this->likeRepo->countByPostId($post['id']);
-        $post['comment_count'] = $this->commentRepo->countByPostId($post['id']);
-        $post['is_liked']      = $currentUserId ? $this->likeRepo->isLikedByUser($post['id'], $currentUserId) : null;
-        $topReactions          = $this->likeRepo->topReactionsByPostIds([$post['id']], 2);
-        $post['top_reactions'] = $topReactions[$post['id']] ?? [];
+        $post['like_count']         = $this->likeRepo->countByPostId($post['id']);
+        $post['comment_count']      = $this->commentRepo->countByPostId($post['id']);
+        $post['is_liked']           = $currentUserId ? $this->likeRepo->isLikedByUser($post['id'], $currentUserId) : null;
+        $post['user_reaction_type'] = $currentUserId ? $this->likeRepo->getUserReactionForPost($post['id'], $currentUserId) : null;
+        $topReactions               = $this->likeRepo->topReactionsByPostIds([$post['id']], 2);
+        $post['top_reactions']      = $topReactions[$post['id']] ?? [];
         return $post;
     }
 }

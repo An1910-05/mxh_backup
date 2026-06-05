@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      mode="login"
+      mode="forgot-password"
       headline="Đặt lại mật khẩu của bạn."
       subcopy="Nhập email đăng ký để nhận link đặt lại mật khẩu."
     >
@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
                 <a href={resetLink} className="auth-reset-link">{resetLink}</a>
               </div>
             )}
-            <Link to="/login" className="auth-submit auth-submit--primary" style={{ marginTop: 16, display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+            <Link to="/login" className="auth-submit auth-submit--primary" style={{ marginTop: 16 }}>
               Quay về đăng nhập
             </Link>
           </div>

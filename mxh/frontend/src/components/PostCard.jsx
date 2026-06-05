@@ -72,7 +72,11 @@ export default function PostCard({ post, onDelete }) {
   const { user } = useAuth();
   const [liked, setLiked] = useState(post.is_liked);
   const [likeCount, setLikeCount] = useState(post.like_count || 0);
-  const [reaction, setReaction] = useState(post.is_liked ? REACTIONS[0] : null);
+  const [reaction, setReaction] = useState(
+    post.is_liked
+      ? (REACTIONS.find((r) => r.key === post.user_reaction_type) ?? REACTIONS[0])
+      : null
+  );
   const [topReactions, setTopReactions] = useState(post.top_reactions || []);
   const [showPicker, setShowPicker] = useState(false);
   const pickerTimerRef = useRef(null);
@@ -589,7 +593,9 @@ export default function PostCard({ post, onDelete }) {
           onClose={() => setLightboxOpen(false)}
           liked={liked}
           likeCount={likeCount}
+          reaction={reaction}
           onLike={handleLike}
+          onReact={handleReact}
           onCommentAdded={() => setCommentCount((c) => c + 1)}
           onShare={() => {
             setLightboxOpen(false);

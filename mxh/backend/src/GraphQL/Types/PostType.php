@@ -28,6 +28,7 @@ class PostType extends ObjectType
                 'like_count' => Type::int(),
                 'comment_count' => Type::int(),
                 'is_liked' => Type::boolean(),
+                'user_reaction_type' => Type::string(),
                 'top_reactions' => Type::listOf(Type::string()),
                 'user_is_verified' => [
                     'type' => Type::boolean(),

@@ -3544,7 +3544,7 @@ body[data-theme='dark'] .comment-media-thumb {
     white-space: pre-wrap;
     word-wrap: break-word;
     overflow: hidden;
-    color: transparent;
+    color: #1d1d1f;
     box-sizing: border-box;
 }
 /* Mention marks are clickable; everything else passes through to textarea */
@@ -9098,7 +9098,7 @@ body[data-theme='dark'] .csm-side-foot {
 
 .post-lightbox-sidebar-inner {
     flex: 1;
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -14663,10 +14663,9 @@ body[data-theme='dark'] .right-sidebar {
   cursor: pointer;
   width: 100%;
   text-align: left;
-  transition: background 0.15s;
 }
 .rsb-contact:hover {
-  background: #e4e6eb;
+  background: none;
 }
 .rsb-avatar-wrap {
   position: relative;
@@ -14698,6 +14697,12 @@ body[data-theme='dark'] .right-sidebar {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: color, transform;
+}
+.rsb-contact:hover .rsb-name {
+  color: var(--ios-blue);
+  transform: translateX(3px);
 }
 .rsb-no-result {
   font-size: 13px;
@@ -14726,10 +14731,13 @@ body.theme-dark .rsb-search-input::placeholder {
   color: #b0b3b8;
 }
 body.theme-dark .rsb-contact:hover {
-  background: #3a3b3c;
+  background: none;
 }
 body.theme-dark .rsb-name {
   color: #e4e6eb;
+}
+body.theme-dark .rsb-contact:hover .rsb-name {
+  color: var(--ios-blue);
 }
 body.theme-dark .rsb-online-dot {
   border-color: #242526;
