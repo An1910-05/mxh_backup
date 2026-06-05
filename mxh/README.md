@@ -1460,3 +1460,78 @@ Client dùng `reply_to` để match ACK/error với pending request (Map `pendin
 ---
 
 *Tài liệu này phản ánh cấu trúc và công cụ trong repo tại thời điểm cập nhật; nếu thêm gói Composer hoặc npm, hãy đồng bộ lại bảng phiên bản và chạy migration khi schema thay đổi.*
+
+---
+
+## Mục bị ẩn (không xóa)
+
+Các phần UI đã comment-out để ẩn khỏi giao diện. Khôi phục bằng cách bỏ comment tại vị trí đã ghi.
+
+### 1. Hướng dẫn thanh toán MoMo Test (sandbox)
+
+| | |
+|---|---|
+| **File** | `frontend/src/pages/WalletPage.jsx` |
+| **Dòng gốc** | ~157–208 |
+| **Class** | `.momo-guide` → `.momo-guide-toggle` + `.momo-guide-body` |
+| **Điều kiện gốc** | `paymentMethod === 'momo'` |
+| **Ẩn lúc** | 2026-06-05 |
+
+Lý do: mục hướng dẫn sandbox chỉ cần khi dev/test.
+
+**Cách khôi phục:** thay dòng `{/* HIDDEN: momo-guide … */}` trong JSX bằng:
+
+```jsx
+{paymentMethod === 'momo' && (
+  <div className="momo-guide">
+    <button
+      type="button"
+      className="momo-guide-toggle"
+      onClick={() => setShowMomoGuide((v) => !v)}
+      aria-expanded={showMomoGuide}
+    >
+      <span className="momo-guide-toggle-icon"><i className="bi bi-info-circle-fill" aria-hidden="true" /></span>
+      <span>Hướng dẫn thanh toán MoMo Test (sandbox)</span>
+      <span className={`momo-guide-chevron${showMomoGuide ? ' momo-guide-chevron--open' : ''}`} aria-hidden="true">
+        <i className="bi bi-chevron-down" />
+      </span>
+    </button>
+    {showMomoGuide && (
+      <div className="momo-guide-body">
+        <ol className="momo-guide-steps">
+          <li>
+            Cài app <strong>MoMo Test</strong> (gỡ MoMo thường trước):{' '}
+            <a href="https://developers.momo.vn/v3/vi/download/" target="_blank" rel="noreferrer">developers.momo.vn/v3/vi/download</a>
+          </li>
+          <li>
+            Mở app → đăng ký ví test bằng <strong>số điện thoại bất kỳ 10 số</strong> (đầu hợp lệ: 03/05/07/08/09).
+            OTP mặc định: <code>0000</code> hoặc <code>000000</code>. Mật khẩu 6 số do bạn đặt.
+          </li>
+          <li>
+            Nạp tiền vào ví test bằng thẻ ATM giả lập (chọn 1):
+            <ul className="momo-guide-cards">
+              <li><code>9704 0000 0000 0018</code> · HSD 03/07 — thành công</li>
+              <li><code>9704 0000 0000 0026</code> — thẻ bị khóa</li>
+              <li><code>9704 0000 0000 0034</code> — không đủ số dư</li>
+              <li><code>9704 0000 0000 0042</code> — vượt hạn mức</li>
+            </ul>
+          </li>
+          <li>
+            Trên trang này, chọn <strong>Ví MoMo</strong> → nhập số tiền (≥ 10.000đ) → bấm <em>Nạp qua Ví MoMo</em>.
+            Trang sẽ chuyển sang cổng MoMo sandbox.
+          </li>
+          <li>
+            Trên cổng MoMo: quét QR bằng app MoMo Test (hoặc bấm "Thanh toán bằng MoMo Test").
+            Xác nhận trong app → MoMo chuyển về <code>/payment/result</code> và cộng tiền vào số dư.
+          </li>
+        </ol>
+        <p className="momo-guide-note">
+          <strong>Lưu ý:</strong> MoMo gửi IPN server-to-server tới <code>/payment/momo/ipn</code>.
+          Khi chạy localhost, IPN không tới được — backend sẽ finalize khi trình duyệt redirect về,
+          nên kết quả vẫn cộng tiền bình thường. Khi deploy lên domain công khai, đặt <code>BACKEND_URL</code> để MoMo gọi IPN trực tiếp.
+        </p>
+      </div>
+    )}
+  </div>
+)}
+```

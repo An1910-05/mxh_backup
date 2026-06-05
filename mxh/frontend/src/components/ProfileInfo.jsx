@@ -577,94 +577,97 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
       {listPanel &&
         createPortal(
           <div
-            className="profile-list-modal-overlay"
+            className="plist-overlay"
             role="presentation"
             onClick={() => setListPanel(null)}
           >
             <div
-              className="profile-list-modal"
+              className="plist-sheet"
               role="dialog"
               aria-modal="true"
-              aria-labelledby="profile-list-modal-title"
+              aria-labelledby="plist-title"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="profile-list-panel profile-list-panel--modal fade-in">
-                <div className="profile-list-header">
-                  <span className="profile-list-title" id="profile-list-modal-title">
-                    {listTitle[listPanel]}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setListPanel(null)}
-                    className="apple-btn apple-btn-ghost apple-btn-sm"
-                    aria-label="Đóng"
-                  >
-                    ✕
-                  </button>
+              <div className="plist-notch" aria-hidden="true" />
+              <div className="plist-header">
+                <span className="plist-title" id="plist-title">
+                  {listTitle[listPanel]}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setListPanel(null)}
+                  className="plist-close"
+                  aria-label="Đóng"
+                >
+                  <i className="bi bi-x-lg" aria-hidden="true" />
+                </button>
+              </div>
+
+              {listLoading ? (
+                <div className="plist-loading">
+                  <span className="apple-spinner" />
                 </div>
-                {listLoading ? (
-                  <div className="apple-loading" style={{ padding: 16 }}>
-                    <span className="apple-spinner" />
-                  </div>
-                ) : listData.length === 0 ? (
-                  <div className="apple-empty" style={{ padding: '16px 0' }}>
-                    <div className="apple-empty-sub">Chưa có ai</div>
-                  </div>
-                ) : (
-                  <div className="profile-list-items">
-                    {listData.map((u) => {
-                      const uid = Number(u.id);
-                      const canMsg = user && uid !== Number(user.id);
-                      const showUnfriend = isOwn && listPanel === 'friends' && canMsg;
-                      return (
-                        <div key={u.id} className="profile-list-item">
+              ) : listData.length === 0 ? (
+                <div className="plist-empty">
+                  <i className="bi bi-people plist-empty-icon" aria-hidden="true" />
+                  <span className="plist-empty-text">Chưa có ai trong danh sách này</span>
+                </div>
+              ) : (
+                <div className="plist-items">
+                  {listData.map((u, idx) => {
+                    const uid = Number(u.id);
+                    const canMsg = user && uid !== Number(user.id);
+                    const showUnfriend = isOwn && listPanel === 'friends' && canMsg;
+                    return (
+                      <div key={u.id} className="plist-item" style={{ '--i': idx }}>
+                        <Link
+                          to={userLink(u)}
+                          className="plist-avatar"
+                          onClick={() => setListPanel(null)}
+                        >
+                          <img src={u.avatar ? `${API_ORIGIN}${u.avatar}` : DEFAULT_AVATAR} alt="" />
+                        </Link>
+                        <div className="plist-name-wrap">
+                          <Link to={userLink(u)} className="plist-name" onClick={() => setListPanel(null)}>
+                            {u.username}
+                          </Link>
+                        </div>
+                        <div className="plist-actions">
                           <Link
                             to={userLink(u)}
-                            className="post-avatar"
-                            style={{ width: 32, height: 32 }}
+                            className="plist-btn plist-btn-ghost"
                             onClick={() => setListPanel(null)}
                           >
-                            <img src={u.avatar ? `${API_ORIGIN}${u.avatar}` : DEFAULT_AVATAR} alt="" />
+                            <i className="bi bi-person-fill" aria-hidden="true" />
+                            Xem
                           </Link>
-                          <div className="profile-list-name-wrap">
-                            <Link to={userLink(u)} className="profile-list-name" onClick={() => setListPanel(null)}>
-                              {u.username}
-                            </Link>
-                          </div>
-                          <div className="profile-list-actions">
-                            <Link
-                              to={userLink(u)}
-                              className="apple-btn apple-btn-outline apple-btn-sm"
-                              onClick={() => setListPanel(null)}
+                          {canMsg && (
+                            <button
+                              type="button"
+                              className="plist-btn plist-btn-blue"
+                              onClick={() => handleMessageInList(uid)}
                             >
-                              Xem
-                            </Link>
-                            {canMsg && (
-                              <button
-                                type="button"
-                                className="apple-btn apple-btn-primary apple-btn-sm"
-                                onClick={() => handleMessageInList(uid)}
-                              >
-                                Nhắn tin
-                              </button>
-                            )}
-                            {showUnfriend && (
-                              <button
-                                type="button"
-                                className="apple-btn apple-btn-danger apple-btn-sm"
-                                disabled={listActionId === uid}
-                                onClick={() => handleUnfriendInList(uid)}
-                              >
-                                {listActionId === uid ? '…' : 'Hủy kết bạn'}
-                              </button>
-                            )}
-                          </div>
+                              <i className="bi bi-chat-fill" aria-hidden="true" />
+                              Nhắn tin
+                            </button>
+                          )}
+                          {showUnfriend && (
+                            <button
+                              type="button"
+                              className="plist-btn plist-btn-red"
+                              disabled={listActionId === uid}
+                              onClick={() => handleUnfriendInList(uid)}
+                            >
+                              <i className="bi bi-person-x-fill" aria-hidden="true" />
+                              {listActionId === uid ? '…' : 'Hủy kết bạn'}
+                            </button>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>,
           document.body,

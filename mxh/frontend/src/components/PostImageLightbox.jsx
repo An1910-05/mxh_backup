@@ -156,7 +156,9 @@ export default function PostImageLightbox({
 
             <div className="post-lightbox-actions">
               <button type="button" className={`post-lightbox-action${liked ? ' post-lightbox-action--on' : ''}`} onClick={onLike}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 22V11m-5 2v7a2 2 0 002 2h12.4a2 2 0 001.94-1.52l1.72-7A2 2 0 0018.12 10H14V5a3 3 0 00-3-3l-4 9" /></svg>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                  <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" />
+                </svg>
                 <span>Thích{likeCount > 0 ? ` (${likeCount})` : ''}</span>
               </button>
               <button type="button" className="post-lightbox-action" onClick={() => composeInputRef.current?.focus()}>
@@ -218,7 +220,9 @@ export default function PostImageLightbox({
                   className="post-lightbox-compose-input"
                 />
                 <button type="submit" className="post-lightbox-compose-send" disabled={!input.trim() || sending} aria-label="Gửi">
-                  {sending ? '…' : '➤'}
+                  {sending
+                    ? <i className="bi bi-arrow-repeat" style={{ display:'inline-block', animation:'shop-gps-spin 0.8s linear infinite' }} aria-hidden="true" />
+                    : <i className="bi bi-send-fill" aria-hidden="true" />}
                 </button>
               </form>
             )}
