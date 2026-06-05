@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import AuthShell from '../components/AuthShell';
 import AuthIntroSplash from '../components/AuthIntroSplash';
 import AnimatedLoginFace from '../components/AnimatedLoginFace';
@@ -48,6 +48,8 @@ const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isBanned = searchParams.get('reason') === 'banned';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -279,7 +281,14 @@ export default function LoginPage() {
       >
         <BorderBeam size={250} duration={10} colorFrom="#1877f2" colorTo="#9c40ff" />
 
-        {error ? (
+        {isBanned && (
+          <div className="apple-alert apple-alert-danger auth-alert auth-alert--banned" role="alert">
+            <i className="bi bi-shield-lock-fill" aria-hidden="true" />
+            <span>Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.</span>
+          </div>
+        )}
+
+        {error && !isBanned ? (
           <div className="apple-alert apple-alert-danger auth-alert" role="alert">
             <i className="bi bi-exclamation-circle-fill" aria-hidden="true" />
             <span>{error}</span>

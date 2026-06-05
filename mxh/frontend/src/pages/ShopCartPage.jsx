@@ -164,7 +164,7 @@ export default function ShopCartPage() {
       </header>
 
       <main className="shop-lg-page">
-        <Link to="/shop" className="shop-lg-back-link">← Tiếp tục mua sắm</Link>
+        <Link to="/shop" className="shop-lg-back-link"><i className="bi bi-arrow-left" /> Tiếp tục mua sắm</Link>
 
         <div style={{ margin: '8px 4px 22px' }}>
           <h1 style={{ margin: 0, font: '700 26px var(--sf)', letterSpacing: '-0.02em', color: 'var(--slg-txt)' }}>
@@ -177,9 +177,15 @@ export default function ShopCartPage() {
 
         {cart.items.length === 0 ? (
           <div className="shop-lg-glass shop-lg-empty">
-            <div className="icn">🛒</div>
+            <div className="icn"><i className="bi bi-cart-x" /></div>
             <h3>Giỏ hàng trống</h3>
-            <p><Link to="/shop">← Quay lại Shop để mua sắm</Link></p>
+            <Link to="/shop" className="shop-lg-lq shop-lg-go-shop-btn">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M3 3h2l2.4 12.3a2 2 0 0 0 2 1.7H18a2 2 0 0 0 2-1.6L21.5 8H6"/>
+                <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
+              </svg>
+              Quay lại Shop để mua sắm
+            </Link>
           </div>
         ) : (
           <div className="shop-lg-layout-cart">

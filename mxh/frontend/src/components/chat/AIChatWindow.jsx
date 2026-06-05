@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAIMessages } from '../../hooks/useAIMessages';
+import geminiLogo from '../../assets/gemini.svg';
 
 function renderMarkdown(text) {
   let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -17,17 +18,7 @@ function TypingDots() {
   );
 }
 
-const AI_AVATAR = (
-  <svg viewBox="0 0 36 36" width="32" height="32" fill="none">
-    <defs>
-      <linearGradient id="aiPageGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/>
-      </linearGradient>
-    </defs>
-    <circle cx="18" cy="18" r="18" fill="url(#aiPageGrad)"/>
-    <path d="M18 9l1.8 5.5H25l-4.3 3.1 1.6 5.1L18 19.6l-4.3 3.1 1.6-5.1L11 14.5h5.2L18 9z" fill="white"/>
-  </svg>
-);
+const AI_AVATAR = <img src={geminiLogo} width="24" height="24" alt="Gemini" />;
 
 export default function AIChatWindow({ onBack }) {
   const { messages, loading, sendMessage, clearMessages } = useAIMessages();
@@ -84,7 +75,7 @@ export default function AIChatWindow({ onBack }) {
       <div className="ai-chat-window-messages">
         {messages.length === 0 && (
           <div className="ai-fcw-welcome">
-            <div className="ai-fcw-welcome-icon">✨</div>
+            <div className="ai-fcw-welcome-icon"><img src={geminiLogo} width="48" height="48" alt="Gemini" /></div>
             <p>Xin chào! Tôi là <strong>Gemini AI</strong>.</p>
             <p>Hỏi tôi bất cứ điều gì — viết caption, gợi ý bài đăng, hay chỉ trò chuyện!</p>
           </div>
@@ -93,15 +84,7 @@ export default function AIChatWindow({ onBack }) {
           <div key={i} className={`ai-fcw-msg${msg.role === 'user' ? ' ai-fcw-msg--user' : ' ai-fcw-msg--ai'}`}>
             {msg.role === 'assistant' && (
               <div className="ai-fcw-msg-avatar">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
-                  <defs>
-                    <linearGradient id="aiMsgGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/>
-                    </linearGradient>
-                  </defs>
-                  <circle cx="12" cy="12" r="12" fill="url(#aiMsgGrad)"/>
-                  <path d="M12 6l1.2 3.7H17l-2.9 2.1 1.1 3.4L12 13.1l-3.2 2.1 1.1-3.4L7 9.7h3.8L12 6z" fill="white"/>
-                </svg>
+                <img src={geminiLogo} width="24" height="24" alt="Gemini" />
               </div>
             )}
             <div
@@ -113,15 +96,7 @@ export default function AIChatWindow({ onBack }) {
         {loading && (
           <div className="ai-fcw-msg ai-fcw-msg--ai">
             <div className="ai-fcw-msg-avatar">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
-                <defs>
-                  <linearGradient id="aiTypingGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/>
-                  </linearGradient>
-                </defs>
-                <circle cx="12" cy="12" r="12" fill="url(#aiTypingGrad)"/>
-                <path d="M12 6l1.2 3.7H17l-2.9 2.1 1.1 3.4L12 13.1l-3.2 2.1 1.1-3.4L7 9.7h3.8L12 6z" fill="white"/>
-              </svg>
+              <img src={geminiLogo} width="24" height="24" alt="Gemini" />
             </div>
             <TypingDots />
           </div>

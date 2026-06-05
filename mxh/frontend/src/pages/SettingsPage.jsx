@@ -225,12 +225,6 @@ export default function SettingsPage() {
               })}
             </nav>
 
-            <div className="settings-sidebar-footer">
-              <div className="settings-sidebar-tip">
-                <i className="bi bi-lightbulb-fill" />
-                <span>Mẹo: dùng Tab để chuyển nhanh giữa các trường.</span>
-              </div>
-            </div>
           </aside>
 
           {/* Content */}
@@ -591,7 +585,7 @@ function FieldRow({ icon, label, hint, children }) {
 
 function FeatureChip({ icon, title, desc }) {
   return (
-    <MagicCard className="settings-feature-chip" gradientSize={160}>
+    <MagicCard className="settings-feature-chip" gradientSize={160} spotlight={false}>
       <i className={`bi ${icon} settings-feature-chip-icon`} />
       <div className="settings-feature-chip-text">
         <div className="settings-feature-chip-title">{title}</div>

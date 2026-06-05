@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getPost } from '../../services/graphql';
 import VideoPlayer from '../VideoPlayer';
+import ChatImageLightbox from './ChatImageLightbox';
 import { API_ORIGIN } from '../../config';
 const DEFAULT_AVATAR = '/default-avatar.png';
 
@@ -231,6 +232,7 @@ export default function MessageBubble({ message, isOwn, isGroup = false, showAva
   const [hoverRow, setHoverRow] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
+  const [showImageViewer, setShowImageViewer] = useState(false);
   const menuRef = useRef(null);
   const msg = message;
   const isSystem = msg.content_type === 'system';
@@ -325,7 +327,13 @@ export default function MessageBubble({ message, isOwn, isGroup = false, showAva
         <>
           {msg.content_type === 'image' && msg.media_url && (
             <div className="msg-media">
-              <img src={`${API_ORIGIN}${msg.media_url}`} alt="" loading="lazy" />
+              <img
+                src={`${API_ORIGIN}${msg.media_url}`}
+                alt=""
+                loading="lazy"
+                className="msg-media-img--zoomable"
+                onClick={() => setShowImageViewer(true)}
+              />
             </div>
           )}
           {msg.content_type === 'video' && msg.media_url && (
@@ -480,6 +488,10 @@ export default function MessageBubble({ message, isOwn, isGroup = false, showAva
           </div>
         )}
       </div>
+
+      {showImageViewer && msg.content_type === 'image' && msg.media_url && (
+        <ChatImageLightbox src={`${API_ORIGIN}${msg.media_url}`} onClose={() => setShowImageViewer(false)} />
+      )}
     </>
   );
 }

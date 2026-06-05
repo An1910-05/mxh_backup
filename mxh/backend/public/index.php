@@ -249,6 +249,10 @@ try {
             (new AdminController())->getTransactions();
             break;
 
+        case $uri === '/admin/wallet/adjust' && $method === 'POST':
+            (new AdminController())->adjustBalance();
+            break;
+
         // GraphQL endpoint
         case $uri === '/graphql' && $method === 'POST':
             handleGraphQL();

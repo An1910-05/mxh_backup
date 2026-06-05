@@ -29,6 +29,19 @@ const STATUS_LABELS = {
   failed:  'Không thành công',
 };
 
+const PROVIDER_LABEL = {
+  vnpay: 'VNPay',
+  momo:  'MoMo',
+  admin: 'Admin',
+};
+
+function getTxnNote(txn) {
+  if (!txn.description) return null;
+  const isTopup = txn.amount > 0 && (txn.provider === 'vnpay' || txn.provider === 'momo');
+  if (isTopup && /^nap tien/i.test(txn.description)) return 'Nạp tiền tài khoản iPock';
+  return txn.description;
+}
+
 export default function WalletPage() {
   const [balance, setBalance] = useState(0);
   const [topupAmount, setTopupAmount] = useState('');
@@ -96,14 +109,14 @@ export default function WalletPage() {
     <div className="settings-page">
       <div className="wallet-page-container">
         <div className="wallet-page-header">
-          <div>
-            <h2 className="wallet-page-title">Ví tiền</h2>
-            <p className="wallet-page-subtitle">Nạp tiền vào tài khoản để sử dụng các dịch vụ trên iPock.</p>
-          </div>
           <Link to="/settings" className="settings-btn settings-btn--ghost">
             <i className="bi bi-arrow-left" aria-hidden="true" />
             <span>Về Cài đặt</span>
           </Link>
+          <div>
+            <h2 className="wallet-page-title">Ví tiền</h2>
+            <p className="wallet-page-subtitle">Nạp tiền vào tài khoản để sử dụng các dịch vụ trên iPock.</p>
+          </div>
         </div>
 
         <div className="wallet-balance-card">
@@ -245,28 +258,38 @@ export default function WalletPage() {
             <p className="wallet-empty">Chưa có giao dịch nào.</p>
           ) : (
             <div className="wallet-txn-list">
-              {transactions.map((txn) => (
-                <div key={txn.id} className="wallet-txn-row">
-                  <div className="wallet-txn-info">
-                    <div>
-                      <div className="wallet-txn-desc">
-                        <span className={`wallet-txn-result wallet-txn-result--${txn.status}`}>
-                          {STATUS_LABELS[txn.status] || txn.status}
-                        </span>
-                        {txn.provider && (
-                          <span className={`wallet-txn-provider wallet-txn-provider--${txn.provider}`}>
-                            {txn.provider === 'momo' ? 'MoMo' : 'VNPay'}
+              {transactions.map((txn) => {
+                const isAdmin = txn.provider === 'admin';
+                const note = getTxnNote(txn);
+                return (
+                  <div key={txn.id} className="wallet-txn-row">
+                    <div className="wallet-txn-info">
+                      <div>
+                        <div className="wallet-txn-desc">
+                          <span className={`wallet-txn-result wallet-txn-result--${txn.status}`}>
+                            {STATUS_LABELS[txn.status] || txn.status}
                           </span>
+                          {txn.provider && PROVIDER_LABEL[txn.provider] && (
+                            <span className={`wallet-txn-provider wallet-txn-provider--${txn.provider}`}>
+                              {PROVIDER_LABEL[txn.provider]}
+                            </span>
+                          )}
+                        </div>
+                        {note && (
+                          <div className={`wallet-txn-note${isAdmin ? ' wallet-txn-note--admin' : ''}`}>
+                            {isAdmin && <i className="bi bi-megaphone-fill" style={{ fontSize: '0.7rem', marginRight: 4 }} />}
+                            {note}
+                          </div>
                         )}
+                        <div className="wallet-txn-date">{new Date(txn.created_at).toLocaleString('vi-VN')}</div>
                       </div>
-                      <div className="wallet-txn-date">{new Date(txn.created_at).toLocaleString('vi-VN')}</div>
+                    </div>
+                    <div className={`wallet-txn-amount wallet-txn-amount--${txn.status}${txn.amount < 0 ? ' wallet-txn-amount--neg' : ''}`}>
+                      {txn.status === 'success' && txn.amount > 0 ? '+' : ''}{formatVND(txn.amount)}
                     </div>
                   </div>
-                  <div className={`wallet-txn-amount wallet-txn-amount--${txn.status}${txn.amount < 0 ? ' wallet-txn-amount--neg' : ''}`}>
-                    {txn.status === 'success' && txn.amount > 0 ? '+' : ''}{formatVND(txn.amount)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

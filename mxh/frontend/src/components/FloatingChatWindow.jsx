@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { useChat } from '../contexts/ChatContext';
 import { useCall } from '../contexts/CallContext';
 import { useAIMessages } from '../hooks/useAIMessages';
+import geminiLogo from '../assets/gemini.svg';
 import ChatWindow from './chat/ChatWindow';
 import GroupInfoDrawer from './chat/GroupInfoDrawer';
 import VerifiedBadge from './VerifiedBadge';
 import { API_ORIGIN } from '../config';
+import { timeAgo } from '../utils/time';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
@@ -57,7 +59,6 @@ function AIFloatingBody() {
       <div className="ai-fcw-messages" style={{ flex: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {messages.length === 0 && (
           <div className="ai-fcw-welcome">
-            <div className="ai-fcw-welcome-icon">✨</div>
             <p>Hỏi tôi bất cứ điều gì!</p>
           </div>
         )}
@@ -65,11 +66,7 @@ function AIFloatingBody() {
           <div key={i} className={`ai-fcw-msg${msg.role === 'user' ? ' ai-fcw-msg--user' : ' ai-fcw-msg--ai'}`}>
             {msg.role === 'assistant' && (
               <div className="ai-fcw-msg-avatar">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                  <defs><linearGradient id={`aiG${i}`} x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/></linearGradient></defs>
-                  <circle cx="12" cy="12" r="12" fill={`url(#aiG${i})`}/>
-                  <path d="M12 6l1.2 3.7H17l-2.9 2.1 1.1 3.4L12 13.1l-3.2 2.1 1.1-3.4L7 9.7h3.8L12 6z" fill="white"/>
-                </svg>
+                <img src={geminiLogo} width="18" height="18" alt="Gemini" />
               </div>
             )}
             <div className="ai-fcw-msg-bubble" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
@@ -78,11 +75,7 @@ function AIFloatingBody() {
         {loading && (
           <div className="ai-fcw-msg ai-fcw-msg--ai">
             <div className="ai-fcw-msg-avatar">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                <defs><linearGradient id="aiTypG" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/></linearGradient></defs>
-                <circle cx="12" cy="12" r="12" fill="url(#aiTypG)"/>
-                <path d="M12 6l1.2 3.7H17l-2.9 2.1 1.1 3.4L12 13.1l-3.2 2.1 1.1-3.4L7 9.7h3.8L12 6z" fill="white"/>
-              </svg>
+              <img src={geminiLogo} width="18" height="18" alt="Gemini" />
             </div>
             <TypingDots />
           </div>
@@ -126,23 +119,19 @@ function FloatingChatItem({ conv, index }) {
       {/* Header */}
       <div
         className="fcw-header"
-        style={conv.isAI ? { background: 'linear-gradient(135deg,#a855f7,#3b82f6)' } : {}}
+        style={{}}
         onClick={() => minimizeChat(conv.id)}
       >
         <div className="fcw-header-left">
           {conv.isAI ? (
             <>
               <div className="fcw-avatar-wrap">
-                <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
-                  <defs><linearGradient id="fcwAiGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/></linearGradient></defs>
-                  <circle cx="18" cy="18" r="18" fill="url(#fcwAiGrad)"/>
-                  <path d="M18 9l1.8 5.5H25l-4.3 3.1 1.6 5.1L18 19.6l-4.3 3.1 1.6-5.1L11 14.5h5.2L18 9z" fill="white"/>
-                </svg>
+                <img src={geminiLogo} width="24" height="24" alt="Gemini" />
                 <span className="fcw-online-dot" style={{ background: '#22c55e' }} />
               </div>
               <div className="fcw-header-info">
-                <span className="fcw-name" style={{ color: '#fff' }}>{live.display_name}</span>
-                <span className="fcw-status" style={{ color: 'rgba(255,255,255,0.8)' }}>Trợ lý AI</span>
+                <span className="fcw-name">{live.display_name}</span>
+                <span className="fcw-status">Trợ lý AI</span>
               </div>
             </>
           ) : isGroup ? (
@@ -182,7 +171,9 @@ function FloatingChatItem({ conv, index }) {
                 </span>
                 {live.is_online
                   ? <span className="fcw-status">Đang hoạt động</span>
-                  : <span className="fcw-status fcw-status--offline">Ngoại tuyến</span>
+                  : live.last_seen
+                    ? <span className="fcw-status fcw-status--offline">Hoạt động {timeAgo(live.last_seen)}</span>
+                    : <span className="fcw-status fcw-status--offline">Ngoại tuyến</span>
                 }
               </div>
             </Link>
@@ -205,7 +196,7 @@ function FloatingChatItem({ conv, index }) {
           )}
           <button
             className="fcw-btn"
-            style={conv.isAI ? { background: 'rgba(255,255,255,0.15)', color: '#fff' } : {}}
+            style={{}}
             title={conv.minimized ? 'Mở rộng' : 'Thu nhỏ'}
             onClick={() => minimizeChat(conv.id)}
           >
@@ -213,7 +204,7 @@ function FloatingChatItem({ conv, index }) {
           </button>
           <button
             className="fcw-btn"
-            style={conv.isAI ? { background: 'rgba(255,255,255,0.15)', color: '#fff' } : {}}
+            style={{}}
             title="Đóng"
             onClick={() => closeChat(conv.id)}
           >

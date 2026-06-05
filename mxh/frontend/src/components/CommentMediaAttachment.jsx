@@ -27,7 +27,7 @@ export default function CommentMediaAttachment({ comment, onOpen }) {
       type="button"
       className={`comment-media-button${isVideo ? ' comment-media-button--video' : ''}`}
       onClick={onOpen}
-      aria-label={isVideo ? 'View comment video' : 'View comment image'}
+      aria-label={isVideo ? 'Xem video bình luận' : 'Xem ảnh bình luận'}
     >
       {isVideo ? (
         <span className="comment-media-video" style={ratioStyle || undefined}>
@@ -56,7 +56,7 @@ export default function CommentMediaAttachment({ comment, onOpen }) {
       )}
 
       <span className="comment-media-open-chip">
-        {isVideo ? 'Video' : 'Image'}
+        {isVideo ? 'Video' : 'Ảnh'}
       </span>
     </button>
   );

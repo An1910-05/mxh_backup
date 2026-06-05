@@ -67,7 +67,7 @@ class AdminController
         $search = trim($_GET['search'] ?? '');
         $filter = $_GET['filter'] ?? 'all'; // all | blocked | admin
 
-        $where = '1=1';
+        $where = "u.email NOT LIKE 'deleted\\_%'";
         $params = [];
 
         if ($search !== '') {
@@ -221,6 +221,48 @@ class AdminController
         $stmt->execute([$postId]);
 
         Response::success(['deleted' => true, 'post_id' => $postId]);
+    }
+
+    // ── Wallet Adjustment ─────────────────────────────────────────────────────
+
+    public function adjustBalance(): void
+    {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $userId = (int)($data['user_id'] ?? 0);
+        $amount = (int)($data['amount'] ?? 0);
+        $description = trim($data['description'] ?? '');
+
+        if ($userId === 0) { Response::error('user_id required', 400); return; }
+        if ($amount === 0) { Response::error('Số tiền không được bằng 0', 400); return; }
+        if ($description === '') $description = $amount > 0 ? 'Admin cộng tiền' : 'Admin trừ tiền';
+
+        $stmt = $this->db->prepare("SELECT id, username, balance FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if (!$user) { Response::error('User not found', 404); return; }
+
+        if ($amount < 0 && ($user['balance'] + $amount) < 0) {
+            Response::error('Số dư không đủ để trừ', 400);
+            return;
+        }
+
+        $this->db->prepare("UPDATE users SET balance = balance + ? WHERE id = ?")->execute([$amount, $userId]);
+
+        $txnRef = 'adm_' . $userId . '_' . time() . '_' . rand(1000, 9999);
+        $this->db->prepare(
+            "INSERT INTO transactions (user_id, txn_ref, amount, description, status, provider) VALUES (?, ?, ?, ?, 'success', 'admin')"
+        )->execute([$userId, $txnRef, $amount, $description]);
+
+        $balStmt = $this->db->prepare("SELECT balance FROM users WHERE id = ?");
+        $balStmt->execute([$userId]);
+        $newBalance = (int)$balStmt->fetchColumn();
+
+        Response::success([
+            'user_id' => $userId,
+            'username' => $user['username'],
+            'adjustment' => $amount,
+            'new_balance' => $newBalance,
+        ]);
     }
 
     // ── Transactions ──────────────────────────────────────────────────────────

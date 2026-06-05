@@ -64,7 +64,7 @@ export default function ShopRegisterPage() {
   return (
     <div className="apple-main shop-register-page">
       <div className="shop-register-card">
-        <Link to="/shop" className="shop-register-back">← Về cửa hàng</Link>
+        <Link to="/shop" className="shop-register-back"><i className="bi bi-arrow-left" /> Về cửa hàng</Link>
         <h1 className="shop-register-title">Đăng ký bán hàng</h1>
         <p className="shop-register-sub">
           Điền thông tin cửa hàng để admin xét duyệt. Sau khi được duyệt, bạn sẽ thấy mục

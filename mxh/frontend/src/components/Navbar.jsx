@@ -5,6 +5,7 @@ import { useChat } from '../contexts/ChatContext';
 import useNotificationUnread from '../hooks/useNotificationUnread';
 import usePendingFriendRequestsCount from '../hooks/usePendingFriendRequestsCount';
 import useWeather from '../hooks/useWeather';
+import NavInfoWidget from './NavInfoWidget';
 import { API_ORIGIN } from '../config';
 import searchIcon from '../assets/sf-symbols/magnifyingglass.png';
 import shopIcon from '../assets/sf-symbols/bag.fill.png';
@@ -132,13 +133,21 @@ export default function Navbar({ themeMode = 'light', onThemeChange }) {
 
   return (
     <nav className="apple-nav">
-      {weather && (
-        <div className="nav-weather" title={weather.city || ''}>
-          <span className="nav-weather-icon">{weather.icon}</span>
-          <span className="nav-weather-temp">{weather.temp}°C</span>
-          {weather.city && <span className="nav-weather-city">{weather.city}</span>}
-        </div>
-      )}
+      <div className="nav-weather" title={weather?.city || 'Thời tiết'}>
+        {weather ? (
+          <>
+            <span className="nav-weather-icon">{weather.icon}</span>
+            <span className="nav-weather-temp">{weather.temp}°C</span>
+            {weather.city && <span className="nav-weather-city">{weather.city}</span>}
+          </>
+        ) : (
+          <>
+            <span className="nav-weather-icon">🌡️</span>
+            <span className="nav-weather-city">Đang tải…</span>
+          </>
+        )}
+      </div>
+      {user && <NavInfoWidget />}
       <div className="apple-nav-inner">
         <Link to="/" className="apple-nav-brand">iPock</Link>
         {user ? (

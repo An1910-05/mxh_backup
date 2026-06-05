@@ -7,10 +7,10 @@ import { API_ORIGIN } from '../../config';
 const DEFAULT_AVATAR = '/default-avatar.png';
 const IMAGE_DURATION = 10000;
 
-export default function StoryViewer({ storyGroups, initialGroupIndex = 0, onClose, onStoryDeleted, onStoryViewed }) {
+export default function StoryViewer({ storyGroups, initialGroupIndex = 0, initialStoryIndex = 0, onClose, onStoryDeleted, onStoryViewed }) {
   const { user } = useAuth();
   const [groupIdx, setGroupIdx] = useState(initialGroupIndex);
-  const [storyIdx, setStoryIdx] = useState(0);
+  const [storyIdx, setStoryIdx] = useState(initialStoryIndex);
   const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
   const [manualPause, setManualPause] = useState(false);

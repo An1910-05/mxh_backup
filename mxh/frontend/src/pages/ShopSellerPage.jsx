@@ -127,7 +127,7 @@ export default function ShopSellerPage() {
             <div className="shop-seller-meta">
               <div className="shop-seller-name">
                 {seller?.username || `Người bán #${sellerId}`}
-                {seller?.is_seller && <span className="shop-seller-badge">✓ Đã xác minh</span>}
+                {seller?.is_seller && <span className="shop-seller-badge"><i className="bi bi-patch-check-fill" /> Đã xác minh</span>}
               </div>
               <div className="shop-seller-stats">
                 <div className="cell">
@@ -149,7 +149,7 @@ export default function ShopSellerPage() {
             </div>
             <div className="shop-seller-actions">
               {seller && user && seller.id !== user.id && (
-                <Link to={`/chat?userId=${seller.id}`} className="shop-btn-primary">💬 Nhắn shop</Link>
+                <Link to={`/chat?userId=${seller.id}`} className="shop-btn-primary"><i className="bi bi-chat-dots-fill" /> Nhắn shop</Link>
               )}
               <Link to={`/${seller?.custom_url || `profile_id=${sellerId}`}`} className="shop-btn-secondary">
                 Trang cá nhân
@@ -186,7 +186,7 @@ export default function ShopSellerPage() {
           </div>
         ) : sorted.length === 0 ? (
           <div className="shop-lg-glass shop-lg-empty" style={{ marginTop: 16 }}>
-            <div className="icn">🛍</div>
+            <div className="icn"><i className="bi bi-bag" /></div>
             <h3>Shop chưa có sản phẩm nào đang bán</h3>
           </div>
         ) : (

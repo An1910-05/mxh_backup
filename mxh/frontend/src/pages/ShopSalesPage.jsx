@@ -97,8 +97,8 @@ export default function ShopSalesPage() {
           <span style={{ color: 'var(--slg-txt)' }}>Đơn bán</span>
         </div>
         <div className="shop-lg-topright">
-          <Link to="/shop/dashboard" className="shop-lg-icon-btn shop-lg-lq" style={{ width: 'auto', padding: '0 14px' }}>
-            Quản lý sản phẩm
+          <Link to="/shop/dashboard" className="shop-lg-seller-cta shop-lg-lq">
+            <i className="bi bi-grid-1x2" />Quản lý sản phẩm
           </Link>
         </div>
       </header>
@@ -128,7 +128,7 @@ export default function ShopSalesPage() {
           </div>
         ) : orders.length === 0 ? (
           <div className="shop-lg-glass shop-lg-empty" style={{ marginTop: 16 }}>
-            <div className="icn">📭</div>
+            <div className="icn"><i className="bi bi-envelope-open" /></div>
             <h3>Chưa có đơn bán nào</h3>
             <p>Khi có khách đặt mua sản phẩm của bạn, đơn hàng sẽ xuất hiện tại đây.</p>
           </div>
@@ -312,22 +312,22 @@ function SaleOrderCard({ order, onConfirm, onShip, onCancel, onTrack }) {
         <div className="shop-order-actions">
           {canConfirm && (
             <button className="shop-btn-primary" onClick={() => onConfirm(order)}>
-              ✓ Xác nhận đơn
+              <i className="bi bi-check-circle-fill" /> Xác nhận đơn
             </button>
           )}
           {canShip && (
             <button className="shop-btn-primary" onClick={() => onShip(order)}>
-              🚚 Đánh dấu đã giao
+              <i className="bi bi-truck" /> Đánh dấu đã giao
             </button>
           )}
           {canCancel && (
             <button className="shop-btn-danger" onClick={() => onCancel(order)}>
-              Huỷ đơn
+              <i className="bi bi-x-circle" /> Huỷ đơn
             </button>
           )}
           {canTrack && (
             <button className="shop-btn-secondary" onClick={() => onTrack(order)}>
-              📍 Xem lộ trình
+              <i className="bi bi-geo-alt-fill" /> Xem lộ trình
             </button>
           )}
         </div>

@@ -19,9 +19,12 @@ export default function HomePage() {
   const [storyGroups, setStoryGroups] = useState([]);
   const [showCreateStory, setShowCreateStory] = useState(false);
   const [viewingStoryGroup, setViewingStoryGroup] = useState(null);
-  const [viewedUsers, setViewedUsers] = useState(() => {
+  const [viewerStartStoryIdx, setViewerStartStoryIdx] = useState(0);
+  // Theo dõi từng story đã xem (theo id), lưu localStorage. Vòng ring chỉ chuyển
+  // "đã xem" (xám) khi MỌI story của người đó đã xem; còn lại vẫn xanh.
+  const [viewedStories, setViewedStories] = useState(() => {
     try {
-      return new Set(JSON.parse(localStorage.getItem('viewedStoryUsers') || '[]'));
+      return new Set(JSON.parse(localStorage.getItem('viewedStoryIds') || '[]'));
     } catch { return new Set(); }
   });
 
@@ -78,16 +81,23 @@ export default function HomePage() {
     });
   };
 
+  const markStoryViewed = (storyId) => {
+    setViewedStories(prev => {
+      if (prev.has(storyId)) return prev;
+      const next = new Set(prev);
+      next.add(storyId);
+      localStorage.setItem('viewedStoryIds', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   const openStoryViewer = (groupIndex) => {
     const group = storyGroups[groupIndex];
-    if (group) {
-      setViewedUsers(prev => {
-        const next = new Set(prev);
-        next.add(group.user_id);
-        localStorage.setItem('viewedStoryUsers', JSON.stringify([...next]));
-        return next;
-      });
-    }
+    if (!group) return;
+    // Mở từ story CHƯA XEM đầu tiên của người đó (resume); xem hết rồi thì từ đầu.
+    let startIdx = group.stories.findIndex(s => !viewedStories.has(s.id));
+    if (startIdx < 0) startIdx = 0;
+    setViewerStartStoryIdx(startIdx);
     setViewingStoryGroup(groupIndex);
   };
 
@@ -124,7 +134,7 @@ export default function HomePage() {
           const avatarSrc = group.user_avatar ? `${API_ORIGIN}${group.user_avatar}` : DEFAULT_AVATAR;
           const mediaSrc = `${API_ORIGIN}${thumb.media_url}`;
           const isSelf = group.user_id === user?.id;
-          const isViewed = viewedUsers.has(group.user_id);
+          const isViewed = group.stories.length > 0 && group.stories.every(s => viewedStories.has(s.id));
 
           return (
             <div
@@ -214,8 +224,10 @@ export default function HomePage() {
         <StoryViewer
           storyGroups={storyGroups}
           initialGroupIndex={viewingStoryGroup}
+          initialStoryIndex={viewerStartStoryIdx}
           onClose={() => setViewingStoryGroup(null)}
           onStoryDeleted={handleStoryDeleted}
+          onStoryViewed={markStoryViewed}
         />
       )}
     </div>

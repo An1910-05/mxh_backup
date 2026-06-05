@@ -15,7 +15,7 @@ function authHeaders() {
 
 function handleBanned() {
   localStorage.removeItem('token');
-  window.location.replace('/banned');
+  window.location.replace('/login?reason=banned');
 }
 
 export async function restFetch(endpoint, options = {}) {

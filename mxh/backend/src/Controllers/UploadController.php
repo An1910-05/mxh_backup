@@ -8,7 +8,7 @@ use App\Services\ProfileService;
 
 class UploadController
 {
-    private const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    private const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
     private const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
     private const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
     private const MAX_VIDEO_SIZE = 1024 * 1024 * 1024;
@@ -113,6 +113,7 @@ class UploadController
             'image/png'       => 'png',
             'image/gif'       => 'gif',
             'image/webp'      => 'webp',
+            'image/svg+xml'   => 'svg',
             'video/mp4'       => 'mp4',
             'video/webm'      => 'webm',
             'video/quicktime' => 'mov',

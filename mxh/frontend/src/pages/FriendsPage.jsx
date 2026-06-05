@@ -65,14 +65,14 @@ function IconActionButton({ icon, label, onClick, tone = 'neutral' }) {
 
 function EmptyState({ icon, title, hint, ctaHref, ctaLabel }) {
   return (
-    <MagicCard className="friends-v2-empty" gradientFrom="#0f172a" gradientTo="#64748b" gradientColor="#cbd5e1">
+    <MagicCard className="friends-v2-empty" gradientFrom="#475569" gradientTo="#94a3b8" gradientColor="#e2e8f0">
       <Meteors number={8} />
       <i className={`bi ${icon} friends-v2-empty-icon`} aria-hidden="true" />
       <h3 className="friends-v2-empty-title">{title}</h3>
       {hint ? <p className="friends-v2-empty-hint">{hint}</p> : null}
       {ctaHref ? (
         <Link to={ctaHref} className="friends-v2-empty-cta">
-          <ShimmerButton background="linear-gradient(135deg, #0f172a, #374151)">
+          <ShimmerButton background="linear-gradient(135deg, #475569, #64748b)">
             <i className="bi bi-search" aria-hidden="true" />
             <span>{ctaLabel}</span>
           </ShimmerButton>
@@ -149,7 +149,7 @@ export default function FriendsPage() {
     <div className="apple-main friends-page--v2 fade-in">
       {/* HERO */}
       <header className="friends-v2-hero">
-        <BorderBeam size={180} duration={11} colorFrom="#0f172a" colorTo="#64748b" />
+        <BorderBeam size={180} duration={11} colorFrom="#475569" colorTo="#94a3b8" />
         <div className="friends-v2-hero-icon">
           <i className="bi bi-people-fill" aria-hidden="true" />
         </div>

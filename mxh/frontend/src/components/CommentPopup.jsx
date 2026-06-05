@@ -7,17 +7,14 @@ import { uploadFile } from '../services/api';
 import { API_ORIGIN } from '../config';
 import CommentMediaAttachment from './CommentMediaAttachment';
 import CommentMediaViewer from './CommentMediaViewer';
+import { renderTextWithMentions } from './PostCard';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
-function renderContentWithMentions(text) {
-  if (!text) return null;
-  const parts = text.split(/(@[a-zA-Z0-9._]+)/g);
-  return parts.map((part, i) => {
-    if (/^@[a-zA-Z0-9._]+$/.test(part)) {
-      return <span key={i} className="comment-mention">{part}</span>;
-    }
-    return part;
+function applyMentionsMap(text, map) {
+  return text.replace(/@([\p{L}\p{N}._]+)/gu, (match, name) => {
+    const id = map[name];
+    return id ? `@[${name}|${id}]` : match;
   });
 }
 
@@ -28,6 +25,7 @@ function InlineReplyForm({ postId, parentId, placeholder, onReplied, onCancel, a
   const [mentionResults, setMentionResults] = useState([]);
   const [showMention, setShowMention] = useState(false);
   const [mentionStart, setMentionStart] = useState(-1);
+  const mentionsMapRef = useRef({});
   const inputRef = useRef(null);
   const searchTimer = useRef(null);
 
@@ -64,7 +62,7 @@ function InlineReplyForm({ postId, parentId, placeholder, onReplied, onCancel, a
     }, 180);
   };
 
-  const pickMention = (username) => {
+  const pickMention = (username, userId) => {
     if (mentionStart < 0) return;
     const el = inputRef.current;
     if (!el) return;
@@ -74,6 +72,7 @@ function InlineReplyForm({ postId, parentId, placeholder, onReplied, onCancel, a
     const after = current.slice(caret);
     const insert = `@${username} `;
     const newValue = before + insert + after;
+    if (userId) mentionsMapRef.current[username] = userId;
     setContent(newValue);
     setShowMention(false);
     setMentionStart(-1);
@@ -91,8 +90,10 @@ function InlineReplyForm({ postId, parentId, placeholder, onReplied, onCancel, a
     if (!content.trim() || sending) return;
     setSending(true);
     try {
-      const newComment = await createComment(postId, content.trim(), {}, parentId);
+      const raw = applyMentionsMap(content.trim(), mentionsMapRef.current);
+      const newComment = await createComment(postId, raw, {}, parentId);
       setContent('');
+      mentionsMapRef.current = {};
       if (onReplied) onReplied(newComment);
     } catch (err) {
       console.error('reply failed', err);
@@ -119,7 +120,7 @@ function InlineReplyForm({ postId, parentId, placeholder, onReplied, onCancel, a
                 type="button"
                 key={u.id}
                 className="mention-item"
-                onMouseDown={(ev) => { ev.preventDefault(); pickMention(u.username); }}
+                onMouseDown={(ev) => { ev.preventDefault(); pickMention(u.username, u.id); }}
               >
                 <img src={u.avatar ? `${API_ORIGIN}${u.avatar}` : DEFAULT_AVATAR} alt="" />
                 <span className="mention-name">{u.username}</span>
@@ -159,6 +160,7 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
   const fileRef = useRef(null);
   const searchTimer = useRef(null);
   const newCommentIds = useRef(new Set());
+  const mentionsMapRef = useRef({});
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -228,7 +230,7 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
     }, 180);
   };
 
-  const pickMention = (username) => {
+  const pickMention = (username, userId) => {
     if (mentionStart < 0) return;
     const el = inputRef.current;
     if (!el) return;
@@ -237,6 +239,7 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
     const before = current.slice(0, mentionStart);
     const after = current.slice(caret);
     const insert = `@${username} `;
+    if (userId) mentionsMapRef.current[username] = userId;
     const newValue = before + insert + after;
     setInput(newValue);
     setShowMention(false);
@@ -263,10 +266,11 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
         uploadedWidth = r.data.media_width || null; uploadedHeight = r.data.media_height || null;
         setUploading(false);
       }
-      const newComment = await createComment(post.id, input.trim() || '', { mediaUrl: uploadedUrl, mediaType: uploadedType, mediaWidth: uploadedWidth, mediaHeight: uploadedHeight });
+      const raw = applyMentionsMap(input.trim() || '', mentionsMapRef.current);
+      const newComment = await createComment(post.id, raw, { mediaUrl: uploadedUrl, mediaType: uploadedType, mediaWidth: uploadedWidth, mediaHeight: uploadedHeight });
       if (newComment.id) newCommentIds.current.add(String(newComment.id));
       setComments((prev) => [...prev, newComment]);
-      setInput(''); clearMedia();
+      setInput(''); mentionsMapRef.current = {}; clearMedia();
       setShowMention(false);
       onCommentCountChange?.(comments.length + 1);
       setTimeout(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }); }, 50);
@@ -323,7 +327,7 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
           <div className="comment-bubble">
             <Link to={`/profile_id=${c.user_id}`} className="comment-username">{c.username}</Link>
             {c.content ? (
-              <div className="comment-text">{renderContentWithMentions(c.content)}</div>
+              <div className="comment-text">{renderTextWithMentions(c.content)}</div>
             ) : null}
             <CommentMediaAttachment
               comment={c}
@@ -427,7 +431,7 @@ export default function CommentPopup({ post, onClose, onCommentCountChange }) {
                         type="button"
                         key={u.id}
                         className="mention-item"
-                        onMouseDown={(e) => { e.preventDefault(); pickMention(u.username); }}
+                        onMouseDown={(e) => { e.preventDefault(); pickMention(u.username, u.id); }}
                       >
                         <img src={u.avatar ? `${API_ORIGIN}${u.avatar}` : DEFAULT_AVATAR} alt="" />
                         <span className="mention-name">{u.username}</span>

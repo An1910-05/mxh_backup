@@ -13,10 +13,10 @@ function mediaUrl(u) {
 }
 
 const SORT_OPTIONS = [
-  { key: 'popular',    label: 'Phổ Biến',     icon: '⚡' },
-  { key: 'trusted',    label: 'Shop Mall',    icon: '★' },
-  { key: 'price_asc',  label: 'Giá tăng dần', icon: '↑' },
-  { key: 'price_desc', label: 'Giá giảm dần', icon: '↓' },
+  { key: 'popular',    label: 'Phổ Biến',     icon: 'bi-lightning-fill' },
+  { key: 'trusted',    label: 'Shop Mall',    icon: 'bi-patch-check-fill' },
+  { key: 'price_asc',  label: 'Giá tăng dần', icon: 'bi-arrow-up' },
+  { key: 'price_desc', label: 'Giá giảm dần', icon: 'bi-arrow-down' },
 ];
 
 function formatPrice(price) {
@@ -125,14 +125,18 @@ export default function ShopPage() {
     if (user.is_seller) {
       return (
         <>
-          <Link to="/shop/dashboard" className="shop-lg-seller-cta shop-lg-lq tinted">Quản lý cửa hàng</Link>
-          <Link to="/shop/sales" className="shop-lg-seller-cta shop-lg-lq" style={{ marginTop: 6 }}>Đơn bán của tôi</Link>
+          <Link to="/shop/dashboard" className="shop-lg-seller-cta shop-lg-lq tinted">
+            <i className="bi bi-grid-1x2" />Quản lý cửa hàng
+          </Link>
+          <Link to="/shop/sales" className="shop-lg-seller-cta shop-lg-lq" style={{ marginTop: 6 }}>
+            <i className="bi bi-receipt" />Đơn bán của tôi
+          </Link>
         </>
       );
     }
     if (myApp?.status === 'pending') return <span className="shop-lg-seller-cta ghost">Đơn đăng ký đang chờ duyệt</span>;
     if (myApp?.status === 'rejected') return <Link to="/shop/register" className="shop-lg-seller-cta ghost">Đơn bị từ chối — Xem lại</Link>;
-    return <Link to="/shop/register" className="shop-lg-seller-cta shop-lg-lq tinted">+ Đăng ký bán hàng</Link>;
+    return <Link to="/shop/register" className="shop-lg-seller-cta shop-lg-lq tinted"><i className="bi bi-shop-window" />Đăng ký bán hàng</Link>;
   })();
 
   const handleSearchSubmit = (e) => {
@@ -152,7 +156,7 @@ export default function ShopPage() {
 
       <header className="shop-lg-topbar">
         <div className="shop-lg-brand">
-          <div className="shop-lg-brand-dot" />
+          <img src="/iPock.svg" alt="iPock" className="shop-lg-brand-logo" />
           <span className="jly-hero-title">iPock Shop</span>
           <span style={{ color: 'var(--slg-txt-3)', fontWeight: 500, marginLeft: 6, fontSize: 13 }}>
             · <GlitchText
@@ -173,7 +177,7 @@ export default function ShopPage() {
             onClick={() => navigate('/shop/cart')}
             aria-label="Giỏ hàng"
           >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 3h2l2.4 12.3a2 2 0 0 0 2 1.7H18a2 2 0 0 0 2-1.6L21.5 8H6"/>
               <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
             </svg>
@@ -200,7 +204,6 @@ export default function ShopPage() {
                 className={`shop-lg-cat shop-lg-lq${selectedCategory === c.id ? ' is-active' : ''}`}
                 onClick={() => setSelectedCategory(c.id)}
               >
-                <span className="ico">{c.icon || '◇'}</span>
                 <span>{c.name}</span>
                 <span className="chev">›</span>
               </button>
@@ -209,16 +212,12 @@ export default function ShopPage() {
             <div className="shop-lg-side-sep" />
             {user && (
               <Link to="/shop/orders" className="shop-lg-seller-cta shop-lg-lq" style={{ marginBottom: 6 }}>
-                📦 Đơn mua của tôi
+                <i className="bi bi-box-seam" />
+                Đơn mua của tôi
               </Link>
             )}
             {sellerCta}
 
-            <div className="shop-lg-helpcard">
-              <h4>Bài viết hữu ích</h4>
-              <p>iPock Shop — chợ giao dịch số &amp; dịch vụ MMO uy tín cho cộng đồng MXH.</p>
-              <a href="#">Xem thêm →</a>
-            </div>
           </aside>
 
           <section className="shop-lg-main">
@@ -248,7 +247,7 @@ export default function ShopPage() {
                     className={'shop-lg-lq ' + (sortKey === s.key ? 'is-active' : '')}
                     onClick={() => setSortKey(s.key)}
                   >
-                    <span aria-hidden="true">{s.icon}</span> {s.label}
+                    <i className={`bi ${s.icon}`} aria-hidden="true" /> {s.label}
                   </button>
                 ))}
               </div>
@@ -287,7 +286,7 @@ export default function ShopPage() {
               </div>
             ) : sortedProducts.length === 0 ? (
               <div className="shop-lg-glass shop-lg-empty">
-                <div className="icn">🛍</div>
+                <div className="icn"><i className="bi bi-bag" /></div>
                 <h3>Không có sản phẩm nào</h3>
                 <p>Hãy thử danh mục khác hoặc tìm với từ khoá khác.</p>
               </div>

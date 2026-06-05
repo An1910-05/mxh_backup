@@ -168,9 +168,9 @@ export default function AdminUsers() {
         <div className="adm-confirm-overlay" onClick={() => setConfirm(null)}>
           <div className="adm-confirm-box" onClick={e => e.stopPropagation()}>
             <p className="adm-confirm-text">
-              {confirm.type === 'block' && `Khóa tài khoản "${confirm.user.username}"?`}
-              {confirm.type === 'unblock' && `Mở khóa tài khoản "${confirm.user.username}"?`}
-              {confirm.type === 'delete' && `Xóa tài khoản "${confirm.user.username}"? Hành động này không thể hoàn tác.`}
+              {confirm.type === 'block'   && `Khóa tài khoản @${confirm.user.username}?`}
+              {confirm.type === 'unblock' && `Mở khóa tài khoản @${confirm.user.username}?`}
+              {confirm.type === 'delete'  && `Xóa tài khoản @${confirm.user.username}?`}
             </p>
             <div className="adm-confirm-actions">
               <button className="adm-action-btn" onClick={() => setConfirm(null)}>Hủy</button>

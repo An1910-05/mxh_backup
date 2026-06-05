@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { timeAgo } from '../utils/time';
 import { API_ORIGIN } from '../config';
 import VideoPlayer from './VideoPlayer';
+import { renderTextWithMentions } from './PostCard';
 
 const DEFAULT_AVATAR = '/default-avatar.png';
 
@@ -61,7 +62,7 @@ export default function CommentMediaViewer({ comment, onClose }) {
       className="comment-media-viewer"
       role="dialog"
       aria-modal="true"
-      aria-label={isVideo ? 'View comment video' : 'View comment image'}
+      aria-label={isVideo ? 'Xem video bình luận' : 'Xem ảnh bình luận'}
       onClick={handleOverlayClick}
     >
       <div className="comment-media-viewer-shell">
@@ -69,9 +70,9 @@ export default function CommentMediaViewer({ comment, onClose }) {
           <div className="comment-media-viewer-toolbar">
             <div className="comment-media-viewer-toolbar-left">
               <span className="comment-media-viewer-badge">
-                {isVideo ? 'Video' : 'Image'}
+                {isVideo ? 'Video' : 'Ảnh'}
               </span>
-              <span className="comment-media-viewer-hint">Comment attachment</span>
+              <span className="comment-media-viewer-hint">Tệp đính kèm bình luận</span>
             </div>
 
             <button
@@ -127,18 +128,11 @@ export default function CommentMediaViewer({ comment, onClose }) {
               </div>
             </div>
 
-            <div className="comment-media-viewer-panel">
-              <div className="comment-media-viewer-panel-label">
-                {isVideo ? 'Video in comment' : 'Image in comment'}
+            {commentText && (
+              <div className="comment-media-viewer-panel">
+                <div className="comment-media-viewer-caption">{renderTextWithMentions(commentText)}</div>
               </div>
-              {commentText ? (
-                <p className="comment-media-viewer-caption">{commentText}</p>
-              ) : (
-                <p className="comment-media-viewer-caption comment-media-viewer-caption--muted">
-                  No comment text was added with this attachment.
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </aside>
       </div>

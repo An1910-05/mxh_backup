@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { timeAgo } from '../../utils/time';
 import { API_ORIGIN } from '../../config';
 import { clearConversation, hideAllMessagesForMe } from '../../services/chat';
+import geminiLogo from '../../assets/gemini.svg';
 import ConfirmDialog from '../ConfirmDialog';
 const DEFAULT_AVATAR = '/default-avatar.png';
 
@@ -109,15 +110,7 @@ export default function ConversationList({
         onClick={() => onSelect({ id: '__ai__', isAI: true, display_name: 'Gemini AI' })}
       >
         <div className="conv-avatar conv-avatar--ai">
-          <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
-            <defs>
-              <linearGradient id="convAiGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/>
-              </linearGradient>
-            </defs>
-            <circle cx="18" cy="18" r="18" fill="url(#convAiGrad)"/>
-            <path d="M18 9l1.8 5.5H25l-4.3 3.1 1.6 5.1L18 19.6l-4.3 3.1 1.6-5.1L11 14.5h5.2L18 9z" fill="white"/>
-          </svg>
+          <img src={geminiLogo} width="36" height="36" alt="Gemini" />
           <span className="conv-online-dot conv-online-dot--ai" />
         </div>
         <div className="conv-info">

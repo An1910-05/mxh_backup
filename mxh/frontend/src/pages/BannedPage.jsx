@@ -14,7 +14,7 @@ export default function BannedPage() {
 
   const handleGoLogin = () => {
     localStorage.removeItem('token');
-    window.location.replace('/login');
+    window.location.replace('/login?reason=banned');
   };
 
   return (

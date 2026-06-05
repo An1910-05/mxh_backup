@@ -1,20 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { API_ORIGIN } from '../config';
+import geminiLogo from '../assets/gemini.svg';
 
 const STORAGE_KEY = 'mxh_ai_chat_history';
 const MAX_HISTORY = 10;
 
-const AI_AVATAR_SVG = (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-    <defs>
-      <linearGradient id="aiGradAvatar" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#a855f7"/><stop offset="1" stopColor="#3b82f6"/>
-      </linearGradient>
-    </defs>
-    <circle cx="12" cy="12" r="12" fill="url(#aiGradAvatar)"/>
-    <path d="M12 6l1.2 3.7H17l-2.9 2.1 1.1 3.4L12 13.1l-3.2 2.1 1.1-3.4L7 9.7h3.8L12 6z" fill="white"/>
-  </svg>
-);
+const AI_AVATAR_SVG = <img src={geminiLogo} width="18" height="18" alt="Gemini" />;
 
 function TypingDots() {
   return (

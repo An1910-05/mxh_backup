@@ -88,9 +88,9 @@ export default function ShopDashboardPage() {
         </div>
         <div className="shop-dashboard-actions">
           <Link to="/shop" className="shop-btn-secondary">Xem cửa hàng</Link>
-          <Link to="/shop/sales" className="shop-btn-secondary">📋 Đơn bán</Link>
+          <Link to="/shop/sales" className="shop-btn-secondary"><i className="bi bi-receipt" /> Đơn bán</Link>
           <button className="shop-btn-primary" onClick={() => setShowCreate(true)}>
-            + Đăng sản phẩm mới
+            <i className="bi bi-plus-lg" /> Đăng sản phẩm mới
           </button>
         </div>
       </div>
@@ -125,8 +125,8 @@ export default function ShopDashboardPage() {
                 </div>
               </div>
               <div className="shop-row-actions">
-                <button className="shop-btn-secondary" onClick={() => setEditingProduct(p)}>Sửa</button>
-                <button className="shop-btn-danger" onClick={() => handleDelete(p.id)}>Xóa</button>
+                <button className="shop-btn-secondary" onClick={() => setEditingProduct(p)}><i className="bi bi-pencil" /> Sửa</button>
+                <button className="shop-btn-danger" onClick={() => handleDelete(p.id)}><i className="bi bi-trash" /> Xóa</button>
               </div>
             </div>
           ))}
@@ -191,12 +191,29 @@ function ProductModal({ categories, product, onClose, onSaved }) {
     if (on && variants.length === 0) setVariants([emptyVariant()]);
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const applyImageFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
+
+  const handleImageChange = (e) => applyImageFile(e.target.files?.[0]);
+
+  useEffect(() => {
+    const onPaste = (e) => {
+      if (submitting) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          applyImageFile(item.getAsFile());
+          break;
+        }
+      }
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [submitting]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -296,9 +313,23 @@ function ProductModal({ categories, product, onClose, onSaved }) {
         <form onSubmit={handleSubmit} className="shop-modal-form">
           <div className="shop-form-row">
             <label>Ảnh sản phẩm {isEdit ? '' : '*'}</label>
-            <input type="file" accept="image/*" onChange={handleImageChange} disabled={submitting} />
-            {isEdit && <small className="shop-form-hint">Để trống nếu muốn giữ ảnh hiện tại.</small>}
-            {imagePreview && <img src={mediaUrl(imagePreview)} alt="" className="shop-form-preview" />}
+            <label className={`shop-img-dropzone${imagePreview ? ' has-preview' : ''}`}>
+              {imagePreview
+                ? <img src={mediaUrl(imagePreview)} alt="" className="shop-img-dropzone-preview" />
+                : <span className="shop-img-dropzone-hint">
+                    <i className="bi bi-image" style={{ fontSize: 22, opacity: 0.4 }} />
+                    <span>Nhấp để chọn ảnh</span>
+                    <span style={{ opacity: 0.55, fontSize: 12 }}>hoặc <kbd>Ctrl+V</kbd> để dán từ clipboard</span>
+                  </span>
+              }
+              <input type="file" accept="image/*,image/svg+xml" onChange={handleImageChange} disabled={submitting} hidden />
+            </label>
+            {imagePreview && (
+              <button type="button" className="shop-img-dropzone-remove" onClick={() => { setImageFile(null); setImagePreview(null); }}>
+                <i className="bi bi-x" /> Xoá ảnh
+              </button>
+            )}
+            {isEdit && !imagePreview && <small className="shop-form-hint">Để trống nếu muốn giữ ảnh hiện tại.</small>}
           </div>
           <div className="shop-form-row">
             <label>Tên sản phẩm *</label>
@@ -361,7 +392,7 @@ function ProductModal({ categories, product, onClose, onSaved }) {
                       {v.imagePreview
                         ? <img src={mediaUrl(v.imagePreview)} alt="" />
                         : <span>+ Ảnh</span>}
-                      <input type="file" accept="image/*" hidden disabled={submitting}
+                      <input type="file" accept="image/*,image/svg+xml" hidden disabled={submitting}
                         onChange={e => handleVariantImage(i, e.target.files?.[0])} />
                     </label>
                     <input type="text" placeholder="Tên phân loại" value={v.name}

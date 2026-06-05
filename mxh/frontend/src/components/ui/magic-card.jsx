@@ -10,6 +10,7 @@ export function MagicCard({
   gradientOpacity = 0.14,
   gradientFrom = '#1877f2',
   gradientTo = '#9c40ff',
+  spotlight = true,
 }) {
   const mouseX = useMotionValue(-gradientSize);
   const mouseY = useMotionValue(-gradientSize);
@@ -32,6 +33,15 @@ export function MagicCard({
     mouseX.set(-gradientSize);
     mouseY.set(-gradientSize);
   }, [gradientSize, mouseX, mouseY]);
+
+  // Tắt spotlight: giữ nguyên cấu trúc DOM (class + .relative) nhưng bỏ overlay glow + handler chuột
+  if (!spotlight) {
+    return (
+      <div className={cn('group relative rounded-[inherit]', className)}>
+        <div className="relative">{children}</div>
+      </div>
+    );
+  }
 
   return (
     <div

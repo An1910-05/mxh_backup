@@ -133,8 +133,11 @@ export default function ShopOrdersPage() {
           <span style={{ color: 'var(--slg-txt)' }}>Đơn mua</span>
         </div>
         <div className="shop-lg-topright">
-          <Link to="/shop" className="shop-lg-icon-btn shop-lg-lq" style={{ width: 'auto', padding: '0 14px' }}>
-            Tiếp tục mua sắm
+          <Link to="/shop" className="shop-lg-icon-btn shop-lg-lq" aria-label="Quay lại Shop">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3h2l2.4 12.3a2 2 0 0 0 2 1.7H18a2 2 0 0 0 2-1.6L21.5 8H6"/>
+              <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
+            </svg>
           </Link>
         </div>
       </header>
@@ -164,7 +167,7 @@ export default function ShopOrdersPage() {
           </div>
         ) : orders.length === 0 ? (
           <div className="shop-lg-glass shop-lg-empty" style={{ marginTop: 16 }}>
-            <div className="icn">📦</div>
+            <div className="icn"><i className="bi bi-inbox" /></div>
             <h3>Chưa có đơn nào</h3>
             <p>Bạn chưa có đơn hàng nào trong trạng thái này. <Link to="/shop">Đi mua sắm →</Link></p>
           </div>
@@ -246,17 +249,17 @@ function OrderCard({ order, onConfirmDelivery, onCancel, onReview, onTrack }) {
         <div className="shop-order-actions">
           {canConfirmReceive && (
             <button className="shop-btn-primary" onClick={() => onConfirmDelivery(order)}>
-              ✓ Đã nhận hàng
+              <i className="bi bi-check-circle-fill" /> Đã nhận hàng
             </button>
           )}
           {canTrack && (
             <button className="shop-btn-secondary" onClick={() => onTrack(order)}>
-              📍 Xem lộ trình
+              <i className="bi bi-geo-alt-fill" /> Xem lộ trình
             </button>
           )}
           {canReview && (
             <button className="shop-btn-primary" onClick={() => onReview(order)}>
-              ★ Đánh giá
+              <i className="bi bi-star-fill" /> Đánh giá
             </button>
           )}
           {canCancel && (
