@@ -18211,15 +18211,6 @@ body.theme-dark .adm-app-card { background: #1a1d24; }
   letter-spacing: -0.02em;
 }
 
-/* Body/câu hỏi trong modal — dùng token caro (cố định trên nền kính trắng,
-   đúng cả light/dark) thay vì kế thừa --text-primary bị flip thành chữ trắng */
-.caro-modal p {
-  margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: var(--cr-text-2, #6e6e73);
-}
-
 .caro-field { display: flex; flex-direction: column; gap: 5px; }
 .caro-field > span {
   font-size: 0.79rem;
@@ -19629,13 +19620,9 @@ body.theme-dark .shop-lg-scope {
   padding: 9px 16px !important;
   transition: background 0.15s, box-shadow 0.15s;
 }
-.shop-lg-seller-cta:hover:not(.tinted):not(.ghost) {
-  background: hsl(0 0% 90%) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
-}
-body.theme-dark .shop-lg-seller-cta:hover:not(.tinted):not(.ghost) {
-  background: hsl(0 0% 20%) !important;
-}
+/* (Đã gỡ hover nền xám cũ cho nút seller-cta không-tinted: nút giờ là nền đen metal +
+   chữ trắng, đổi nền sang xám sáng khi hover làm chữ trắng bị mờ. Hover giờ dùng chung
+   block metal bên dưới — nâng nhẹ + đổ bóng, đồng nhất với nút "Đăng ký bán hàng".) */
 .shop-lg-seller-cta.tinted {
   background: var(--slg-accent) !important;
   color: var(--slg-accent-fg) !important;

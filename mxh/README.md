@@ -10,6 +10,8 @@ Người đọc README này có thể nắm được: mục tiêu sản phẩm, 
 
 ## Cập nhật gần đây
 
+- **Giỏ hàng — Chặn đặt hàng khi số dư không đủ:** Nút "Đặt hàng"/"Thanh toán" nay bị disable khi số dư ví < tổng tiền, đổi nhãn thành "Số dư không đủ · cần thêm Xđ", và `handleCheckout` báo 1 dòng rõ ràng thay vì thử rồi fail từng món. File: `frontend/src/pages/ShopCartPage.jsx`.
+
 - **Trò chơi — Tạm ẩn game Tài Xỉu:** Card "Tỉu Xài" trong trang `/games` được comment lại tạm thời (không xoá), chỉ còn hiển thị Cờ Caro. Bỏ cặp `{/* */}` quanh khối `<button onClick={openTaiXiu}>` để hiện lại. File: `frontend/src/pages/GamesPage.jsx`.
 
 - **Trang cá nhân — Chế độ riêng tư (Public / Private):** Người dùng có thể đặt trang cá nhân ở chế độ **Công khai** (mặc định) hoặc **Riêng tư**. Riêng tư: chỉ **bạn bè** (`friendships.status='accepted'`) mới xem được bài viết, story, danh sách bạn/follower và thông tin trang cá nhân; người theo dõi không phải bạn bè cũng bị chặn. Người lạ thấy màn hình khóa "Tài khoản này ở chế độ riêng tư" + nút kết bạn (tài khoản vẫn tìm được trong tìm kiếm và vẫn nhận lời mời kết bạn). Cổng kiểm tra tập trung `PrivacyService::canView(viewer, owner)`; feed nhiều tác giả (`posts`/`feed`/`feedStories`) lọc ngay ở SQL nên phân trang vẫn đúng. Bật/tắt ở **Cài đặt → Quyền riêng tư**.

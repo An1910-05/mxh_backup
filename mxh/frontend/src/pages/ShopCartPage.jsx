@@ -135,6 +135,9 @@ export default function ShopCartPage() {
 
   const needsAddress = cart.selectedItems.some(it => (it.productType || 'physical') !== 'digital');
 
+  // Không đủ số dư ví để thanh toán các sản phẩm đã chọn → chặn đặt hàng, báo rõ cho người dùng.
+  const insufficientBalance = balance !== null && balance < total && cart.selectedItems.length > 0;
+
   const handleCheckout = async () => {
     if (!user) { navigate('/login'); return; }
     if (cart.selectedItems.length === 0) {
@@ -143,6 +146,10 @@ export default function ShopCartPage() {
     }
     if (needsAddress && !shippingAddress.trim()) {
       setError('Vui lòng nhập địa chỉ giao hàng cho sản phẩm vật lý.');
+      return;
+    }
+    if (insufficientBalance) {
+      setError(`Số dư ví không đủ để đặt hàng. Bạn cần nạp thêm ${formatPrice(total - balance)} để tiếp tục.`);
       return;
     }
     setCheckingOut(true);
@@ -344,9 +351,9 @@ export default function ShopCartPage() {
                   type="button"
                   className="shop-lg-checkout shop-lg-lq tinted"
                   onClick={handleCheckout}
-                  disabled={checkingOut || cart.selectedItems.length === 0}
+                  disabled={checkingOut || cart.selectedItems.length === 0 || insufficientBalance}
                 >
-                  {checkingOut ? 'Đang đặt…' : 'Thanh toán'}
+                  {checkingOut ? 'Đang đặt…' : insufficientBalance ? 'Số dư không đủ' : 'Thanh toán'}
                 </button>
               </div>
             </section>
@@ -454,9 +461,13 @@ export default function ShopCartPage() {
                 className="shop-lg-checkout shop-lg-lq tinted"
                 style={{ width: '100%', marginTop: 16 }}
                 onClick={handleCheckout}
-                disabled={checkingOut || cart.selectedItems.length === 0}
+                disabled={checkingOut || cart.selectedItems.length === 0 || insufficientBalance}
               >
-                {checkingOut ? 'Đang đặt…' : `Đặt hàng · ${formatPrice(total)}`}
+                {checkingOut
+                  ? 'Đang đặt…'
+                  : insufficientBalance
+                    ? `Số dư không đủ · cần thêm ${formatPrice(total - balance)}`
+                    : `Đặt hàng · ${formatPrice(total)}`}
               </button>
 
               <div style={{ marginTop: 14, padding: 14, borderRadius: 16, background: 'rgba(127,127,127,0.06)', border: '1px solid var(--slg-glass-hairline)', fontSize: 12.5, color: 'var(--slg-txt-2)', lineHeight: 1.5 }}>
