@@ -47,6 +47,18 @@ class MutationType extends ObjectType
                     },
                 ],
 
+                'setPrivacy' => [
+                    'type' => TypeRegistry::profile(),
+                    'args' => [
+                        'isPrivate' => Type::nonNull(Type::boolean()),
+                    ],
+                    'resolve' => function ($root, $args, $context) {
+                        self::requireAuth($context);
+                        $service = new ProfileService();
+                        return $service->setPrivacy($context['user']['id'], (bool)$args['isPrivate']);
+                    },
+                ],
+
                 'createPost' => [
                     'type' => TypeRegistry::post(),
                     'args' => [

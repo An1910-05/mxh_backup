@@ -23,7 +23,7 @@ function userLink(u) {
   return u.custom_url ? `/${u.custom_url}` : `/profile_id=${u.id}`;
 }
 
-export default function ProfileInfo({ profile, onProfileUpdate }) {
+export default function ProfileInfo({ profile, onProfileUpdate, locked = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [following, setFollowing] = useState(profile.is_following);
@@ -392,19 +392,23 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
                 </div>
               )}
 
-              {/* Follow */}
-              <button type="button" onClick={handleFollow} className={`pfb ${following ? 'pfb--light' : 'pfb--light'}`} disabled={loading}>
-                {following
-                  ? <><i className="bi bi-bell-slash-fill" aria-hidden="true" />Bỏ theo dõi</>
-                  : <><i className="bi bi-bell-fill" aria-hidden="true" />Theo dõi</>
-                }
-              </button>
+              {/* Follow — ẩn khi trang khóa riêng tư */}
+              {!locked && (
+                <button type="button" onClick={handleFollow} className={`pfb ${following ? 'pfb--light' : 'pfb--light'}`} disabled={loading}>
+                  {following
+                    ? <><i className="bi bi-bell-slash-fill" aria-hidden="true" />Bỏ theo dõi</>
+                    : <><i className="bi bi-bell-fill" aria-hidden="true" />Theo dõi</>
+                  }
+                </button>
+              )}
 
-              {/* Message */}
-              <button type="button" onClick={() => navigate(`/chat?user=${profile.user_id}`)} className="pfb pfb--light">
-                <i className="bi bi-chat-fill" aria-hidden="true" />
-                Nhắn tin
-              </button>
+              {/* Message — ẩn khi trang khóa riêng tư */}
+              {!locked && (
+                <button type="button" onClick={() => navigate(`/chat?user=${profile.user_id}`)} className="pfb pfb--light">
+                  <i className="bi bi-chat-fill" aria-hidden="true" />
+                  Nhắn tin
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -517,18 +521,23 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
           </span>
         </button>
 
-        <p className="profile-bio profile-bio--x">
-          {profile.bio || <span className="profile-bio-empty">Chưa có tiểu sử</span>}
-        </p>
+        {!locked && (
+          <p className="profile-bio profile-bio--x">
+            {profile.bio || <span className="profile-bio-empty">Chưa có tiểu sử</span>}
+          </p>
+        )}
 
-        <button type="button" className="profile-join-row" onClick={() => setShowAbout(true)}>
-          <svg className="profile-join-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
-            <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" />
-          </svg>
-          <span>{formatJoinMonthYear(profile.created_at)}</span>
-          <span className="profile-join-chevron" aria-hidden>›</span>
-        </button>
+        {!locked && (
+          <button type="button" className="profile-join-row" onClick={() => setShowAbout(true)}>
+            <svg className="profile-join-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
+              <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" />
+            </svg>
+            <span>{formatJoinMonthYear(profile.created_at)}</span>
+            <span className="profile-join-chevron" aria-hidden>›</span>
+          </button>
+        )}
 
+        {!locked && (
         <div className="profile-stats profile-stats--x">
           <button type="button" className="profile-stat-item profile-stat-clickable profile-stat--x" onClick={() => openList('following')}>
             <span className="profile-stat-number">{profile.following_count ?? 0}</span>
@@ -557,6 +566,7 @@ export default function ProfileInfo({ profile, onProfileUpdate }) {
             <span className="profile-stat-label">Bạn bè</span>
           </button>
         </div>
+        )}
 
         <div className="profile-x-meta">
           {isOwn && <div className="profile-email profile-email--x">{profile.email}</div>}

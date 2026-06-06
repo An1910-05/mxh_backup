@@ -34,6 +34,14 @@ class ProfileType extends ObjectType
                 'verified_until' => Type::string(),
                 'last_login_device' => Type::string(),
                 'created_at' => Type::string(),
+                'is_private' => [
+                    'type' => Type::boolean(),
+                    'resolve' => fn($row) => !empty($row['is_private']),
+                ],
+                'is_locked' => [
+                    'type' => Type::boolean(),
+                    'resolve' => fn($row) => !empty($row['is_locked']),
+                ],
             ],
         ]);
     }

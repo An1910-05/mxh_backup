@@ -16,6 +16,7 @@ class PostService
     private LikeRepository $likeRepo;
     private CommentRepository $commentRepo;
     private FollowRepository $followRepo;
+    private PrivacyService $privacy;
 
     public function __construct()
     {
@@ -23,6 +24,7 @@ class PostService
         $this->likeRepo = new LikeRepository();
         $this->commentRepo = new CommentRepository();
         $this->followRepo = new FollowRepository();
+        $this->privacy = new PrivacyService();
     }
 
     public function createPost(int $userId, string $content, ?string $mediaUrl = null, ?string $mediaType = null, ?int $mediaWidth = null, ?int $mediaHeight = null, ?string $locationLabel = null, ?float $latitude = null, ?float $longitude = null): array
@@ -45,18 +47,26 @@ class PostService
     {
         $post = $this->postRepo->findById($postId);
         if (!$post) throw new \RuntimeException('Post not found', 404);
+        if (!$this->privacy->canView($currentUserId, (int)$post['user_id'])) {
+            throw new \RuntimeException('Bài viết này ở chế độ riêng tư', 403);
+        }
         return $this->enrichPost($post, $currentUserId);
     }
 
     public function getPosts(int $limit = 20, int $page = 1, ?int $currentUserId = null): array
     {
         $offset = ($page - 1) * $limit;
-        $posts = $this->postRepo->findAll($limit, $offset);
+        $friendIds = $currentUserId ? $this->privacy->friendIds($currentUserId) : [];
+        $posts = $this->postRepo->findAll($limit, $offset, $currentUserId, $friendIds);
         return $this->enrichPosts($posts, $currentUserId);
     }
 
     public function getUserPosts(int $userId, int $limit = 20, int $page = 1, ?int $currentUserId = null): array
     {
+        // Trang cá nhân private: chỉ bạn bè / chính chủ mới xem được bài viết.
+        if (!$this->privacy->canView($currentUserId, $userId)) {
+            return [];
+        }
         $offset = ($page - 1) * $limit;
         $posts = $this->postRepo->findByUserId($userId, $limit, $offset);
         return $this->enrichPosts($posts, $currentUserId);
@@ -67,7 +77,9 @@ class PostService
         $followingIds = $this->followRepo->getFollowingIds($userId);
         $feedUserIds = array_merge([$userId], $followingIds);
         $offset = ($page - 1) * $limit;
-        $posts = $this->postRepo->findByUserIds($feedUserIds, $limit, $offset);
+        // Người mình theo dõi nhưng để private và chưa kết bạn sẽ bị loại khỏi feed.
+        $friendIds = $this->privacy->friendIds($userId);
+        $posts = $this->postRepo->findByUserIds($feedUserIds, $limit, $offset, $userId, $friendIds);
         return $this->enrichPosts($posts, $userId);
     }
 

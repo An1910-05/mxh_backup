@@ -9,11 +9,13 @@ class StoryService
 {
     private StoryRepository $storyRepo;
     private FollowRepository $followRepo;
+    private PrivacyService $privacy;
 
     public function __construct()
     {
         $this->storyRepo = new StoryRepository();
         $this->followRepo = new FollowRepository();
+        $this->privacy = new PrivacyService();
     }
 
     public function createStory(int $userId, string $mediaUrl, string $mediaType, ?int $mediaWidth = null, ?int $mediaHeight = null): array
@@ -27,8 +29,12 @@ class StoryService
         return $this->storyRepo->findById($storyId);
     }
 
-    public function getUserStories(int $userId): array
+    public function getUserStories(int $userId, ?int $currentUserId = null): array
     {
+        // Story của tài khoản private chỉ hiển thị cho bạn bè / chính chủ.
+        if (!$this->privacy->canView($currentUserId, $userId)) {
+            return [];
+        }
         return $this->storyRepo->findActiveByUserId($userId);
     }
 
@@ -41,7 +47,9 @@ class StoryService
         $followingIds = $this->followRepo->getFollowingIds($currentUserId);
         $feedUserIds = array_merge([$currentUserId], $followingIds);
 
-        $allStories = $this->storyRepo->findFeedStories($feedUserIds);
+        // Loại story của người mình theo dõi nhưng để private và chưa kết bạn.
+        $friendIds = $this->privacy->friendIds($currentUserId);
+        $allStories = $this->storyRepo->findFeedStories($feedUserIds, $currentUserId, $friendIds);
 
         $grouped = [];
         foreach ($allStories as $story) {

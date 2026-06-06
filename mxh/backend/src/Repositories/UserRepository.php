@@ -16,7 +16,7 @@ class UserRepository
 
     public function findById(int $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT u.id, u.username, u.email, u.custom_url, u.birthday, u.gender, u.balance, u.role, u.is_blocked, u.is_seller, u.is_verified, u.verified_until, u.last_login_device, u.created_at, u.updated_at, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = ?');
+        $stmt = $this->db->prepare('SELECT u.id, u.username, u.email, u.custom_url, u.birthday, u.gender, u.balance, u.role, u.is_blocked, u.is_seller, u.is_verified, u.verified_until, u.is_private, u.last_login_device, u.created_at, u.updated_at, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = ?');
         $stmt->execute([$id]);
         return $stmt->fetch() ?: null;
     }
@@ -201,5 +201,11 @@ class UserRepository
     {
         $stmt = $this->db->prepare('UPDATE users SET last_login_device = ? WHERE id = ?');
         return $stmt->execute([$device, $userId]);
+    }
+
+    public function setPrivacy(int $userId, bool $isPrivate): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET is_private = ? WHERE id = ?');
+        return $stmt->execute([$isPrivate ? 1 : 0, $userId]);
     }
 }

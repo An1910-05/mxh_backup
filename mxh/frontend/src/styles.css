@@ -5223,6 +5223,42 @@ body[data-theme='dark'] .about-panel-item-value { color: #8b98a5; }
     margin-top: 8px;
 }
 
+/* Trang cá nhân riêng tư — màn hình khóa */
+.profile-locked {
+    margin: 24px auto;
+    max-width: 460px;
+    padding: 40px 28px;
+    text-align: center;
+    border: 1px solid var(--border-soft);
+    border-radius: 18px;
+    background: var(--surface-0);
+}
+.profile-locked-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--theme-link) 12%, var(--surface-0));
+    color: var(--theme-link);
+    font-size: 28px;
+}
+.profile-locked-title {
+    margin: 0 0 8px;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+}
+.profile-locked-text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
 /* Cuộn từ số “Bài viết” trên header — tránh bị navbar che tiêu đề */
 .profile-posts-anchor {
     scroll-margin-top: 72px;
@@ -10762,6 +10798,7 @@ body[data-theme='dark'] .auth-page {
     background: #18191a;
 }
 
+body[data-theme='dark'] .auth-slogan,
 body[data-theme='dark'] .auth-copy-title,
 body[data-theme='dark'] .auth-card-title {
     color: var(--text-primary);
@@ -12454,6 +12491,58 @@ body.theme-dark .settings-badge--google {
 }
 .settings-gender-chip input { display: none; }
 .settings-gender-chip .bi { font-size: 14px; }
+
+/* Privacy options — Apple-neutral palette, theme-token driven (light + dark) */
+.settings-privacy-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 6px;
+}
+.settings-privacy-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  text-align: left;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-0);
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
+}
+.settings-privacy-card:hover:not(:disabled) { border-color: var(--theme-link); transform: translateY(-1px); }
+.settings-privacy-card:active:not(:disabled) { transform: translateY(0) scale(0.99); }
+.settings-privacy-card:disabled { opacity: 0.55; cursor: default; }
+.settings-privacy-card.is-active {
+  border-color: var(--theme-link);
+  background: color-mix(in srgb, var(--theme-link) 7%, var(--surface-0));
+  box-shadow: 0 10px 26px -16px color-mix(in srgb, var(--theme-link) 55%, transparent);
+}
+.settings-privacy-card-icon {
+  flex-shrink: 0;
+  width: 42px; height: 42px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--theme-link) 12%, var(--surface-0));
+  color: var(--theme-link);
+  font-size: 20px;
+}
+.settings-privacy-card.is-active .settings-privacy-card-icon {
+  background: var(--theme-link);
+  color: #fff;
+}
+.settings-privacy-card-text { display: flex; flex-direction: column; gap: 4px; }
+.settings-privacy-card-title {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.settings-privacy-card-check { color: var(--theme-link); font-size: 14px; }
+.settings-privacy-card-desc { font-size: 12.5px; line-height: 1.55; color: var(--text-secondary); }
+@media (max-width: 640px) {
+  .settings-privacy-options { grid-template-columns: 1fr; }
+}
 
 /* Link badge */
 .settings-link-badge {
@@ -18120,6 +18209,15 @@ body.theme-dark .adm-app-card { background: #1a1d24; }
   color: var(--cr-text, #1d1d1f);
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+/* Body/câu hỏi trong modal — dùng token caro (cố định trên nền kính trắng,
+   đúng cả light/dark) thay vì kế thừa --text-primary bị flip thành chữ trắng */
+.caro-modal p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--cr-text-2, #6e6e73);
 }
 
 .caro-field { display: flex; flex-direction: column; gap: 5px; }

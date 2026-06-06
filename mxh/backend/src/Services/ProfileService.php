@@ -17,6 +17,7 @@ class ProfileService
     private FollowRepository $followRepo;
     private FriendshipRepository $friendRepo;
     private TransactionRepository $txRepo;
+    private PrivacyService $privacy;
 
     private const VERIFIED_PRICE_MONTHLY = 500000;
     private const VERIFIED_PRICE_YEARLY  = 5000000;
@@ -30,6 +31,7 @@ class ProfileService
         $this->followRepo = new FollowRepository();
         $this->friendRepo = new FriendshipRepository();
         $this->txRepo = new TransactionRepository();
+        $this->privacy = new PrivacyService();
     }
 
     public function getProfile(int $userId, ?int $currentUserId = null): array
@@ -56,6 +58,36 @@ class ProfileService
         $this->userRepo->expireVerifiedIfNeeded($userId);
         $user = $this->userRepo->findById($userId);
 
+        $isPrivate = !empty($user['is_private']);
+        $isLocked = $isPrivate && !$this->privacy->canView($currentUserId, $userId);
+
+        // Trang cá nhân private + người xem không có quyền: chỉ trả thông tin tối thiểu.
+        if ($isLocked) {
+            return [
+                'user_id' => $user['id'],
+                'username' => $user['username'],
+                'email' => null,
+                'custom_url' => $user['custom_url'] ?? null,
+                'bio' => null,
+                'avatar' => $profile['avatar'] ?? null,
+                'cover_photo' => null,
+                'post_count' => 0,
+                'follower_count' => 0,
+                'following_count' => 0,
+                'friend_count' => 0,
+                'is_following' => $currentUserId ? $this->followRepo->isFollowing($currentUserId, $userId) : false,
+                'friendship_status' => $friendInfo['status'],
+                'friendship_id' => $friendInfo['friendship_id'],
+                'friendship_is_sender' => $friendInfo['is_sender'],
+                'is_verified' => !empty($user['is_verified']),
+                'verified_until' => null,
+                'last_login_device' => null,
+                'created_at' => null,
+                'is_private' => true,
+                'is_locked' => true,
+            ];
+        }
+
         return [
             'user_id' => $user['id'],
             'username' => $user['username'],
@@ -76,7 +108,15 @@ class ProfileService
             'verified_until' => $user['verified_until'] ?? null,
             'last_login_device' => $user['last_login_device'] ?? null,
             'created_at' => $user['created_at'],
+            'is_private' => $isPrivate,
+            'is_locked' => false,
         ];
+    }
+
+    public function setPrivacy(int $userId, bool $isPrivate): array
+    {
+        $this->userRepo->setPrivacy($userId, $isPrivate);
+        return $this->getProfile($userId, $userId);
     }
 
     public function getProfileByCustomUrl(string $url, ?int $currentUserId = null): array

@@ -49,18 +49,34 @@ class StoryRepository
     /**
      * Get stories from users the current user follows + own stories, grouped by user.
      */
-    public function findFeedStories(array $userIds): array
+    public function findFeedStories(array $userIds, ?int $viewerId = null, array $friendIds = []): array
     {
         if (empty($userIds)) return [];
 
         $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+
+        // Lọc theo chế độ private: tác giả public, hoặc story của chính viewer, hoặc tác giả là bạn.
+        $visSql = 'u.is_private = 0';
+        $visParams = [];
+        if ($viewerId !== null) {
+            $ors = ['u.is_private = 0', 's.user_id = ?'];
+            $visParams = [$viewerId];
+            $friendIds = array_values(array_unique(array_map('intval', $friendIds)));
+            if (!empty($friendIds)) {
+                $ph = implode(',', array_fill(0, count($friendIds), '?'));
+                $ors[] = "s.user_id IN ({$ph})";
+                $visParams = array_merge($visParams, $friendIds);
+            }
+            $visSql = '(' . implode(' OR ', $ors) . ')';
+        }
+
         $stmt = $this->db->prepare(
             "SELECT s.*, u.username, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = s.user_id) AS user_avatar
              FROM stories s JOIN users u ON s.user_id = u.id
-             WHERE s.user_id IN ({$placeholders}) AND s.expires_at > NOW()
+             WHERE s.user_id IN ({$placeholders}) AND s.expires_at > NOW() AND {$visSql}
              ORDER BY s.created_at ASC"
         );
-        $stmt->execute($userIds);
+        $stmt->execute([...$userIds, ...$visParams]);
         return $stmt->fetchAll();
     }
 

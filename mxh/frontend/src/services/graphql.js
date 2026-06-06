@@ -25,13 +25,18 @@ export async function getUserPosts(userId, limit = 20, page = 1) {
 }
 
 export async function getProfile(userId) {
-  const data = await graphqlFetch(`query Profile(`+`$userId: Int!) { profile(userId: $userId) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender is_verified verified_until last_login_device created_at } }`, { userId: parseInt(userId) });
+  const data = await graphqlFetch(`query Profile(`+`$userId: Int!) { profile(userId: $userId) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender is_verified verified_until last_login_device created_at is_private is_locked } }`, { userId: parseInt(userId) });
   return data.profile;
 }
 
 export async function getProfileByCustomUrl(url) {
-  const data = await graphqlFetch(`query ProfileByCustomUrl(`+`$url: String!) { profileByCustomUrl(url: $url) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender is_verified verified_until last_login_device created_at } }`, { url });
+  const data = await graphqlFetch(`query ProfileByCustomUrl(`+`$url: String!) { profileByCustomUrl(url: $url) { user_id username email custom_url bio avatar cover_photo post_count follower_count following_count friend_count is_following friendship_status friendship_id friendship_is_sender is_verified verified_until last_login_device created_at is_private is_locked } }`, { url });
   return data.profileByCustomUrl;
+}
+
+export async function setPrivacy(isPrivate) {
+  const data = await graphqlFetch(`mutation SetPrivacy(`+`$isPrivate: Boolean!) { setPrivacy(isPrivate: $isPrivate) { user_id is_private is_locked } }`, { isPrivate: !!isPrivate });
+  return data.setPrivacy;
 }
 
 export async function getComments(postId) {

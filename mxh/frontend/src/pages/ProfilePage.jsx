@@ -28,8 +28,13 @@ export default function ProfilePage() {
         }
 
         setProfile(profileData);
-        const postsData = await getUserPosts(profileData.user_id);
-        setPosts(postsData);
+        // Trang cá nhân riêng tư + không có quyền xem: bỏ qua tải bài viết.
+        if (profileData.is_locked) {
+          setPosts([]);
+        } else {
+          const postsData = await getUserPosts(profileData.user_id);
+          setPosts(postsData);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -88,12 +93,27 @@ export default function ProfilePage() {
     <div className="apple-main fade-in">
       <ProfileInfo
         profile={profile}
+        locked={!!profile.is_locked}
         onProfileUpdate={(updated) => setProfile({ ...profile, ...updated })}
       />
-      <h3 id="profile-posts-section" className="section-title profile-posts-heading profile-posts-anchor">
-        Bài viết
-      </h3>
-      <PostList posts={posts} onDelete={handleDelete} />
+      {profile.is_locked ? (
+        <div className="profile-locked">
+          <div className="profile-locked-icon" aria-hidden="true">
+            <i className="bi bi-lock-fill" />
+          </div>
+          <h3 className="profile-locked-title">Tài khoản này ở chế độ riêng tư</h3>
+          <p className="profile-locked-text">
+            Kết bạn với <strong>{profile.username}</strong> để xem bài viết, story và thông tin trang cá nhân.
+          </p>
+        </div>
+      ) : (
+        <>
+          <h3 id="profile-posts-section" className="section-title profile-posts-heading profile-posts-anchor">
+            Bài viết
+          </h3>
+          <PostList posts={posts} onDelete={handleDelete} />
+        </>
+      )}
     </div>
   );
 }

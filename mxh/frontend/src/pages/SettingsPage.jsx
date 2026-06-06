@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { getSettings, changePassword, updateSettingsProfile, getBalance } from '../services/auth';
+import { setPrivacy as setPrivacyApi } from '../services/graphql';
 import { BorderBeam } from '@/components/ui/border-beam';
 import { ShimmerButton } from '@/components/ui/shimmer-button';
 import { MagicCard } from '@/components/ui/magic-card';
@@ -44,6 +45,11 @@ export default function SettingsPage() {
 
   const [balance, setBalance] = useState(null);
 
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [privacyLoading, setPrivacyLoading] = useState(false);
+  const [privacyMsg, setPrivacyMsg] = useState('');
+  const [privacyErr, setPrivacyErr] = useState('');
+
   const maxDay = daysInMonth(parseInt(birthMonth), parseInt(birthYear));
   const days = Array.from({ length: maxDay }, (_, i) => i + 1);
 
@@ -54,6 +60,7 @@ export default function SettingsPage() {
         setSettings(data);
         setUsername(data.username || '');
         setGender(data.gender || '');
+        setIsPrivate(!!data.is_private);
         if (data.birthday) {
           const parts = data.birthday.split('-');
           setBirthYear(parts[0] || '');
@@ -140,6 +147,28 @@ export default function SettingsPage() {
     }
   };
 
+  const handlePrivacyToggle = async (nextPrivate) => {
+    if (privacyLoading || nextPrivate === isPrivate) return;
+    setPrivacyLoading(true);
+    setPrivacyMsg('');
+    setPrivacyErr('');
+    const prev = isPrivate;
+    setIsPrivate(nextPrivate); // optimistic
+    try {
+      const result = await setPrivacyApi(nextPrivate);
+      setIsPrivate(!!result.is_private);
+      setSettings((s) => ({ ...s, is_private: result.is_private ? 1 : 0 }));
+      setPrivacyMsg(nextPrivate
+        ? 'Đã chuyển sang chế độ riêng tư. Chỉ bạn bè mới xem được trang cá nhân của bạn.'
+        : 'Đã chuyển sang chế độ công khai. Mọi người đều xem được trang cá nhân của bạn.');
+    } catch (err) {
+      setIsPrivate(prev); // rollback
+      setPrivacyErr(err.message || 'Không thể cập nhật chế độ riêng tư.');
+    } finally {
+      setPrivacyLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="settings-page">
@@ -150,6 +179,7 @@ export default function SettingsPage() {
 
   const sections = [
     { key: 'general',  label: 'Thông tin chung',   icon: 'bi-person-gear',      hint: 'Hồ sơ cá nhân' },
+    { key: 'privacy',  label: 'Quyền riêng tư',    icon: 'bi-shield-lock',      hint: 'Công khai / Riêng tư' },
     { key: 'password', label: 'Mật khẩu & Bảo mật', icon: 'bi-shield-lock-fill', hint: 'Xác thực tài khoản' },
     { key: 'wallet',   label: 'Ví tiền',           icon: 'bi-wallet2',          hint: 'Số dư & nạp tiền' },
   ];
@@ -255,6 +285,16 @@ export default function SettingsPage() {
                     profileErr={profileErr}
                     profileLoading={profileLoading}
                     handleProfileSave={handleProfileSave}
+                  />
+                )}
+
+                {activeSection === 'privacy' && (
+                  <SectionPrivacy
+                    isPrivate={isPrivate}
+                    privacyLoading={privacyLoading}
+                    privacyMsg={privacyMsg}
+                    privacyErr={privacyErr}
+                    onToggle={handlePrivacyToggle}
                   />
                 )}
 
@@ -410,6 +450,71 @@ function SectionGeneral({
           </ShimmerButton>
         </div>
       </form>
+    </div>
+  );
+}
+
+/* ────────────── Section: Privacy ────────────── */
+function SectionPrivacy({ isPrivate, privacyLoading, privacyMsg, privacyErr, onToggle }) {
+  const options = [
+    {
+      value: false,
+      icon: 'bi-globe2',
+      title: 'Công khai',
+      desc: 'Bất kỳ ai cũng xem được bài viết, story và thông tin trang cá nhân của bạn.',
+    },
+    {
+      value: true,
+      icon: 'bi-lock-fill',
+      title: 'Riêng tư',
+      desc: 'Chỉ bạn bè mới xem được trang cá nhân. Người theo dõi không phải bạn bè sẽ không xem được.',
+    },
+  ];
+
+  return (
+    <div className="settings-section settings-section--v2">
+      <SectionHeader
+        icon="bi-shield-lock"
+        title="Quyền riêng tư"
+        desc="Chọn ai có thể xem bài viết, story và thông tin trên trang cá nhân của bạn."
+      />
+
+      {privacyMsg && (
+        <div className="settings-toast settings-toast--success">
+          <i className="bi bi-check-circle-fill" /> {privacyMsg}
+        </div>
+      )}
+      {privacyErr && (
+        <div className="settings-toast settings-toast--danger">
+          <i className="bi bi-exclamation-triangle-fill" /> {privacyErr}
+        </div>
+      )}
+
+      <div className="settings-privacy-options">
+        {options.map((opt) => {
+          const active = isPrivate === opt.value;
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              className={`settings-privacy-card${active ? ' is-active' : ''}`}
+              onClick={() => onToggle(opt.value)}
+              disabled={privacyLoading}
+            >
+              <span className="settings-privacy-card-icon" aria-hidden="true">
+                <i className={`bi ${opt.icon}`} />
+              </span>
+              <span className="settings-privacy-card-text">
+                <span className="settings-privacy-card-title">
+                  {opt.title}
+                  {active && <i className="bi bi-check-circle-fill settings-privacy-card-check" />}
+                </span>
+                <span className="settings-privacy-card-desc">{opt.desc}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

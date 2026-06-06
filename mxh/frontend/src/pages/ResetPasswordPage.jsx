@@ -48,7 +48,7 @@ export default function ResetPasswordPage() {
       headline="Tạo mật khẩu mới cho tài khoản."
       subcopy="Nhập mật khẩu mới bạn muốn sử dụng."
     >
-      <div className="auth-card auth-card--login">
+      <div className="auth-card auth-card--login auth-card--joly">
         <div className="auth-card-head">
           <h2 className="auth-card-title">Đặt lại mật khẩu</h2>
           <p className="auth-card-subtitle">Nhập mật khẩu mới để tiếp tục.</p>

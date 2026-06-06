@@ -186,7 +186,9 @@ class QueryType extends ObjectType
                 'userFriends' => [
                     'type' => Type::listOf(TypeRegistry::searchUser()),
                     'args' => ['userId' => Type::nonNull(Type::int())],
-                    'resolve' => function ($root, $args) {
+                    'resolve' => function ($root, $args, $context) {
+                        $currentUserId = $context['user']['id'] ?? null;
+                        if (!(new \App\Services\PrivacyService())->canView($currentUserId, $args['userId'])) return [];
                         $service = new FriendshipService();
                         return $service->getFriends($args['userId']);
                     },
@@ -195,7 +197,9 @@ class QueryType extends ObjectType
                 'userFollowers' => [
                     'type' => Type::listOf(TypeRegistry::searchUser()),
                     'args' => ['userId' => Type::nonNull(Type::int())],
-                    'resolve' => function ($root, $args) {
+                    'resolve' => function ($root, $args, $context) {
+                        $currentUserId = $context['user']['id'] ?? null;
+                        if (!(new \App\Services\PrivacyService())->canView($currentUserId, $args['userId'])) return [];
                         $repo = new \App\Repositories\FollowRepository();
                         return $repo->getFollowers($args['userId']);
                     },
@@ -204,7 +208,9 @@ class QueryType extends ObjectType
                 'userFollowing' => [
                     'type' => Type::listOf(TypeRegistry::searchUser()),
                     'args' => ['userId' => Type::nonNull(Type::int())],
-                    'resolve' => function ($root, $args) {
+                    'resolve' => function ($root, $args, $context) {
+                        $currentUserId = $context['user']['id'] ?? null;
+                        if (!(new \App\Services\PrivacyService())->canView($currentUserId, $args['userId'])) return [];
                         $repo = new \App\Repositories\FollowRepository();
                         return $repo->getFollowing($args['userId']);
                     },
@@ -240,9 +246,10 @@ class QueryType extends ObjectType
                 'userStories' => [
                     'type' => Type::listOf(TypeRegistry::story()),
                     'args' => ['userId' => Type::nonNull(Type::int())],
-                    'resolve' => function ($root, $args) {
+                    'resolve' => function ($root, $args, $context) {
                         $service = new StoryService();
-                        return $service->getUserStories($args['userId']);
+                        $currentUserId = $context['user']['id'] ?? null;
+                        return $service->getUserStories($args['userId'], $currentUserId);
                     },
                 ],
 

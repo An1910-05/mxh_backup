@@ -14,6 +14,7 @@ export default function GamesPage() {
         </div>
 
         <div className="games-grid">
+          {/* Tạm ẩn game Tài Xỉu — bỏ comment khối dưới để hiện lại
           <button className="game-card" onClick={openTaiXiu}>
             <div className="game-card-icon">🎲</div>
             <div className="game-card-info">
@@ -22,6 +23,7 @@ export default function GamesPage() {
             </div>
             <div className="game-card-play">Chơi</div>
           </button>
+          */}
 
           <button className="game-card" onClick={openCaro}>
             <div className="game-card-icon">⚪</div>

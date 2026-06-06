@@ -23,12 +23,13 @@ class PostRepository
         return $stmt->fetch() ?: null;
     }
 
-    public function findAll(int $limit = 20, int $offset = 0): array
+    public function findAll(int $limit = 20, int $offset = 0, ?int $viewerId = null, array $friendIds = []): array
     {
+        [$visSql, $visParams] = $this->visibilityClause($viewerId, $friendIds);
         $stmt = $this->db->prepare(
-            'SELECT p.*, u.username, u.is_verified AS user_is_verified, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC LIMIT ? OFFSET ?'
+            "SELECT p.*, u.username, u.is_verified AS user_is_verified, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id WHERE {$visSql} ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$limit, $offset]);
+        $stmt->execute([...$visParams, $limit, $offset]);
         return $stmt->fetchAll();
     }
 
@@ -41,14 +42,39 @@ class PostRepository
         return $stmt->fetchAll();
     }
 
-    public function findByUserIds(array $userIds, int $limit = 20, int $offset = 0): array
+    public function findByUserIds(array $userIds, int $limit = 20, int $offset = 0, ?int $viewerId = null, array $friendIds = []): array
     {
         if (empty($userIds)) return [];
         $placeholders = implode(',', array_fill(0, count($userIds), '?'));
-        $sql = "SELECT p.*, u.username, u.is_verified AS user_is_verified, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id IN ({$placeholders}) ORDER BY p.created_at DESC LIMIT ? OFFSET ?";
+        [$visSql, $visParams] = $this->visibilityClause($viewerId, $friendIds);
+        $sql = "SELECT p.*, u.username, u.is_verified AS user_is_verified, (SELECT pr.avatar FROM profiles pr WHERE pr.user_id = p.user_id) AS user_avatar FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id IN ({$placeholders}) AND {$visSql} ORDER BY p.created_at DESC LIMIT ? OFFSET ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([...$userIds, $limit, $offset]);
+        $stmt->execute([...$userIds, ...$visParams, $limit, $offset]);
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Dựng điều kiện WHERE lọc bài theo chế độ private của tác giả.
+     * Cho xem khi: tác giả public, HOẶC là bài của chính viewer, HOẶC tác giả là bạn của viewer.
+     * @return array{0: string, 1: array} [sqlFragment, params]
+     */
+    private function visibilityClause(?int $viewerId, array $friendIds): array
+    {
+        if ($viewerId === null) {
+            return ['u.is_private = 0', []];
+        }
+
+        $ors = ['u.is_private = 0', 'p.user_id = ?'];
+        $params = [$viewerId];
+
+        $friendIds = array_values(array_unique(array_map('intval', $friendIds)));
+        if (!empty($friendIds)) {
+            $ph = implode(',', array_fill(0, count($friendIds), '?'));
+            $ors[] = "p.user_id IN ({$ph})";
+            $params = array_merge($params, $friendIds);
+        }
+
+        return ['(' . implode(' OR ', $ors) . ')', $params];
     }
 
     public function create(int $userId, string $content, ?string $mediaUrl = null, ?string $mediaType = null, ?int $mediaWidth = null, ?int $mediaHeight = null, ?string $locationLabel = null, ?float $latitude = null, ?float $longitude = null): int
